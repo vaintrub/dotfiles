@@ -12,3 +12,4 @@ git clone https://github.com/vaintrub/dotfiles.git && cd dotfiles && ./install
 3. Make installing iterm preferences automatically
 4. Support different OS
 5. add ssh, tmux, git configurations
+6. add Jira plugin
