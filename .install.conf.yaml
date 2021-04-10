@@ -10,7 +10,7 @@
     ~/.vimrc:
     ~/.zsh:
     ~/.zshrc:
-    ~/Library/Preferences/: iterm/com.googlecode.iterm2.plist
+    ~/Library/Preferences/com.googlecode.iterm2.plist: iterm/com.googlecode.iterm2.plist
 
 - shell:
   - git submodule sync --recursive
