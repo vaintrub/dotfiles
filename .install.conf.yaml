@@ -10,8 +10,8 @@
     ~/.vimrc:
     ~/.zsh:
     ~/.zshrc:
-    ~/Library/Preferences/com.googlecode.iterm2.plist: iterm/com.googlecode.iterm2.plist
 
 - shell:
   - git submodule sync --recursive
   - git submodule update --init --recursive
+  - ./fonts/fonts/install.sh
