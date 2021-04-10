@@ -18,3 +18,7 @@
   - git submodule sync --recursive
   # the following have to run after linking ~/.gitconfig
   - git update-submodules
+  - >
+  git cleanall -f
+  vim/bundle/
+  zsh/.antigen/
