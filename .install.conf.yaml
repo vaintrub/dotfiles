@@ -10,8 +10,6 @@
     ~/.vimrc:
     ~/.zsh:
     ~/.zshrc:
-    ~/.aliases:
-    ~/.antigenrc:
 
 - shell:
   - git submodule sync --recursive
