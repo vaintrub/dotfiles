@@ -18,7 +18,11 @@ case `uname` in
   ;;
 esac
 
-antigen theme robbyrussell
+if [[ -n $SSH_CONNECTION ]]; then
+    antigen theme kafeitu
+else
+    antigen theme robbyrussell
+fi
 
 antigen apply
 
