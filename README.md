@@ -2,6 +2,8 @@
 
 ### Installig
 
+> You must have zsh, python, vim installed.
+
 ```
 git clone https://github.com/vaintrub/dotfiles.git && cd dotfiles && ./install
 ```
