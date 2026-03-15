@@ -8,8 +8,8 @@
 - link:
     ~/.vim:
     ~/.vimrc:
-    ~/.zsh:
     ~/.zshrc:
+    ~/.zsh_plugins.txt: zsh_plugins.txt
 
 - shell:
   - git submodule sync --recursive

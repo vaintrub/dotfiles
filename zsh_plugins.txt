@@ -1,0 +1,18 @@
+# Oh-My-Zsh framework
+getantidote/use-omz
+ohmyzsh/ohmyzsh path:lib
+ohmyzsh/ohmyzsh path:plugins/git
+ohmyzsh/ohmyzsh path:plugins/macos
+ohmyzsh/ohmyzsh path:plugins/brew
+ohmyzsh/ohmyzsh path:plugins/aws
+ohmyzsh/ohmyzsh path:plugins/perl
+ohmyzsh/ohmyzsh path:plugins/1password
+
+# Theme
+romkatv/powerlevel10k
+
+# External plugins
+zsh-users/zsh-completions kind:fpath path:src
+zsh-users/zsh-autosuggestions
+zsh-users/zsh-history-substring-search
+zsh-users/zsh-syntax-highlighting
