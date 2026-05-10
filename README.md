@@ -26,16 +26,14 @@ On first `vim` launch, vim-plug will fetch and install the configured plugins au
 
 ## tmux
 
-Prefix is **`C-a`** (screen-style). All other key bindings inherit from gpakosz/.tmux — see their [docs](https://github.com/gpakosz/.tmux#bindings).
+Prefix is **`C-a`** (screen-style). All other key bindings, status bar, and behaviour inherit from gpakosz/.tmux unchanged — see their [docs](https://github.com/gpakosz/.tmux#bindings). Useful defaults out of the box: `prefix h/j/k/l` for pane navigation, `prefix -` / `prefix _` for splits, `prefix e` to edit `.tmux.conf.local`, `prefix r` to reload.
 
-Customizations live in `tmux/tmux.conf.local` (symlinked to `~/.tmux.conf.local`):
+Customizations live in `tmux/tmux.conf.local` (symlinked to `~/.tmux.conf.local`) and are intentionally minimal:
 
-- macOS clipboard integration is on: yank in copy-mode writes to `pbcopy` automatically.
-- 24-bit true color is forced on so Powerlevel10k renders identically inside tmux.
-- Status bar is positioned at the top to stay out of p10k's way.
-- Seamless vim ↔ tmux pane navigation via raw `Ctrl-h/j/k/l` (the matching vim plugin `christoomey/vim-tmux-navigator` is installed by vim-plug).
+- **macOS clipboard**: yank in copy-mode (`y` after selecting with `v`) writes to `pbcopy` automatically (gpakosz native, no plugin).
+- **24-bit true color**: forced on so Powerlevel10k renders identically inside tmux (override of gpakosz's default `auto`, which depends on `$COLORTERM` propagation that can drop over SSH).
 
-No plugin manager is used — [TPM](https://github.com/tmux-plugins/tpm) has been dormant since Feb 2023, and the two features we wanted from plugins (`tmux-yank`, `vim-tmux-navigator`) are provided by gpakosz natives and inline bindings.
+No plugin manager is used. [TPM](https://github.com/tmux-plugins/tpm) has been dormant since Feb 2023, and the only plugin feature we needed (`tmux-yank` for `pbcopy`) is already provided by gpakosz natively.
 
 If Powerlevel10k complains about an *instant-prompt* warning inside tmux, add `typeset -g POWERLEVEL9K_INSTANT_PROMPT=quiet` to `~/.p10k.zsh`.
 
