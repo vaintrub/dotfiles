@@ -11,8 +11,11 @@ BASEDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "${BASEDIR}"
 
 # Hard prerequisites — fail fast with an actionable message before anything else.
+# git/python3 are required to run this script and dotbot itself.
+# zsh/vim/tmux are the shells/editors we configure — without them the
+# symlinks land but nothing actually uses them.
 missing=()
-for tool in git python3; do
+for tool in git python3 zsh vim tmux; do
     command -v "$tool" >/dev/null 2>&1 || missing+=("$tool")
 done
 if (( ${#missing[@]} )); then
@@ -28,3 +31,13 @@ git submodule sync --quiet --recursive
 git submodule update --init --recursive
 
 "${BASEDIR}/${DOTBOT_DIR}/${DOTBOT_BIN}" -d "${BASEDIR}" -c "${CONFIG}" "${@}"
+
+# Final nudge: zsh installed but not the login shell? Suggest `chsh`.
+# Reads $SHELL which on every Unix is populated from the password DB at login.
+case "${SHELL:-}" in
+    */zsh) ;;
+    *)
+        printf '\nYour login shell is %s, not zsh. To switch:\n    chsh -s %s\n' \
+            "${SHELL:-unknown}" "$(command -v zsh)"
+        ;;
+esac
