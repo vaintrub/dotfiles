@@ -31,7 +31,8 @@ source ${zsh_plugins}.zsh
 # to the local Mac's VSCode:
 #   1. VSCode integrated terminal: env is already wired → pass through.
 #   2. A live Remote-SSH IPC socket: forward to it (any iTerm2/tmux pane).
-#      Probes sockets newest-first and falls through on stale sockets.
+#      Sockets are probed via zsocket newest-first; dead ones get rm'd so
+#      they don't accumulate in /run/user/$UID/ over time.
 #   3. Bootstrap: print `vscode://…` URL; iTerm2 Trigger runs `open` on it.
 # Glob qualifiers: (N) = null on no-match, (om) = sort by mtime newest-first,
 # (.) = files only. Override the SSH-config alias with
@@ -56,16 +57,27 @@ code() {
         return
     fi
 
-    # SSH tier 2. Probe each socket newest-first — the file outlives its VSCode
-    # owner, so a present socket can still be stale (ECONNREFUSED). On failure
-    # we silently fall through to the URL bootstrap rather than spam the
-    # terminal with the shim's connect error.
+    # SSH tier 2. Two-phase: probe every candidate socket via zsh's built-in
+    # `zsocket` (no subprocess, no extra deps), sweeping anything where no
+    # process is listening (ECONNREFUSED is instant on a dead UNIX socket).
+    # Then forward to the newest survivor. Probing everything keeps stale
+    # entries from accumulating in /run/user/$UID/ over time.
+    zmodload zsh/net/socket 2>/dev/null
     local -a shim=( $HOME/.vscode-server/cli/servers/*/server/bin/remote-cli/code(Nom.) )
     if [[ -x ${shim[1]} ]]; then
         local s
+        local -a live=()
         for s in /run/user/$UID/vscode-ipc-*.sock(Nom) ${TMPDIR:-/tmp}/vscode-ipc-*.sock(Nom); do
-            VSCODE_IPC_HOOK_CLI=$s ${shim[1]} "$@" 2>/dev/null && return
+            if zsocket "$s" 2>/dev/null; then
+                exec {REPLY}<&-                  # close probe fd
+                live+=("$s")
+            else
+                rm -f -- "$s"                    # sweep dead socket
+            fi
         done
+        if (( ${#live} )); then
+            VSCODE_IPC_HOOK_CLI=${live[1]} ${shim[1]} "$@" && return
+        fi
     fi
 
     # SSH tier 3 bootstrap. URL-encode spaces (iTerm2 regex stops at whitespace).
