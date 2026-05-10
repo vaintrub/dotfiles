@@ -17,18 +17,59 @@
       force: true
 
 - shell:
-  - [git submodule sync --recursive, Syncing submodules]
-  - [git submodule update --init --recursive, Updating submodules]
-  - description: Installing MesloLGS Nerd Font (Powerlevel10k recommended) via Homebrew
+  - description: Install MesloLGS Nerd Font (Powerlevel10k recommended)
     command: |
-      if ! command -v brew >/dev/null; then
-        echo "Skipping font install: Homebrew not available"
-        exit 0
-      fi
-      if brew list --cask font-meslo-lg-nerd-font >/dev/null 2>&1; then
-        echo "MesloLGS Nerd Font already installed"
-      else
-        brew install --cask font-meslo-lg-nerd-font
+      case "$(uname -s)" in
+        Darwin)
+          if ! command -v brew >/dev/null 2>&1; then
+            echo "Skipping font install: Homebrew not available"
+            exit 0
+          fi
+          if brew list --cask font-meslo-lg-nerd-font >/dev/null 2>&1; then
+            echo "MesloLGS Nerd Font already installed"
+          else
+            brew install --cask font-meslo-lg-nerd-font
+          fi
+          ;;
+        Linux)
+          # Headless SSH: glyphs render on the local terminal — skip remote install.
+          if [ -n "$SSH_CONNECTION" ] && [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ]; then
+            echo "Headless/SSH session — font lives on the local terminal, skipping"
+            exit 0
+          fi
+          dir="${XDG_DATA_HOME:-$HOME/.local/share}/fonts"
+          if command -v fc-list >/dev/null 2>&1 && fc-list | grep -qi "MesloLGS NF"; then
+            echo "MesloLGS Nerd Font already installed"
+            exit 0
+          fi
+          mkdir -p "$dir"
+          base="https://github.com/romkatv/powerlevel10k-media/raw/master"
+          for variant in Regular Bold Italic "Bold Italic"; do
+            fname="MesloLGS NF ${variant}.ttf"
+            # POSIX URL encoding (dotbot shell: runs under /bin/sh, which is dash on Ubuntu).
+            urlname=$(printf '%s' "$fname" | sed 's/ /%20/g')
+            [ -f "$dir/$fname" ] || curl -fsSL "$base/$urlname" -o "$dir/$fname"
+          done
+          command -v fc-cache >/dev/null 2>&1 && fc-cache -f "$dir" >/dev/null
+          echo "MesloLGS Nerd Font installed to $dir"
+          ;;
+        *)
+          echo "Unsupported OS: $(uname -s)" >&2
+          exit 1
+          ;;
+      esac
+    stdout: true
+    stderr: true
+
+  - description: Linux clipboard-tool notice (for tmux yank to system clipboard)
+    command: |
+      [ "$(uname -s)" = Linux ] || exit 0
+      if ! command -v xsel    >/dev/null 2>&1 \
+         && ! command -v xclip   >/dev/null 2>&1 \
+         && ! command -v wl-copy >/dev/null 2>&1; then
+        echo "Note: no clipboard tool detected."
+        echo "      tmux copy-mode yank will not reach the system clipboard."
+        echo "      Install one: apt install xsel  (or wl-clipboard for Wayland)"
       fi
     stdout: true
     stderr: true

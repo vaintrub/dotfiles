@@ -62,7 +62,11 @@ set noswapfile
 set encoding=utf-8 " Кодировка файлов по умолчанию
 set fileencodings=utf8,cp1251
 
-set clipboard=unnamed
+" Yank goes to system clipboard. macOS: both registers map to NSPasteboard.
+" Linux X11: `+` is CLIPBOARD (Ctrl-V), `*` is PRIMARY (middle-click) — set both.
+if has('clipboard')
+  set clipboard^=unnamed,unnamedplus
+endif
 set ruler
 
 set hidden
