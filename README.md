@@ -72,10 +72,10 @@ No plugin manager. [TPM](https://github.com/tmux-plugins/tpm) has been dormant s
 
 ## Open VSCode from any terminal
 
-`code <path>` works the same in any iTerm2 pane:
+`code <path>` works the same in any iTerm2 pane. Calling `code` **without arguments** opens the `*.code-workspace` file in the current directory if one exists, otherwise opens the current directory itself.
 
 - **Local Mac**: opens VSCode at that path. Works after `./install` (brew cask + PATH addition; no Command Palette "Install in PATH" step needed).
-- **Remote SSH** (iTerm2/tmux into a Linux box): a zshrc function (gated by `$SSH_CONNECTION`) decides what to do:
+- **Remote SSH** (iTerm2/tmux into a Linux box): a zshrc function (active when `$SSH_CONNECTION` is set) decides what to do:
   1. If you're already in VSCode's *integrated* Remote-SSH terminal — calls the real `code` via the injected env.
   2. Otherwise tries to discover a live Remote-SSH IPC socket on the remote — if found, dispatches to the existing Mac-side VSCode window.
   3. Else prints a `vscode://vscode-remote/ssh-remote+<host>/<path>` URL. The iTerm2 Trigger (see setup below) matches the URL and runs `open <url>` → macOS launches Mac-side VSCode → it connects to the host via Remote-SSH and opens the folder.
@@ -87,6 +87,15 @@ export VSCODE_REMOTE_HOST=my-ssh-alias
 ```
 
 The Remote-SSH IPC socket exists only after VSCode has connected to that host at least once — the first `code .` on a fresh remote box goes through the URL path.
+
+### What else iTerm2 could track (currently unused)
+
+iTerm2 has two more user-editable stores that aren't synced today because they're empty:
+
+- **`~/Library/Application Support/iTerm2/DynamicProfiles/`** — JSON files that iTerm2 loads as additional profiles at startup. If you start using dynamic profiles, mirror them under `iterm/DynamicProfiles/` in this repo and symlink via dotbot.
+- **`~/Library/Application Support/iTerm2/Scripts/`** — iTerm2 Python automation scripts. Same idea: mirror under `iterm/Scripts/` if you write any.
+
+Everything else iTerm2 stores (`chatdb.sqlite`, `iTermServer-*`, `parsers/`, `SavedState/`, the auto-generated `*.plist.bak`, and `com.googlecode.iterm2.private.plist` which is explicitly `NoSync`-keyed) is runtime/transient/personal state — never sync.
 
 ### iTerm2 Trigger setup
 

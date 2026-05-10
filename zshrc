@@ -21,37 +21,50 @@ if [[ ! ${zsh_plugins}.zsh -nt ${zsh_plugins}.txt ]]; then
 fi
 source ${zsh_plugins}.zsh
 
-# --- `code` from any terminal: bridge to local VSCode over SSH ---
-# Active only inside SSH sessions; locally the real `code` on PATH is used.
-# In an SSH session, three tiers in order:
+# --- `code` from any terminal ---
+# No-args default: if a *.code-workspace file exists in cwd, open it; else cwd.
+# In an SSH session ($SSH_CONNECTION set), three further tiers bridge back to
+# the local Mac's VSCode:
 #   1. VSCode integrated terminal: env is already wired → pass through.
 #   2. A Remote-SSH IPC socket exists: forward to it (any iTerm2/tmux pane).
 #   3. Bootstrap: print `vscode://…` URL; iTerm2 Trigger runs `open` on it.
-# Glob qualifiers used below: (N) = null on no-match, (om) = sort by mtime
-# newest-first, (.) = files only. Override the SSH-config alias with
+# Glob qualifiers: (N) = null on no-match, (om) = sort by mtime newest-first,
+# (.) = files only. Override the SSH-config alias with
 # `export VSCODE_REMOTE_HOST=<alias>` when the short hostname differs.
-if [[ -n $SSH_CONNECTION ]]; then
-    code() {
-        if [[ -n $VSCODE_IPC_HOOK_CLI ]] && command -v code >/dev/null 2>&1; then
-            command code "$@"
-            return
-        fi
+code() {
+    # Smart no-args default — applies on both local and SSH.
+    if (( $# == 0 )); then
+        local -a ws=( *.code-workspace(N) )
+        (( ${#ws} )) && set -- ${ws[1]} || set -- .
+    fi
 
-        local -a sock=( /run/user/$UID/vscode-ipc-*.sock(Nom) ${TMPDIR:-/tmp}/vscode-ipc-*.sock(Nom) )
-        local -a shim=( $HOME/.vscode-server/cli/servers/*/server/bin/remote-cli/code(Nom.) )
-        if [[ -n ${sock[1]} && -x ${shim[1]} ]]; then
-            VSCODE_IPC_HOOK_CLI=${sock[1]} ${shim[1]} "$@"
-            return
-        fi
+    # Local Mac: real `code` on PATH.
+    if [[ -z $SSH_CONNECTION ]]; then
+        command code "$@"
+        return
+    fi
 
-        # Tier 3 bootstrap. URL-encode spaces (iTerm2 regex stops at whitespace).
-        # ${HOST%%.*} strips FQDN suffix (e.g. "host.local" → "host") via zsh
-        # builtin — no subprocess, no PATH dependency.
-        local path=${${1:-.}:A}
-        printf 'vscode://vscode-remote/ssh-remote+%s%s\n' \
-            "${VSCODE_REMOTE_HOST:-${HOST%%.*}}" "${path// /%20}"
-    }
-fi
+    # SSH tier 1.
+    if [[ -n $VSCODE_IPC_HOOK_CLI ]] && command -v code >/dev/null 2>&1; then
+        command code "$@"
+        return
+    fi
+
+    # SSH tier 2.
+    local -a sock=( /run/user/$UID/vscode-ipc-*.sock(Nom) ${TMPDIR:-/tmp}/vscode-ipc-*.sock(Nom) )
+    local -a shim=( $HOME/.vscode-server/cli/servers/*/server/bin/remote-cli/code(Nom.) )
+    if [[ -n ${sock[1]} && -x ${shim[1]} ]]; then
+        VSCODE_IPC_HOOK_CLI=${sock[1]} ${shim[1]} "$@"
+        return
+    fi
+
+    # SSH tier 3 bootstrap. URL-encode spaces (iTerm2 regex stops at whitespace).
+    # ${HOST%%.*} strips FQDN suffix (e.g. "host.local" → "host") via zsh builtin
+    # — no subprocess, no PATH dependency.
+    local path=${1:A}
+    printf 'vscode://vscode-remote/ssh-remote+%s%s\n' \
+        "${VSCODE_REMOTE_HOST:-${HOST%%.*}}" "${path// /%20}"
+}
 
 # VSCode `code` CLI on macOS: `brew install --cask` doesn't add it to PATH.
 [[ -x "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code" ]] \
