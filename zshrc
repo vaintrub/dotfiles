@@ -79,7 +79,7 @@ code() {
 alias zshconfig="vim ~/.zshrc"
 
 # --- Environment ---
-export LANG=${LANG:-en_US.UTF-8}
+export LANG=en_US.UTF-8
 
 # Node version manager
 command -v fnm > /dev/null && eval "$(fnm env)"
