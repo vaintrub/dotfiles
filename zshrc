@@ -30,7 +30,8 @@ source ${zsh_plugins}.zsh
 # In an SSH session ($SSH_CONNECTION set), three further tiers bridge back
 # to the local Mac's VSCode:
 #   1. VSCode integrated terminal: env is already wired → pass through.
-#   2. A Remote-SSH IPC socket exists: forward to it (any iTerm2/tmux pane).
+#   2. A live Remote-SSH IPC socket: forward to it (any iTerm2/tmux pane).
+#      Probes sockets newest-first and falls through on stale sockets.
 #   3. Bootstrap: print `vscode://…` URL; iTerm2 Trigger runs `open` on it.
 # Glob qualifiers: (N) = null on no-match, (om) = sort by mtime newest-first,
 # (.) = files only. Override the SSH-config alias with
@@ -55,12 +56,16 @@ code() {
         return
     fi
 
-    # SSH tier 2.
-    local -a sock=( /run/user/$UID/vscode-ipc-*.sock(Nom) ${TMPDIR:-/tmp}/vscode-ipc-*.sock(Nom) )
+    # SSH tier 2. Probe each socket newest-first — the file outlives its VSCode
+    # owner, so a present socket can still be stale (ECONNREFUSED). On failure
+    # we silently fall through to the URL bootstrap rather than spam the
+    # terminal with the shim's connect error.
     local -a shim=( $HOME/.vscode-server/cli/servers/*/server/bin/remote-cli/code(Nom.) )
-    if [[ -n ${sock[1]} && -x ${shim[1]} ]]; then
-        VSCODE_IPC_HOOK_CLI=${sock[1]} ${shim[1]} "$@"
-        return
+    if [[ -x ${shim[1]} ]]; then
+        local s
+        for s in /run/user/$UID/vscode-ipc-*.sock(Nom) ${TMPDIR:-/tmp}/vscode-ipc-*.sock(Nom); do
+            VSCODE_IPC_HOOK_CLI=$s ${shim[1]} "$@" 2>/dev/null && return
+        done
     fi
 
     # SSH tier 3 bootstrap. URL-encode spaces (iTerm2 regex stops at whitespace).
