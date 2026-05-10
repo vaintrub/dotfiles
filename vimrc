@@ -15,6 +15,7 @@ Plug 'tpope/vim-fugitive'
 Plug 'tpope/vim-surround'
 Plug 'dracula/vim', { 'as': 'dracula' }
 Plug 'mattn/emmet-vim'
+Plug 'christoomey/vim-tmux-navigator'
 
 call plug#end()
 

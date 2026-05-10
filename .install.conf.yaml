@@ -9,6 +9,12 @@
     ~/.vimrc:
     ~/.zshrc:
     ~/.zsh_plugins.txt: zsh_plugins.txt
+    ~/.tmux.conf:
+      path: tmux/oh-my-tmux/.tmux.conf
+      force: true
+    ~/.tmux.conf.local:
+      path: tmux/tmux.conf.local
+      force: true
 
 - shell:
   - [git submodule sync --recursive, Syncing submodules]
