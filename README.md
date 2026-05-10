@@ -26,16 +26,26 @@ On first `vim` launch, vim-plug will fetch and install the configured plugins au
 
 ## tmux
 
-Prefix is **`C-a`** (screen-style). All other key bindings, status bar, and behaviour inherit from gpakosz/.tmux unchanged — see their [docs](https://github.com/gpakosz/.tmux#bindings). Useful defaults out of the box: `prefix h/j/k/l` for pane navigation, `prefix -` / `prefix _` for splits, `prefix e` to edit `.tmux.conf.local`, `prefix r` to reload.
+Prefix is **`C-a`** (screen-style). Status bar, bindings, and overall theme inherit from gpakosz/.tmux unchanged — see their [docs](https://github.com/gpakosz/.tmux#bindings). Useful defaults out of the box: `prefix h/j/k/l` for pane navigation, `prefix -` / `prefix _` for splits, `prefix e` to edit `.tmux.conf.local`, `prefix r` to reload, `prefix m` to toggle mouse.
 
-Customizations live in `tmux/tmux.conf.local` (symlinked to `~/.tmux.conf.local`) and are intentionally minimal:
+Customizations live in `tmux/tmux.conf.local` (symlinked to `~/.tmux.conf.local`):
 
-- **macOS clipboard**: yank in copy-mode (`y` after selecting with `v`) writes to `pbcopy` automatically (gpakosz native, no plugin).
-- **24-bit true color**: forced on so Powerlevel10k renders identically inside tmux (override of gpakosz's default `auto`, which depends on `$COLORTERM` propagation that can drop over SSH).
+- **Prefix `C-a`** as the sole prefix (verbatim from gpakosz's documented `set -g prefix C-a` snippet)
+- **Mouse on** — wheel scrolls tmux scrollback, drag-resizes panes, click selects
+- **`mode-keys vi`** — copy-mode uses vim navigation (gpakosz ships vi-bindings; this setting activates them)
+- **`set-clipboard on`** (OSC 52) — vim/nvim `"+y` inside tmux reaches the macOS pasteboard
+- **`tmux_conf_copy_to_os_clipboard=true`** — explicit copy-mode `y` writes to `pbcopy`
+- **`tmux_conf_24b_colour=true`** — forces 24-bit colour so Powerlevel10k renders identically inside tmux (gpakosz default `auto` depends on `$COLORTERM`, which drops over SSH)
+- **`COLORTERM=truecolor` propagated** to inner shells via `set-environment -g`
+- **`history-limit 50000`** — gpakosz default 5000 is small
 
-No plugin manager is used. [TPM](https://github.com/tmux-plugins/tpm) has been dormant since Feb 2023, and the only plugin feature we needed (`tmux-yank` for `pbcopy`) is already provided by gpakosz natively.
+No plugin manager. [TPM](https://github.com/tmux-plugins/tpm) has been dormant since Feb 2023; the only plugin feature we needed (`tmux-yank` for `pbcopy`) is already covered by gpakosz natively.
 
-If Powerlevel10k complains about an *instant-prompt* warning inside tmux, add `typeset -g POWERLEVEL9K_INSTANT_PROMPT=quiet` to `~/.p10k.zsh`.
+### Gotchas
+
+- iTerm2 **≥3.5.11** required — `3.5.0beta6`–`3.5.0beta10` had a regression where Nerd Font glyphs disappear inside tmux panes ([iTerm2 #10879](https://gitlab.com/gnachman/iterm2/-/issues/10879)).
+- If Nerd Font glyphs still render oddly, enable iTerm2 → *Preferences → Profiles → Text → "Use built-in Powerline glyphs"*.
+- If Powerlevel10k complains about an *instant-prompt* warning inside tmux, add `typeset -g POWERLEVEL9K_INSTANT_PROMPT=quiet` to `~/.p10k.zsh`.
 
 ## iTerm2
 

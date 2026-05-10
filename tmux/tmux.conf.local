@@ -1,18 +1,38 @@
 # Customizations on top of gpakosz/.tmux ("oh-my-tmux").
 # Edit this file only — the upstream .tmux.conf is vendored as a submodule.
 
-# --- prefix: C-a only (screen-style, matches user's prior config) -------------
-# gpakosz binds C-a as prefix2; we make it primary and drop C-b entirely.
+# --- prefix: C-a only (screen-style) ------------------------------------------
+# gpakosz binds C-a as prefix2; make it primary and drop C-b entirely.
+# Verbatim from the commented-out template snippet in gpakosz's .tmux.conf.local.
 set -gu prefix2
 unbind C-a
 unbind C-b
 set -g prefix C-a
 bind C-a send-prefix
 
-# --- true color: force-on so Powerlevel10k renders identically inside tmux ---
-# gpakosz's default is "auto" (detect via $COLORTERM). "true" is resilient over
-# SSH where COLORTERM may not propagate.
+# --- transparency with iTerm2 (gpakosz does NOT set these) --------------------
+# Mouse: wheel scrolls tmux scrollback / drag-resizes panes / click-selects.
+set -g mouse on
+
+# Vi keys in copy mode (gpakosz already ships v/y/H/L/C-v vi-bindings but they
+# only activate when mode-keys is vi).
+setw -g mode-keys vi
+
+# OSC 52 passthrough: lets vim/nvim "+y inside tmux write to the macOS pasteboard.
+# (gpakosz's tmux_conf_copy_to_os_clipboard only covers explicit tmux copy-mode `y`.)
+set -s set-clipboard on
+
+# COLORTERM is set by iTerm2 outside tmux; tmux doesn't propagate it by default.
+# Force it on for inner shells so any tool that probes it sees truecolor.
+set-environment -g COLORTERM truecolor
+
+# Bigger scrollback (gpakosz default 5000 is small vs. iTerm2's 10k+).
+set -g history-limit 50000
+
+# --- gpakosz native flags -----------------------------------------------------
+# Force 24-bit colour on (gpakosz default `auto` depends on $COLORTERM probing,
+# which can drop over SSH).
 tmux_conf_24b_colour=true
 
-# --- macOS clipboard: yank in copy-mode writes to pbcopy (no plugin needed) --
+# Yank in copy-mode (selection with `v`, then `y`) writes to pbcopy on macOS.
 tmux_conf_copy_to_os_clipboard=true
