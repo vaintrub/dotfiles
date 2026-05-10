@@ -3,23 +3,30 @@
 Personal cross-platform (macOS + Linux) dotfiles managed with [dotbot](https://github.com/anishathalye/dotbot).
 
 Includes:
-- **zsh** with [antidote](https://github.com/mattmc3/antidote) (static-cache) and [Powerlevel10k](https://github.com/romkatv/powerlevel10k)
+- **zsh** with [antidote](https://github.com/mattmc3/antidote) (static-cache) and [Powerlevel10k](https://github.com/romkatv/powerlevel10k) — `~/.p10k.zsh` tracked in the repo so the prompt is byte-identical everywhere
 - **vim** with [vim-plug](https://github.com/junegunn/vim-plug) (auto-bootstrapped on first launch)
 - **tmux** with [gpakosz/.tmux](https://github.com/gpakosz/.tmux) ("oh-my-tmux") vendored as a submodule
-- **iTerm2** preferences (macOS only, manual import)
+- **iTerm2** preferences (macOS only, auto-configured to load from the repo)
 
-`./install` is OS-aware via dotbot's native `if:` directive — same repo, same script, both platforms.
+`./install` is OS-aware: a single config file branches on `uname -s` for the few OS-divergent steps (font install, brew casks, iTerm2 wiring). Same repo, same script, both platforms.
 
 ## Install — macOS
 
-Prerequisites: `zsh`, `vim`, `tmux`, `git`, `python3`, [Homebrew](https://brew.sh).
+Prerequisites: `zsh`, `vim`, `tmux`, `git`, `python3`, [Homebrew](https://brew.sh), [iTerm2](https://iterm2.com).
 
 ```sh
 git clone https://github.com/vaintrub/dotfiles.git ~/dotfiles
 cd ~/dotfiles && ./install
 ```
 
-Installs **MesloLGS Nerd Font** via Homebrew cask. Idempotent on re-run.
+The installer:
+- Installs **MesloLGS Nerd Font** and **Visual Studio Code** via Homebrew cask (skipped if already installed).
+- Points iTerm2 at `iterm/com.googlecode.iterm2.plist` in the repo (sets `PrefsCustomFolder`) — your terminal config travels with the repo.
+- Symlinks `~/.p10k.zsh` to the repo so your Powerlevel10k prompt is byte-identical on every machine.
+
+After the first `./install`, **quit iTerm2 once and relaunch** (choose "Don't Save" if prompted) — iTerm2 reads its prefs at startup. Re-runs are idempotent.
+
+> Hard prerequisites are `git` and `python3` only — if either is missing, `./install` exits immediately with a clear `brew install …` / `apt install …` suggestion. Everything else (Homebrew, curl, fontconfig, zsh, vim, tmux, iTerm2) is checked per-feature: missing tools cause that feature to skip with a printed reason, not a hard fail.
 
 ## Install — Linux
 
@@ -63,16 +70,45 @@ No plugin manager. [TPM](https://github.com/tmux-plugins/tpm) has been dormant s
 - Linux without `xsel`/`xclip`/`wl-clipboard`: tmux copy-mode `y` saves to the tmux paste buffer only, not the system clipboard. The installer prints a one-line notice.
 - Linux X11 vim — `clipboard^=unnamed,unnamedplus` writes to both `*` (PRIMARY/middle-click) and `+` (CLIPBOARD/Ctrl-V).
 
-## iTerm2 (macOS only)
+## Open VSCode from any terminal
 
-Import `iterm/com.googlecode.iterm2.plist` manually via *Preferences → General → Preferences → Load preferences from a custom folder*.
+`code <path>` works the same in any iTerm2 pane:
+
+- **Local Mac**: opens VSCode at that path. Works after `./install` (brew cask + PATH addition; no Command Palette "Install in PATH" step needed).
+- **Remote SSH** (iTerm2/tmux into a Linux box): a zshrc function (gated by `$SSH_CONNECTION`) decides what to do:
+  1. If you're already in VSCode's *integrated* Remote-SSH terminal — calls the real `code` via the injected env.
+  2. Otherwise tries to discover a live Remote-SSH IPC socket on the remote — if found, dispatches to the existing Mac-side VSCode window.
+  3. Else prints a `vscode://vscode-remote/ssh-remote+<host>/<path>` URL. The iTerm2 Trigger (see setup below) matches the URL and runs `open <url>` → macOS launches Mac-side VSCode → it connects to the host via Remote-SSH and opens the folder.
+
+If the remote's `hostname -s` doesn't match the Host alias in your **local** `~/.ssh/config`, override per-host:
+
+```sh
+export VSCODE_REMOTE_HOST=my-ssh-alias
+```
+
+The Remote-SSH IPC socket exists only after VSCode has connected to that host at least once — the first `code .` on a fresh remote box goes through the URL path.
+
+### iTerm2 Trigger setup
+
+The committed `iterm/com.googlecode.iterm2.plist` already has the `vscode://` Trigger pre-installed on the default profile (regex `vscode://[^[:space:]]+`, action *Run Command*, parameter `open \0`). Since `./install` configures iTerm2 to load preferences from the repo, the trigger is active automatically after the first quit+relaunch.
+
+If you later re-snapshot the live plist back into the repo (e.g. after iTerm2 GUI tweaks made outside the repo):
+
+```sh
+cp ~/Library/Preferences/com.googlecode.iterm2.plist iterm/com.googlecode.iterm2.plist
+```
+
+…the trigger will be lost. Re-add it via *iTerm2 → Preferences → Profiles → Advanced → Triggers → +*:
+- **Regex**: `vscode://[^[:space:]]+`
+- **Action**: Run Command
+- **Parameter**: `open \0`
+- **Instant**: ✓
 
 ## How OS conditionals work
 
-Single `.install.conf.yaml`. The shell hook contains `case "$(uname -s)"` for the only OS-divergent step (font install: Homebrew cask on macOS, `curl` + `fc-cache` on Linux). Everything else is OS-neutral — zsh sees the OMZ `macos` plugin define harmless aliases/functions on Linux that simply never get invoked there.
+Single `.install.conf.yaml`. Shell hooks branch on `case "$(uname -s)"` for the OS-divergent steps (Nerd Font install, Homebrew casks, iTerm2 prefs wiring, Linux clipboard-tool notice). Everything else is OS-neutral — zsh sees the OMZ `macos` plugin define harmless aliases/functions on Linux that simply never get invoked there.
 
 ## TODO
 
-- Automate iTerm2 preference import
 - Add a `Brewfile` (macOS) / `apt`/`dnf` bootstrapping (Linux) for one-shot dep install
 - Add `git` and `ssh` configs
