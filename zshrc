@@ -22,9 +22,13 @@ fi
 source ${zsh_plugins}.zsh
 
 # --- `code` from any terminal ---
-# No-args default: if a *.code-workspace file exists in cwd, open it; else cwd.
-# In an SSH session ($SSH_CONNECTION set), three further tiers bridge back to
-# the local Mac's VSCode:
+# The ONLY thing this function changes vs the stock VSCode CLI is the
+# no-args case: bare `code` opens a *.code-workspace in cwd if one exists,
+# else opens cwd. Any explicit args (flags, files, --diff, --goto, etc.)
+# pass through to the real `code` binary unchanged.
+#
+# In an SSH session ($SSH_CONNECTION set), three further tiers bridge back
+# to the local Mac's VSCode:
 #   1. VSCode integrated terminal: env is already wired → pass through.
 #   2. A Remote-SSH IPC socket exists: forward to it (any iTerm2/tmux pane).
 #   3. Bootstrap: print `vscode://…` URL; iTerm2 Trigger runs `open` on it.
@@ -32,13 +36,14 @@ source ${zsh_plugins}.zsh
 # (.) = files only. Override the SSH-config alias with
 # `export VSCODE_REMOTE_HOST=<alias>` when the short hostname differs.
 code() {
-    # Smart no-args default — applies on both local and SSH.
+    # Smart no-args default — only triggers when called with zero arguments.
+    # Any user-supplied args bypass this entirely and pass through to `code` as-is.
     if (( $# == 0 )); then
         local -a ws=( *.code-workspace(N) )
         (( ${#ws} )) && set -- ${ws[1]} || set -- .
     fi
 
-    # Local Mac: real `code` on PATH.
+    # Local Mac: pass through to the real `code` binary verbatim.
     if [[ -z $SSH_CONNECTION ]]; then
         command code "$@"
         return
