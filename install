@@ -9,6 +9,21 @@ DOTBOT_BIN="bin/dotbot"
 BASEDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 cd "${BASEDIR}"
+
+# Hard prerequisites — fail fast with an actionable message before anything else.
+missing=()
+for tool in git python3; do
+    command -v "$tool" >/dev/null 2>&1 || missing+=("$tool")
+done
+if (( ${#missing[@]} )); then
+    printf 'Missing required tool(s): %s\n' "${missing[*]}" >&2
+    case "$(uname -s)" in
+        Darwin) printf '  Install via Homebrew: brew install %s\n' "${missing[*]}" >&2 ;;
+        Linux)  printf '  Install via your package manager (e.g. apt install %s)\n' "${missing[*]}" >&2 ;;
+    esac
+    exit 1
+fi
+
 git submodule sync --quiet --recursive
 git submodule update --init --recursive
 

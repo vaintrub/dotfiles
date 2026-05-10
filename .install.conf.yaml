@@ -9,6 +9,9 @@
     ~/.vimrc:
     ~/.zshrc:
     ~/.zsh_plugins.txt: zsh_plugins.txt
+    ~/.p10k.zsh:
+      path: p10k.zsh
+      force: true
     ~/.tmux.conf:
       path: tmux/oh-my-tmux/.tmux.conf
       force: true
@@ -42,6 +45,10 @@
             echo "MesloLGS Nerd Font already installed"
             exit 0
           fi
+          if ! command -v curl >/dev/null 2>&1; then
+            echo "Skipping font install: curl not available"
+            exit 0
+          fi
           mkdir -p "$dir"
           base="https://github.com/romkatv/powerlevel10k-media/raw/master"
           for variant in Regular Bold Italic "Bold Italic"; do
@@ -58,6 +65,39 @@
           exit 1
           ;;
       esac
+    stdout: true
+    stderr: true
+
+  - description: Install Visual Studio Code via Homebrew cask (macOS only)
+    command: |
+      [ "$(uname -s)" = Darwin ] || exit 0
+      # App presence is the source of truth — works for both brew-cask and
+      # pre-existing manual installs. `code` on PATH is handled by zshrc.
+      if [ -d "/Applications/Visual Studio Code.app" ]; then
+        echo "Visual Studio Code already installed"
+        exit 0
+      fi
+      if ! command -v brew >/dev/null 2>&1; then
+        echo "Skipping VSCode install: Homebrew not available"
+        exit 0
+      fi
+      brew install --cask visual-studio-code
+    stdout: true
+    stderr: true
+
+  - description: Point iTerm2 at the repo's iterm/ folder for preferences (macOS only)
+    command: |
+      [ "$(uname -s)" = Darwin ] || exit 0
+      iterm_dir="$PWD/iterm"
+      current=$(defaults read com.googlecode.iterm2 PrefsCustomFolder 2>/dev/null || true)
+      load=$(defaults read com.googlecode.iterm2 LoadPrefsFromCustomFolder 2>/dev/null || true)
+      if [ "$current" = "$iterm_dir" ] && [ "$load" = "1" ]; then
+        echo "iTerm2 already loading prefs from $iterm_dir"
+        exit 0
+      fi
+      defaults write com.googlecode.iterm2 PrefsCustomFolder -string "$iterm_dir"
+      defaults write com.googlecode.iterm2 LoadPrefsFromCustomFolder -bool true
+      echo "iTerm2 configured. Quit and relaunch iTerm2 (Don't Save if asked) to apply."
     stdout: true
     stderr: true
 
