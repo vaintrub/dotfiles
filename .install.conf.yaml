@@ -6,12 +6,23 @@
 - clean: ['~']
 
 - link:
-    ~/.vim:
     ~/.vimrc:
     ~/.zshrc:
     ~/.zsh_plugins.txt: zsh_plugins.txt
 
 - shell:
-  - git submodule sync --recursive
-  - git submodule update --init --recursive
-  - ./fonts/fonts/install.sh
+  - [git submodule sync --recursive, Syncing submodules]
+  - [git submodule update --init --recursive, Updating submodules]
+  - description: Installing MesloLGS Nerd Font (Powerlevel10k recommended) via Homebrew
+    command: |
+      if ! command -v brew >/dev/null; then
+        echo "Skipping font install: Homebrew not available"
+        exit 0
+      fi
+      if brew list --cask font-meslo-lg-nerd-font >/dev/null 2>&1; then
+        echo "MesloLGS Nerd Font already installed"
+      else
+        brew install --cask font-meslo-lg-nerd-font
+      fi
+    stdout: true
+    stderr: true

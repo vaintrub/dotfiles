@@ -2,8 +2,3 @@
 dist/
 .coverage*
 .claude
-
-# Vim temporary files
-vim/.netrwhist
-vim/bundle/*
-!vim/bundle/Vundle.vim
