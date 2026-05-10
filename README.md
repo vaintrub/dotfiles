@@ -99,19 +99,20 @@ Everything else iTerm2 stores (`chatdb.sqlite`, `iTermServer-*`, `parsers/`, `Sa
 
 ### iTerm2 Trigger setup
 
-The committed `iterm/com.googlecode.iterm2.plist` already has the `vscode://` Trigger pre-installed on the default profile (regex `vscode://[^[:space:]]+`, action *Run Command*, parameter `open \0`). Since `./install` configures iTerm2 to load preferences from the repo, the trigger is active automatically after the first quit+relaunch.
+The committed `iterm/com.googlecode.iterm2.plist` ships the `vscode://` Trigger pre-installed on the default profile. Since `./install` configures iTerm2 to load preferences from the repo, the trigger is active after the first quit+relaunch.
 
-If you later re-snapshot the live plist back into the repo (e.g. after iTerm2 GUI tweaks made outside the repo):
+If you re-snapshot the live plist back into the repo after GUI tweaks, the trigger survives (it's saved as part of the profile dict). If for any reason it disappears, re-add via *iTerm2 → Settings → Profiles → Default → Advanced → Triggers → Edit → +*:
 
-```sh
-cp ~/Library/Preferences/com.googlecode.iterm2.plist iterm/com.googlecode.iterm2.plist
-```
+- **Regular Expression**: `vscode://[^[:space:]]+`
+- **Action**: Run Command…
+- **Parameters**: `open \0`
+- **Instant**: ✗ (unchecked — fire on full line so it doesn't trigger on shell completion echoes)
 
-…the trigger will be lost. Re-add it via *iTerm2 → Preferences → Profiles → Advanced → Triggers → +*:
-- **Regex**: `vscode://[^[:space:]]+`
-- **Action**: Run Command
-- **Parameter**: `open \0`
-- **Instant**: ✓
+### Gotcha: trigger action key is an ObjC class name
+
+iTerm2's plist stores trigger actions as bare Objective-C class names, **not** the human-readable labels you see in the GUI dropdown. "Run Command…" in the UI maps to `"ScriptTrigger"` in the plist, not `"RunCommandAction"`. iTerm2 calls `NSClassFromString(action)` at load time and **silently drops the trigger if the class doesn't exist** ([`Trigger.m`](https://github.com/gnachman/iTerm2/blob/master/sources/Triggers/Trigger.m) `+triggerFromUntrustedDict:`).
+
+The canonical list of action names lives in iTerm2's Python API at [`api/library/python/iterm2/iterm2/triggers.py`](https://github.com/gnachman/iTerm2/blob/master/api/library/python/iterm2/iterm2/triggers.py). When seeding a trigger programmatically, the safest path is to add it once via the iTerm2 GUI, then `cp ~/Library/Preferences/com.googlecode.iterm2.plist iterm/com.googlecode.iterm2.plist` — the GUI uses the right class name and adds the canonical keys (`matchType`, `disabled`, `name`, etc.).
 
 ## How OS conditionals work
 
