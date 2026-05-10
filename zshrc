@@ -5,14 +5,21 @@ if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]
     source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
 fi
 
-# --- Antidote Plugin Manager ---
+# --- Antidote Plugin Manager (static-cache mode) ---
 DISABLE_MAGIC_FUNCTIONS=true
 
 if [[ ! -d ${ZDOTDIR:-$HOME}/.antidote ]]; then
     git clone --depth=1 https://github.com/mattmc3/antidote.git ${ZDOTDIR:-$HOME}/.antidote
 fi
-source ${ZDOTDIR:-$HOME}/.antidote/antidote.zsh
-antidote load
+
+zsh_plugins=${ZDOTDIR:-$HOME}/.zsh_plugins
+if [[ ! ${zsh_plugins}.zsh -nt ${zsh_plugins}.txt ]]; then
+    (
+        source ${ZDOTDIR:-$HOME}/.antidote/antidote.zsh
+        antidote bundle <${zsh_plugins}.txt >${zsh_plugins}.zsh
+    )
+fi
+source ${zsh_plugins}.zsh
 
 # --- Aliases ---
 alias zshconfig="vim ~/.zshrc"
