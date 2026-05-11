@@ -70,6 +70,72 @@ No plugin manager. [TPM](https://github.com/tmux-plugins/tpm) has been dormant s
 - Linux without `xsel`/`xclip`/`wl-clipboard`: tmux copy-mode `y` saves to the tmux paste buffer only, not the system clipboard. The installer prints a one-line notice.
 - Linux X11 vim — `clipboard^=unnamed,unnamedplus` writes to both `*` (PRIMARY/middle-click) and `+` (CLIPBOARD/Ctrl-V).
 
+## AI tooling (Claude Code + OpenAI Codex)
+
+Global, cross-machine config for both CLIs. **Only user-curated settings are tracked**; auth tokens, marketplace registrations, plugin caches, NUX state, project trust-levels — all stay machine-local.
+
+Both tools store under `~/.claude/` and `~/.codex/` on macOS *and* Linux (neither follows XDG, [tracked upstream](https://github.com/anthropics/claude-code/issues/1455)), so no OS conditionals are needed.
+
+### Layout
+
+| Repo path | Symlinked to | Purpose |
+|---|---|---|
+| `claude/CLAUDE.md` | `~/.claude/CLAUDE.md` | global user instructions |
+| `claude/settings.json` | `~/.claude/settings.json` | global settings (status line, permissions mode, plugin enables) |
+| `claude/statusline-command.sh` | `~/.claude/statusline-command.sh` | custom status-line renderer |
+| `claude/agents/` | `~/.claude/agents/` | custom subagents (empty for now) |
+| `claude/commands/` | `~/.claude/commands/` | custom slash commands (deprecated by skills, kept for legacy) |
+| `claude/skills/` | `~/.claude/skills/` | custom skills (modern path — directory-per-skill with `SKILL.md`) |
+| `claude/hooks/` | `~/.claude/hooks/` | hooks (`hooks.json` + scripts) |
+| `codex/config.toml` | `~/.codex/config.toml` | model, personality, plugin enables (runtime sections stripped — see below) |
+| `codex/skills/` | `~/.codex/skills/` | custom Codex skills (Codex's built-in `.system/` is gitignored) |
+
+### Not tracked (intentionally)
+
+- `~/.claude/settings.local.json` — per-machine permissions allowlist; Anthropic's documented convention is to gitignore it. Re-curate `/permissions` per machine.
+- `~/.claude/plugins/{installed_plugins,known_marketplaces}.json` — contain absolute install paths and per-user marketplace registrations.
+- `~/.claude.json` — **lives at `$HOME`, not in `~/.claude/`** — holds OAuth tokens, MCP server credentials, NUX `tipsHistory` counters, marketplace registrations. **Never commit it.**
+- `~/.codex/auth.json`, `installation_id` — secrets and per-machine identifiers.
+- `~/.codex/{sessions,cache,log,tmp,history.jsonl,*.sqlite}` — runtime state.
+- `~/.codex/memories/`, `~/.codex/plugins/` — runtime state / cloned plugin repos.
+
+### Codex auto-rewrite — the git clean filter
+
+Codex auto-writes several sections into `~/.codex/config.toml` at runtime (see [openai/codex#15433](https://github.com/openai/codex/issues/15433), [#14601](https://github.com/openai/codex/issues/14601), [#5160](https://github.com/openai/codex/issues/5160)):
+
+- `[projects."<absolute-path>"] trust_level = "trusted"` — added on each "trust this directory" prompt
+- `[notice]` / `[notice.*]` — one-time UI dismissals + migration prompts
+- `[tui.*]` — theme, keymap, NUX counters (`tui.model_availability_nux`)
+- `[tool_suggest].disabled_tools`
+- `windows_wsl_setup_acknowledged`
+
+A git **clean filter** at `codex/scripts/strip-runtime-sections.awk` (registered per-clone by `./install` via `git config --local filter.codex-strip.clean ...`) strips these on `git add`. Working tree keeps whatever Codex wrote; the index gets only portable parts. Canonical list of mutable sections is the `ConfigEdit` enum in [`codex-rs/core/src/config/edit.rs`](https://github.com/openai/codex/tree/main/codex-rs/core/src/config/edit.rs).
+
+> **TODO**: when [openai/codex#15433](https://github.com/openai/codex/issues/15433) lands (separates project trust state from config), delete `codex/scripts/` and the filter registration.
+
+If `git diff codex/config.toml` ever shows lines like `[projects.…]` reappearing, the filter isn't registered (check `git config --local --get filter.codex-strip.clean`). Re-run `./install` to re-register.
+
+### Per-machine after `./install` — plugins
+
+Neither tool auto-installs plugins from the synced config (the enable flags only activate already-installed plugins). After first install on a new machine, manually run:
+
+**Claude Code** (via `/plugin install <plugin>@<marketplace>` in the TUI):
+- `gopls-lsp@claude-plugins-official`
+- `figma@claude-plugins-official`
+- `frontend-design@claude-plugins-official`
+
+**Codex** (via `codex plugin install <plugin>` or `/plugins` in the TUI):
+- `github@openai-curated`
+- `google-drive@openai-curated`
+
+### Prerequisites
+
+The `claude` and `codex` CLIs are **soft prereqs** — `./install` runs without them and will link the configs anyway, but the linked files do nothing until the binaries are present. The installer prints a notice with install instructions.
+
+Recommended install:
+- macOS: `brew install --cask claude-code codex`
+- Linux: see https://claude.com/code and https://github.com/openai/codex
+
 ## Open VSCode from any terminal
 
 `code <path>` works the same in any iTerm2 pane. Calling `code` **without arguments** opens the `*.code-workspace` file in the current directory if one exists, otherwise opens the current directory itself.

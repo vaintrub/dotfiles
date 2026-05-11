@@ -1,0 +1,7 @@
+# Run the awk script in codex/scripts/ as a `clean` filter on `git add`,
+# stripping runtime-mutated TOML sections so Codex's continuous writes to
+# the symlinked ~/.codex/config.toml don't pollute commits.
+#
+# The filter itself is registered per-clone by ./install (see the shell
+# hook in .install.conf.yaml that calls `git config --local`).
+codex/config.toml filter=codex-strip

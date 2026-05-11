@@ -18,6 +18,43 @@
     ~/.tmux.conf.local:
       path: tmux/tmux.conf.local
       force: true
+    # --- Claude Code ---
+    # Settings, instructions, status-line script, and the four content
+    # dirs Claude Code looks at (agents, commands, skills, hooks).
+    # `force: true` because pre-existing files at these paths get replaced
+    # by symlinks pointing into the repo.
+    ~/.claude/CLAUDE.md:
+      path: claude/CLAUDE.md
+      force: true
+    ~/.claude/settings.json:
+      path: claude/settings.json
+      force: true
+    ~/.claude/statusline-command.sh:
+      path: claude/statusline-command.sh
+      force: true
+    ~/.claude/agents:
+      path: claude/agents
+      force: true
+    ~/.claude/commands:
+      path: claude/commands
+      force: true
+    ~/.claude/skills:
+      path: claude/skills
+      force: true
+    ~/.claude/hooks:
+      path: claude/hooks
+      force: true
+    # --- OpenAI Codex CLI ---
+    # config.toml is symlinked; Codex auto-writes runtime sections into it,
+    # which the git clean filter (registered below) strips on `git add`.
+    # skills/ is symlinked too; Codex creates `.system/` inside for built-in
+    # skills — that path is .gitignore'd at repo root.
+    ~/.codex/config.toml:
+      path: codex/config.toml
+      force: true
+    ~/.codex/skills:
+      path: codex/skills
+      force: true
 
 - shell:
   - description: Install MesloLGS Nerd Font (Powerlevel10k recommended)
@@ -110,6 +147,42 @@
         echo "Note: no clipboard tool detected."
         echo "      tmux copy-mode yank will not reach the system clipboard."
         echo "      Install one: apt install xsel  (or wl-clipboard for Wayland)"
+      fi
+    stdout: true
+    stderr: true
+
+  - description: Register the codex-strip git clean filter (idempotent)
+    command: |
+      # Strip runtime-mutated TOML sections from codex/config.toml on
+      # `git add`. See codex/scripts/strip-runtime-sections.awk for the
+      # exclusion list and .gitattributes for the binding.
+      cmd="awk -f codex/scripts/strip-runtime-sections.awk"
+      if [ "$(git config --local filter.codex-strip.clean 2>/dev/null)" != "$cmd" ]; then
+        git config --local filter.codex-strip.clean  "$cmd"
+        git config --local filter.codex-strip.required true
+        echo "Registered git filter.codex-strip"
+      else
+        echo "git filter.codex-strip already registered"
+      fi
+    stdout: true
+    stderr: true
+
+  - description: AI CLIs soft-prereq notice (claude, codex)
+    command: |
+      # Claude Code and OpenAI Codex aren't hard requirements — install
+      # still completes on a server-only machine. But the linked configs
+      # do nothing until the binaries are present, so flag it.
+      ai_missing=""
+      for tool in claude codex; do
+        command -v "$tool" >/dev/null 2>&1 || ai_missing="${ai_missing}${ai_missing:+ }${tool}"
+      done
+      if [ -n "$ai_missing" ]; then
+        printf '\nNote: AI CLI(s) not on PATH: %s\n' "$ai_missing"
+        printf '      Configs in claude/ and codex/ are linked but inert until installed.\n'
+        case "$(uname -s)" in
+          Darwin) printf '      Install: brew install --cask claude-code codex\n' ;;
+          Linux)  printf '      Install: https://claude.com/code  |  https://github.com/openai/codex\n' ;;
+        esac
       fi
     stdout: true
     stderr: true
