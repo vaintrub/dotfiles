@@ -115,18 +115,45 @@ A git **clean filter** at `codex/scripts/strip-runtime-sections.awk` (registered
 
 If `git diff codex/config.toml` ever shows lines like `[projects.…]` reappearing, the filter isn't registered (check `git config --local --get filter.codex-strip.clean`). Re-run `./install` to re-register.
 
-### Per-machine after `./install` — plugins
+### Plugin sync scripts
 
-Neither tool auto-installs plugins from the synced config (the enable flags only activate already-installed plugins). After first install on a new machine, manually run:
+Install/update/remove is automated through two scripts that reconcile the declarative state (`enabledPlugins` for Claude, `[plugins.*]` blocks for Codex) with what's actually installed:
 
-**Claude Code** (via `/plugin install <plugin>@<marketplace>` in the TUI):
-- `gopls-lsp@claude-plugins-official`
-- `figma@claude-plugins-official`
-- `frontend-design@claude-plugins-official`
+```sh
+./claude/scripts/sync-plugins.sh           # full lifecycle via CLI
+./codex/scripts/sync-plugins.sh            # marketplace sync + plugin upgrade
+```
 
-**Codex** (via `codex plugin install <plugin>` or `/plugins` in the TUI):
-- `github@openai-curated`
-- `google-drive@openai-curated`
+Both accept the same set of subcommands plus `--dry-run`:
+
+| subcommand | what it does |
+|---|---|
+| `sync` (default) | install missing → update installed → prune orphans |
+| `install` | install plugins declared but not on disk (Codex prints which need TUI install) |
+| `update` | refresh marketplaces, then update every installed plugin to latest |
+| `prune` | uninstall plugins NOT declared (Claude only; Codex install/uninstall is TUI-only) |
+| `list` | show declared vs installed |
+
+**Adding a plugin**: add to `enabledPlugins` in `claude/settings.json` (or new `[plugins."<id>"]` block in `codex/config.toml`), commit, run sync. Other machines: `git pull && ./<tool>/scripts/sync-plugins.sh`.
+
+**Removing**: delete the entry (don't just set `false` — that's soft-disable). Run sync. For Codex you also need `/plugins` in TUI to actually uninstall (CLI doesn't expose it as of v0.128.0).
+
+**Temporarily disabling (Claude only)**: set value to `false` in `enabledPlugins`. Sync keeps the plugin installed but calls `claude plugin disable`.
+
+**Marketplaces**: declared as an editable table at the top of each sync script (single source of truth — `extraKnownMarketplaces` in settings.json is an unverified schema; the imperative `... marketplace add` path is documented and reliable). To add a marketplace, append a row to the script header.
+
+**Codex CLI gap**: as of v0.128.0 only `codex plugin marketplace {add,upgrade,remove}` exist as CLI commands. Plugin install/uninstall must go through the TUI `/plugins` slash command. The sync script handles marketplaces automatically and lists which plugins need TUI action.
+
+#### Currently tracked plugins
+
+**Claude Code** (marketplace `claude-plugins-official`):
+- `gopls-lsp` — Go LSP
+- `figma` — Figma MCP + skills
+- `frontend-design` — frontend/UX skills
+
+**Codex** (marketplace `openai-curated`, auto-registered):
+- `github` — GitHub connector + 4 skills (review / triage / CI / yeet)
+- `google-drive` — Drive integration
 
 ### Prerequisites
 

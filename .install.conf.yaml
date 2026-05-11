@@ -151,14 +151,22 @@
     stdout: true
     stderr: true
 
-  - description: Register the codex-strip git clean filter (idempotent)
+  - description: Register the codex-strip git filter (idempotent)
     command: |
       # Strip runtime-mutated TOML sections from codex/config.toml on
       # `git add`. See codex/scripts/strip-runtime-sections.awk for the
       # exclusion list and .gitattributes for the binding.
-      cmd="awk -f codex/scripts/strip-runtime-sections.awk"
-      if [ "$(git config --local filter.codex-strip.clean 2>/dev/null)" != "$cmd" ]; then
-        git config --local filter.codex-strip.clean  "$cmd"
+      #
+      # `required = true` together with `clean` makes git expect a
+      # matching `smudge` (index → working tree) too. We don't transform
+      # on checkout — index content goes verbatim — so smudge is `cat`.
+      # Without it, `git checkout` of any branch touching
+      # codex/config.toml fails with "smudge filter codex-strip failed".
+      clean="awk -f codex/scripts/strip-runtime-sections.awk"
+      if [ "$(git config --local filter.codex-strip.clean 2>/dev/null)" != "$clean" ] || \
+         [ "$(git config --local filter.codex-strip.smudge 2>/dev/null)" != "cat" ]; then
+        git config --local filter.codex-strip.clean    "$clean"
+        git config --local filter.codex-strip.smudge   cat
         git config --local filter.codex-strip.required true
         echo "Registered git filter.codex-strip"
       else
@@ -167,7 +175,7 @@
     stdout: true
     stderr: true
 
-  - description: AI CLIs soft-prereq notice (claude, codex)
+  - description: AI CLIs soft-prereq notice + plugin-sync hint
     command: |
       # Claude Code and OpenAI Codex aren't hard requirements — install
       # still completes on a server-only machine. But the linked configs
@@ -183,6 +191,12 @@
           Darwin) printf '      Install: brew install --cask claude-code codex\n' ;;
           Linux)  printf '      Install: https://claude.com/code  |  https://github.com/openai/codex\n' ;;
         esac
+      else
+        # Both AI CLIs available — point user at the plugin-sync scripts.
+        printf '\nAI plugins: run sync scripts to install/update/prune per the declarative configs:\n'
+        printf '      ./claude/scripts/sync-plugins.sh          # full lifecycle via CLI\n'
+        printf '      ./codex/scripts/sync-plugins.sh           # marketplace sync + upgrade\n'
+        printf '      (each accepts: sync (default), install, update, prune, list, --dry-run)\n'
       fi
     stdout: true
     stderr: true
