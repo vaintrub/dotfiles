@@ -116,12 +116,12 @@ export PATH="$PATH:$HOME/go/bin"
 #   • p10k `❯` turns orange (208). Not red — that's already taken by
 #     PROMPT_CHAR_ERROR_* (last command failed); colliding would erase
 #     the success/failure signal.
-#   • tmux paints both the bar and the window-list background dark red
-#     on the next `tmux` start. Targets `status_bg` + `window_status_bg`
-#     directly instead of `colour_1`: colour_1 is reused by gpakosz as
-#     `window_status_current_fg`, `message_fg`, `mode_fg`, etc., so
-#     overriding it would also recolour the active-window text and tmux
-#     messages — unintended side effects.
+#   • tmux paints both the bar and the window-list background dark
+#     amber on the next `tmux` start. Targets `status_bg` +
+#     `window_status_bg` directly instead of `colour_1`: colour_1 is
+#     reused by gpakosz as `window_status_current_fg`, `message_fg`,
+#     `mode_fg`, etc., so overriding it would also recolour the
+#     active-window text and tmux messages — unintended side effects.
 #     Setting these here (not in .tmux.conf.local) is required:
 #     gpakosz's `_apply_theme` reads tmux_conf_* via `printenv`, so the
 #     value must be in the env before the tmux server starts. tmux's
@@ -131,14 +131,19 @@ export PATH="$PATH:$HOME/go/bin"
 #     get rejected as a malformed colour.
 if [[ -n $SSH_CONNECTION ]]; then
     typeset -g POWERLEVEL9K_PROMPT_CHAR_OK_{VIINS,VICMD,VIVIS,VIOWR}_FOREGROUND=208
-    # Three coordinated overrides paint every "default-bar" surface red:
+    # Three coordinated overrides paint every "default-bar" surface
+    # dark amber. The hex (#5f2f00) shares ~30° hue with the orange `❯`
+    # above (208 = #ff8700) and with p10k's own peach REMOTE context
+    # segment (180 = #d7af87) — three SSH cues, one hue family, just
+    # different intensities. Dark enough to keep gpakosz's grey
+    # right-side icons (#8a8a8a) at WCAG AA-Large (3.21:1).
     #   status_bg        — the bar fill (status-style bg)
     #   window_status_bg — between window-list items
     #   colour_15        — bar-default sub-segments on the right
     #                      (battery/prefix/mouse/time/date) — they sit
     #                      on this slot and would otherwise stay as
-    #                      #080808 islands inside the red bar.
-    export tmux_conf_theme_status_bg='#5f0000'
-    export tmux_conf_theme_window_status_bg='#5f0000'
-    export tmux_conf_theme_colour_15='#5f0000'
+    #                      #080808 islands inside the amber bar.
+    export tmux_conf_theme_status_bg='#5f2f00'
+    export tmux_conf_theme_window_status_bg='#5f2f00'
+    export tmux_conf_theme_colour_15='#5f2f00'
 fi
