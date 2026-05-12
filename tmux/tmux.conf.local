@@ -77,9 +77,9 @@ tmux_conf_theme_colour_4='#5fd700'   # active highlights      — p10k OK green 
 #   (config-reload messages, copy-mode highlight, window bell).
 tmux_conf_theme_colour_5='#d7af00'   # messages/mode/bell     — p10k DIRENV mustard (178)
 
-# Smoother wheel scroll: 3 lines per tick (gpakosz default is 5 — feels
-# jumpy; 1 felt too sluggish on fast swipes). 3 is the compromise — fast
-# trackpad gestures cover ground via macOS' high event rate, slow swipes
-# still feel reasonably precise.
-bind -T copy-mode-vi WheelUpPane   select-pane \; send-keys -X -N 3 scroll-up
-bind -T copy-mode-vi WheelDownPane select-pane \; send-keys -X -N 3 scroll-down
+# Smoother wheel scroll: 2 lines per tick (gpakosz default is 5 — feels
+# jumpy). With macOS' high event rate on trackpad swipes, 2 lines per
+# event gives fast gestures plenty of throw while slow swipes stay
+# precise enough to scan line-by-line.
+bind -T copy-mode-vi WheelUpPane   select-pane \; send-keys -X -N 2 scroll-up
+bind -T copy-mode-vi WheelDownPane select-pane \; send-keys -X -N 2 scroll-down
