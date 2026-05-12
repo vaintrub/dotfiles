@@ -2,3 +2,8 @@
 dist/
 .coverage*
 .claude
+
+# Codex ships built-in skills (plan, skill-creator, etc.) under .system/
+# inside whatever path ~/.codex/skills points to. We symlink that dir
+# into codex/skills/, so they'd otherwise show up here as untracked.
+codex/skills/.system/
