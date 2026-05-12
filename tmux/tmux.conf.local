@@ -34,8 +34,22 @@ set -g history-limit 50000
 # which can drop over SSH).
 tmux_conf_24b_colour=true
 
-# Yank in copy-mode (selection with `v`, then `y`) writes to pbcopy on macOS.
-tmux_conf_copy_to_os_clipboard=true
+# Route clipboard exclusively through OSC 52 (see `set -s set-clipboard on`
+# above). With this flag at `false`, gpakosz stops splicing the
+# OS-detected clipboard tool (pbcopy / xsel / xclip / wl-copy / clip.exe)
+# into the mouse drag/click bindings — those bindings end up as plain
+# `copy-pipe[-and-cancel]` with no command, and tmux's set-clipboard
+# emits OSC 52 to the terminal which is responsible for putting bytes on
+# the host clipboard. Two reasons we prefer this:
+#   1. Cross-platform without OS detection — the same config works on
+#      macOS (iTerm2 with AllowClipboardAccess=1) and on jetson over
+#      SSH (the OSC 52 hop carries the clipboard back to iTerm2 on the
+#      Mac, which is what you actually want to paste from).
+#   2. The mouse-click overrides below no longer get clobbered by
+#      gpakosz's _apply_configuration pass (which would otherwise
+#      rewrite our `copy-pipe` to `copy-pipe pbcopy` and erase the
+#      "selection persists" intent).
+tmux_conf_copy_to_os_clipboard=false
 
 # Powerline arrow separators. Verbatim from the commented suggestion in
 # upstream .tmux.conf.local. Glyphs are U+E0B0–E0B3 (Powerline Symbols,
@@ -82,13 +96,24 @@ tmux_conf_theme_colour_5='#d7af00'   # messages/mode/bell     — p10k DIRENV mu
 #    (one tick = one line, native macOS / GNOME trackpad feel).
 #
 # 2. Double/triple-click default chain is:
-#       copy-mode -H ; select-word ; run-shell -d 0.3 ; copy-pipe-and-cancel pbcopy
-#    The 300ms flash + immediate `cancel` makes the selection vanish — the
-#    word IS in pbcopy, but visually it looks like nothing happened. We drop
-#    the cancel (and the artificial sleep) and use `copy-pipe` instead, so
-#    the selection persists until you press q/Esc, click elsewhere, or drag
-#    to extend. Drag-end (`MouseDragEnd1Pane` in copy-mode-vi) keeps the
-#    auto-cancel — that matches macOS "release to copy and clear" gesture.
+#
+#        copy-mode -H ; select-word ; run-shell -d 0.3 ; copy-pipe-and-cancel [tool]
+#
+#    The 300 ms `run-shell` flash followed by the immediate `cancel`
+#    makes the selection visibly vanish even though the word IS in the
+#    clipboard. Feels like "nothing happened".
+#
+#    Fix: drop the artificial sleep AND the cancel — use `copy-pipe`
+#    with no command. The selection persists until you press q/Esc,
+#    click elsewhere, or drag to extend. Clipboard write travels via
+#    OSC 52 (`set -s set-clipboard on` + the flag above set to false
+#    means tmux owns the path; the terminal-emulator side handles OS
+#    clipboard).
+#
+#    `MouseDragEnd1Pane` in copy-mode-vi is left to gpakosz — with the
+#    OS-clipboard flag off, gpakosz emits `copy-pipe-and-cancel` with
+#    no command too, so drag-release matches "release to copy and
+#    clear" and the clipboard write goes via OSC 52 the same way.
 
 bind -T copy-mode-vi WheelUpPane   select-pane \; send-keys -X -N 1 scroll-up
 bind -T copy-mode-vi WheelDownPane select-pane \; send-keys -X -N 1 scroll-down
@@ -96,9 +121,9 @@ bind -T copy-mode-vi WheelDownPane select-pane \; send-keys -X -N 1 scroll-down
 bind -T root DoubleClick1Pane  select-pane -t = \; \
     if-shell -F "#{||:#{pane_in_mode},#{mouse_any_flag}}" \
         { send-keys -M } \
-        { copy-mode -H ; send-keys -X select-word ; send-keys -X copy-pipe "pbcopy" }
+        { copy-mode -H ; send-keys -X select-word ; send-keys -X copy-pipe }
 
 bind -T root TripleClick1Pane  select-pane -t = \; \
     if-shell -F "#{||:#{pane_in_mode},#{mouse_any_flag}}" \
         { send-keys -M } \
-        { copy-mode -H ; send-keys -X select-line ; send-keys -X copy-pipe "pbcopy" }
+        { copy-mode -H ; send-keys -X select-line ; send-keys -X copy-pipe }
