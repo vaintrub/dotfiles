@@ -8,7 +8,7 @@ description: Universal — don't trust verbal descriptions of bugs. Ask for scre
 **Why:** Verbal descriptions of bugs are ambiguous in ways that aren't obvious to either side. In the Hero Phase 2 session (calliope, 2026-05-12):
 
 - User said "horizontal scrollbar in the middle of the screen" → I assumed page overflow → spent ~30 minutes diagnosing. Actual cause: viewport-override conflict between MCP emulation, DevTools device toolbar, and physical Chrome window. None of my code had any overflow.
-- User said "не на весь экран" (not fullscreen) → I assumed vertical → added `min-height: 100svh`. User actually meant the 1240 px container looked tiny on their (assumed) 4K monitor — needed edge-to-edge fix.
+- User said "not fullscreen" → I assumed vertical → added `min-height: 100svh`. User actually meant the 1240 px container looked tiny on their (assumed) 4K monitor — needed edge-to-edge fix.
 - User said "everything is messed up now" → I assumed bug → screenshot showed the page was rendered at MCP-emulated size inside their natural-size browser window. Just needed to clear MCP emulation.
 
 Each of these would have been instantly diagnosable from a screenshot, but took multiple round-trips because I diagnosed from words.

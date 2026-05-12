@@ -1,26 +1,10 @@
 # Global rules for Claude
 
-## Tooling setup (read this first)
+## Saving portable settings
 
-All configs for **Claude Code** and **OpenAI Codex CLI** live in `~/dotfiles/{claude,codex}/`. The `~/.claude/` and `~/.codex/` directories contain symlinks pointing into the dotfiles repo.
+When the user asks to save anything globally — a rule, setting, alias, binding, skill, plugin enable, hook — **run the `save-to-dotfiles` skill**. It walks three gates (portability / platform / routing) and edits the right `~/dotfiles/` target.
 
-**When modifying** settings, agents, skills, rules, or `CLAUDE.md` / `AGENTS.md` itself — **edit the dotfiles target path** (`~/dotfiles/claude/<file>` or `~/dotfiles/codex/<file>`), not the live `~/.claude/<file>` or `~/.codex/<file>` path. Edits through the symlink resolve to the same file under the hood, but always point tools at the dotfiles path to keep the source-of-truth singular and obvious to anyone reviewing diffs.
-
-After **adding NEW files** that need to be linked into `~/.claude/` or `~/.codex/`: edit `~/dotfiles/.install.conf.yaml` to add the link mapping, then `cd ~/dotfiles && ./install` to apply.
-
-Existing symlink layout:
-
-| Live path | Real path |
-|---|---|
-| `~/.claude/CLAUDE.md` | `~/dotfiles/claude/CLAUDE.md` |
-| `~/.claude/settings.json` | `~/dotfiles/claude/settings.json` |
-| `~/.claude/statusline-command.sh` | `~/dotfiles/claude/statusline-command.sh` |
-| `~/.claude/agents` | `~/dotfiles/claude/agents` |
-| `~/.claude/skills` | `~/dotfiles/claude/skills` |
-| `~/.claude/rules` | `~/dotfiles/claude/rules` |
-| `~/.codex/AGENTS.md` | `~/dotfiles/codex/AGENTS.md` |
-| `~/.codex/config.toml` | `~/dotfiles/codex/config.toml` |
-| `~/.codex/skills` | `~/dotfiles/codex/skills` |
+Never write to `~/.claude/<X>` or `~/.codex/<X>` directly — those are symlinks into the dotfiles repo. The full symlink table and per-area guidance live in `~/dotfiles/AGENTS.md`, which Claude auto-loads when cwd is in that repo.
 
 ---
 
