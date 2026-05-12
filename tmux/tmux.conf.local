@@ -34,22 +34,10 @@ set -g history-limit 50000
 # which can drop over SSH).
 tmux_conf_24b_colour=true
 
-# Route clipboard exclusively through OSC 52 (see `set -s set-clipboard on`
-# above). With this flag at `false`, gpakosz stops splicing the
-# OS-detected clipboard tool (pbcopy / xsel / xclip / wl-copy / clip.exe)
-# into the mouse drag/click bindings — those bindings end up as plain
-# `copy-pipe[-and-cancel]` with no command, and tmux's set-clipboard
-# emits OSC 52 to the terminal which is responsible for putting bytes on
-# the host clipboard. Two reasons we prefer this:
-#   1. Cross-platform without OS detection — the same config works on
-#      macOS (iTerm2 with AllowClipboardAccess=1) and on jetson over
-#      SSH (the OSC 52 hop carries the clipboard back to iTerm2 on the
-#      Mac, which is what you actually want to paste from).
-#   2. The mouse-click overrides below no longer get clobbered by
-#      gpakosz's _apply_configuration pass (which would otherwise
-#      rewrite our `copy-pipe` to `copy-pipe pbcopy` and erase the
-#      "selection persists" intent).
-tmux_conf_copy_to_os_clipboard=false
+# Yank in copy-mode (selection with `v`, then `y`) writes to the OS
+# clipboard via gpakosz's auto-detected tool (pbcopy / xsel / xclip /
+# wl-copy / clip.exe).
+tmux_conf_copy_to_os_clipboard=true
 
 # Powerline arrow separators. Verbatim from the commented suggestion in
 # upstream .tmux.conf.local. Glyphs are U+E0B0–E0B3 (Powerline Symbols,
@@ -89,52 +77,10 @@ tmux_conf_theme_colour_4='#5fd700'   # active highlights      — p10k OK green 
 #   (config-reload messages, copy-mode highlight, window bell).
 tmux_conf_theme_colour_5='#d7af00'   # messages/mode/bell     — p10k DIRENV mustard (178)
 
-# --- Mouse UX: smoother scroll + native-feel double/triple click -------------
-# gpakosz binds these by default — we override two niggles:
-#
-# 1. Wheel scroll defaults to 5 lines per tick → feels jumpy. Bump to 1
-#    (one tick = one line, native macOS / GNOME trackpad feel).
-#
-# 2. Double/triple-click default chain is:
-#
-#        copy-mode -H ; select-word ; run-shell -d 0.3 ; copy-pipe-and-cancel [tool]
-#
-#    The 300 ms `run-shell` flash followed by the immediate `cancel`
-#    makes the selection visibly vanish even though the word IS in the
-#    clipboard. Feels like "nothing happened".
-#
-#    Fix: drop the artificial sleep AND the cancel — use `copy-pipe`
-#    with no command. The selection persists until you press q/Esc,
-#    click elsewhere, or drag to extend. Clipboard write travels via
-#    OSC 52 (`set -s set-clipboard on` + the flag above set to false
-#    means tmux owns the path; the terminal-emulator side handles OS
-#    clipboard).
-#
-#    gpakosz has TWO sets of click/drag bindings: one in `root` (fires
-#    when not already in copy-mode) and one in `copy-mode-vi` (fires
-#    when you're already in copy-mode — e.g., after wheel-scrolling up).
-#    Both sets have `-and-cancel` in upstream; we override both so the
-#    selection persists in either entry path.
-
+# Smoother wheel scroll: 1 line per tick (gpakosz default is 5 — feels
+# jumpy). Fast trackpad swipes still cover lots of ground because macOS
+# emits many discrete wheel events for a fast gesture; we just scroll
+# one line per event so the cumulative motion stays proportional to
+# swipe distance instead of jumping in 5-line chunks.
 bind -T copy-mode-vi WheelUpPane   select-pane \; send-keys -X -N 1 scroll-up
 bind -T copy-mode-vi WheelDownPane select-pane \; send-keys -X -N 1 scroll-down
-
-bind -T root DoubleClick1Pane  select-pane -t = \; \
-    if-shell -F "#{||:#{pane_in_mode},#{mouse_any_flag}}" \
-        { send-keys -M } \
-        { copy-mode -H ; send-keys -X select-word ; send-keys -X copy-pipe }
-
-bind -T root TripleClick1Pane  select-pane -t = \; \
-    if-shell -F "#{||:#{pane_in_mode},#{mouse_any_flag}}" \
-        { send-keys -M } \
-        { copy-mode -H ; send-keys -X select-line ; send-keys -X copy-pipe }
-
-# When you wheel-scroll up first, you enter copy-mode and then mouse
-# events route to copy-mode-vi (not root). Override the same three
-# bindings here too — otherwise gpakosz's `-and-cancel` kicks you out
-# of copy-mode after each click and the view snaps back to the prompt.
-bind -T copy-mode-vi DoubleClick1Pane    select-pane \; \
-    send-keys -X select-word \; send-keys -X copy-pipe
-bind -T copy-mode-vi TripleClick1Pane    select-pane \; \
-    send-keys -X select-line \; send-keys -X copy-pipe
-bind -T copy-mode-vi MouseDragEnd1Pane   send-keys -X copy-pipe
