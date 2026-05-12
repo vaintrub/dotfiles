@@ -110,10 +110,11 @@ tmux_conf_theme_colour_5='#d7af00'   # messages/mode/bell     — p10k DIRENV mu
 #    means tmux owns the path; the terminal-emulator side handles OS
 #    clipboard).
 #
-#    `MouseDragEnd1Pane` in copy-mode-vi is left to gpakosz — with the
-#    OS-clipboard flag off, gpakosz emits `copy-pipe-and-cancel` with
-#    no command too, so drag-release matches "release to copy and
-#    clear" and the clipboard write goes via OSC 52 the same way.
+#    gpakosz has TWO sets of click/drag bindings: one in `root` (fires
+#    when not already in copy-mode) and one in `copy-mode-vi` (fires
+#    when you're already in copy-mode — e.g., after wheel-scrolling up).
+#    Both sets have `-and-cancel` in upstream; we override both so the
+#    selection persists in either entry path.
 
 bind -T copy-mode-vi WheelUpPane   select-pane \; send-keys -X -N 1 scroll-up
 bind -T copy-mode-vi WheelDownPane select-pane \; send-keys -X -N 1 scroll-down
@@ -127,3 +128,13 @@ bind -T root TripleClick1Pane  select-pane -t = \; \
     if-shell -F "#{||:#{pane_in_mode},#{mouse_any_flag}}" \
         { send-keys -M } \
         { copy-mode -H ; send-keys -X select-line ; send-keys -X copy-pipe }
+
+# When you wheel-scroll up first, you enter copy-mode and then mouse
+# events route to copy-mode-vi (not root). Override the same three
+# bindings here too — otherwise gpakosz's `-and-cancel` kicks you out
+# of copy-mode after each click and the view snaps back to the prompt.
+bind -T copy-mode-vi DoubleClick1Pane    select-pane \; \
+    send-keys -X select-word \; send-keys -X copy-pipe
+bind -T copy-mode-vi TripleClick1Pane    select-pane \; \
+    send-keys -X select-line \; send-keys -X copy-pipe
+bind -T copy-mode-vi MouseDragEnd1Pane   send-keys -X copy-pipe
