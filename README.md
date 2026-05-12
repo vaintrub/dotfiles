@@ -60,6 +60,7 @@ Customizations in `tmux/tmux.conf.local`:
 - **`mouse on`** — wheel scrolls tmux scrollback, drag-resizes panes, click selects
 - **`mode-keys vi`** — copy-mode uses vim navigation (gpakosz ships vi-bindings; this activates them)
 - **`set-clipboard on`** (OSC 52) — vim/nvim `"+y` inside tmux reaches the system clipboard
+- **`tmux_conf_copy_to_os_clipboard=true`** — copy-mode `y` writes to the OS clipboard (`pbcopy` on macOS; `xsel`/`xclip`/`wl-copy` on Linux, auto-detected by gpakosz). gpakosz default is `false`.
 - **`tmux_conf_24b_colour=true`** — forces 24-bit colour so Powerlevel10k renders identically inside tmux
 - **`COLORTERM=truecolor`** propagated to inner shells
 - **`history-limit 50000`** — gpakosz default 5000 is small
