@@ -19,7 +19,7 @@ Plug 'mattn/emmet-vim'
 call plug#end()
 
 " Настройки табов для python, согласно рекоммендациям
-set tabstop=4 
+set tabstop=4
 set shiftwidth=4
 set smarttab
 set expandtab " Ставим табы пробелами
@@ -45,7 +45,7 @@ set nu " Включаем нумерацию строк
 set mousehide " Спрятать курсор мыши когда набираем текст
 set mouse=a " Включить поддержку мыши
 set termencoding=utf-8 " Кодировка терминала
-set novisualbell " Не мигать 
+set novisualbell " Не мигать
 set t_vb= " Не пищать! (опции 'не портить текст', к сожалению, нету)
 " Удобное поведение backspace
 set backspace=indent,eol,start whichwrap+=<,>,[,]
@@ -78,7 +78,7 @@ set visualbell t_vb=
 
 " Переключение табов по cmd+number для macvim
 if has("gui_macvim")
-  " Press ctrl-tab to switch between open tabs (like browser tabs) to 
+  " Press ctrl-tab to switch between open tabs (like browser tabs) to
   " The right side. ctrl-shift-tab goes the other way.
   noremap <c-tab> :tabnext<cr>
   noremap <c-s-tab> :tabprev<cr>
