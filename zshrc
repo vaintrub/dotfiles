@@ -89,30 +89,33 @@ code() {
         "${VSCODE_REMOTE_HOST:-${HOST%%.*}}" "${path// /%20}"
 }
 
-# VSCode `code` CLI on macOS: `brew install --cask` doesn't add it to PATH.
+# --- VSCode `code` CLI on PATH (macOS) ---
+# `brew install --cask visual-studio-code` doesn't add `code` to PATH.
 [[ -x "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code" ]] \
     && export PATH="$PATH:/Applications/Visual Studio Code.app/Contents/Resources/app/bin"
 
 # --- Aliases ---
 alias zshconfig="vim ~/.zshrc"
 
-# --- Environment ---
+# --- Locale ---
 export LANG=en_US.UTF-8
 
-# Node version manager
+# --- Node version manager (fnm) ---
 command -v fnm > /dev/null && eval "$(fnm env)"
 
-# Smart cd
+# --- Smart cd (zoxide) ---
 command -v zoxide > /dev/null && eval "$(zoxide init zsh)"
 
-# PATH
+# --- PATH ---
 export PATH="$PATH:$HOME/.local/bin"
 export PATH="$PATH:$HOME/go/bin"
 
+# --- Powerlevel10k theme ---
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
-# SSH-only tints so I can't type into the wrong machine by accident:
+# --- SSH visual tints (orange ❯ + amber tmux bar) ---
+# Defensive nudge so I can't type into the wrong machine by accident:
 #   • p10k `❯` turns orange (208). Not red — that's already taken by
 #     PROMPT_CHAR_ERROR_* (last command failed); colliding would erase
 #     the success/failure signal.
