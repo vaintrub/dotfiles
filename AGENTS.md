@@ -107,8 +107,9 @@ unambiguous and the source of truth is clear to anyone reviewing.
 - `claude/skills/*/SKILL.md` are discoverable skills, intent-matched via
   the frontmatter `description` field.
 - `claude/settings.json` carries permissions / statusline / plugin enables.
-- `claude/agents/` and `claude/skills/` directories may stay empty until
-  needed (`.gitkeep` placeholders).
+- `claude/agents/` and `claude/skills/` directories use `.gitkeep` so
+  they stay tracked when empty. `claude/skills/save-to-dotfiles/` is the
+  first real skill (see §5); add new agents/skills as sibling subdirs.
 
 ### codex/ — OpenAI Codex CLI
 

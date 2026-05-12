@@ -89,7 +89,7 @@ Map intent → file → reload:
 | Intent | Target file (in `~/dotfiles/`) | Reload after |
 |---|---|---|
 | Shell alias / function | `zshrc` → `# --- Aliases ---` (alias) or near existing functions (function) | new shell or `exec zsh` |
-| Env var | `zshrc` → `# --- Locale ---` (LANG-class) or `# --- Environment ---` or create new section | new shell |
+| Env var | `zshrc` → `# --- Locale ---` (LANG-class) or create a new `# --- xxx ---` section if it's a new logical area | new shell |
 | PATH addition | `zshrc` → `# --- PATH ---` | new shell |
 | zsh plugin | `zsh_plugins.txt` (add line; antidote rebuilds on next shell start) | new shell |
 | Vim setting / mapping | `vimrc` (matching section) | re-open vim or `:source $MYVIMRC` |
