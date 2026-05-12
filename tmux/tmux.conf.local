@@ -34,7 +34,9 @@ set -g history-limit 50000
 # which can drop over SSH).
 tmux_conf_24b_colour=true
 
-# Yank in copy-mode (selection with `v`, then `y`) writes to pbcopy on macOS.
+# Yank in copy-mode (selection with `v`, then `y`) writes to the OS
+# clipboard via gpakosz's auto-detected tool (pbcopy / xsel / xclip /
+# wl-copy / clip.exe).
 tmux_conf_copy_to_os_clipboard=true
 
 # Powerline arrow separators. Verbatim from the commented suggestion in
@@ -74,3 +76,10 @@ tmux_conf_theme_colour_4='#5fd700'   # active highlights      — p10k OK green 
 #   window_status_bell_fg. Transient attention cues
 #   (config-reload messages, copy-mode highlight, window bell).
 tmux_conf_theme_colour_5='#d7af00'   # messages/mode/bell     — p10k DIRENV mustard (178)
+
+# Smoother wheel scroll: 2 lines per tick (gpakosz default is 5 — feels
+# jumpy). With macOS' high event rate on trackpad swipes, 2 lines per
+# event gives fast gestures plenty of throw while slow swipes stay
+# precise enough to scan line-by-line.
+bind -T copy-mode-vi WheelUpPane   select-pane \; send-keys -X -N 2 scroll-up
+bind -T copy-mode-vi WheelDownPane select-pane \; send-keys -X -N 2 scroll-down
