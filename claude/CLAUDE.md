@@ -1,5 +1,29 @@
 # Global rules for Claude
 
+## Tooling setup (read this first)
+
+All configs for **Claude Code** and **OpenAI Codex CLI** live in `~/dotfiles/{claude,codex}/`. The `~/.claude/` and `~/.codex/` directories contain symlinks pointing into the dotfiles repo.
+
+**When modifying** settings, agents, skills, rules, or `CLAUDE.md` / `AGENTS.md` itself — **edit the dotfiles target path** (`~/dotfiles/claude/<file>` or `~/dotfiles/codex/<file>`), not the live `~/.claude/<file>` or `~/.codex/<file>` path. Edits through the symlink resolve to the same file under the hood, but always point tools at the dotfiles path to keep the source-of-truth singular and obvious to anyone reviewing diffs.
+
+After **adding NEW files** that need to be linked into `~/.claude/` or `~/.codex/`: edit `~/dotfiles/.install.conf.yaml` to add the link mapping, then `cd ~/dotfiles && ./install` to apply.
+
+Existing symlink layout:
+
+| Live path | Real path |
+|---|---|
+| `~/.claude/CLAUDE.md` | `~/dotfiles/claude/CLAUDE.md` |
+| `~/.claude/settings.json` | `~/dotfiles/claude/settings.json` |
+| `~/.claude/statusline-command.sh` | `~/dotfiles/claude/statusline-command.sh` |
+| `~/.claude/agents` | `~/dotfiles/claude/agents` |
+| `~/.claude/skills` | `~/dotfiles/claude/skills` |
+| `~/.claude/rules` | `~/dotfiles/claude/rules` |
+| `~/.codex/AGENTS.md` | `~/dotfiles/codex/AGENTS.md` |
+| `~/.codex/config.toml` | `~/dotfiles/codex/config.toml` |
+| `~/.codex/skills` | `~/dotfiles/codex/skills` |
+
+---
+
 ## Git commits
 - NEVER add "Co-Authored-By: Claude" or any other Claude/AI mentions to commits
 - Commits look like regular human commits (clear, present tense, max 72-char summary)
@@ -45,3 +69,27 @@
 - Don't validate scenarios that can't happen
 - Don't summarize what was just changed in chat — the diff speaks for itself
 - Don't ask for confirmation on routine reversible edits
+
+## Working principles by project type
+
+Detailed rules live under `~/dotfiles/claude/rules/` and **auto-load at session start** (universal rules always; frontend rules when working on `.tsx/.css/.astro/.svelte/.vue/...` files via `paths:` frontmatter). The list below is a human-readable TL;DR index — the rule files themselves are the source of truth.
+
+### Universal (any project, always loaded)
+
+- **`read-codebase-first`** — Read specs / docs / configs / tests before first fix attempt. Don't hack from assumptions.
+- **`no-code-without-go`** — Any non-trivial edit (new feature, iteration, visual bug fix) → propose first, wait for explicit user `go`, then code. Exceptions: typos / lint fixes / commands the user already directed.
+- **`verify-before-fix`** — Don't trust verbal descriptions of bugs. Ask for screenshots / logs / measurements before fixing.
+
+### Frontend / visual-design (loaded when editing FE files)
+
+- **`frontend-spec-first-workflow`** — Strict per-block pipeline: SPEC → user approve → IMPL DESKTOP → review → IMPL MOBILE → review → POLISH → COMMIT. No phase advances without explicit `go`.
+- **`visual-audit-mcp-gotchas`** — Three-layer viewport conflicts (window + DevTools + MCP emulate), `resize_page` vs `emulate`, screenshot timeout recipe (pause videos + cancel animations + JPEG), `Cmd+Shift+R` after preview rebuild.
+
+### Backend / data / library projects
+
+Placeholder for future rule files. Likely candidates:
+
+- Tests-first where reasonable
+- Migration safety (don't drop columns; deprecate first)
+- Schema/API changes through explicit review
+- Logs as evidence (since no visual feedback)
