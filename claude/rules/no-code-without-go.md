@@ -3,7 +3,7 @@ name: no-code-without-go
 description: Universal — no code edit on a non-trivial change without an explicit "go" from the user.
 ---
 
-**Rule:** On any non-trivial edit — new feature, iteration on existing component, visual bug fix, refactor — the next response is a **proposal**, not a code change. Wait for explicit user `go` / `apprоve` / `OK` before touching `src/**` / implementation files.
+**Rule:** On any non-trivial edit — new feature, iteration on existing component, visual bug fix, refactor — the next response is a **proposal**, not a code change. Wait for explicit user `go` / `approve` / `OK` before touching `src/**` / implementation files.
 
 Exceptions:
 - Typo fixes / Prettier reformatting / lint auto-fixes.
@@ -22,7 +22,7 @@ This pattern:
 
 The user said explicitly:
 
-> «Опять сильно поторопился! Убежал без спеки, ты можешь запомнить, что так нельзя делать никогда — пока я явно не скажу!?»
+> "Got ahead of yourself again! Ran off without a spec — can you remember that this is never OK unless I explicitly say so!?"
 
 The schedule cost is real. Spec-first stops being abstract overhead when you count the wasted cycles.
 
@@ -34,6 +34,6 @@ The schedule cost is real. Spec-first stops being abstract overhead when you cou
    - For logic changes: concrete code outline.
    - Then "go for all / go for these N / discuss" — ask explicitly.
 2. Even when the fix looks obviously correct (e.g., "video bottom corner missing — it's the asymmetric mask"), spec the fix in 3-5 lines before editing.
-3. The only auto-execute trigger is the user's literal `go` / `apprоve` / `сделай` / `можно` — for the **specific** thing just discussed, not adjacent refinements.
+3. The only auto-execute trigger is the user's literal `go` / `approve` / `OK` — for the **specific** thing just discussed, not adjacent refinements.
 4. If the user is in "auto mode" but they've explicitly said "spec-first" earlier — spec-first wins. Auto mode doesn't override an explicit standing instruction from the user.
 5. Related rules: [[read-codebase-first]] (which precedes proposal), [[frontend-spec-first-workflow]] (the strict per-block protocol).

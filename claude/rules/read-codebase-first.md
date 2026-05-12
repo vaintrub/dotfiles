@@ -7,7 +7,7 @@ description: Universal — read specs / docs / configs / tests before first fix 
 
 **Why:** Multiple times in the Hero Phase 2 session (calliope, 2026-05-12), I started writing fixes from verbal descriptions or partial code reading, only to discover the actual cause was something the spec or AGENTS.md already prescribed differently. Each premature attempt cost a screenshot-review-revert cycle. The user explicitly said:
 
-> «Сначала прочитай документацию! Подумай получше! Сверься с спеками И так далее»
+> "Read the documentation first! Think harder! Check against the specs! And so on."
 
 After spending ~2 hours on a misdiagnosed "horizontal scrollbar at 4K" issue, the actual diagnosis came from reading the codebase top-to-bottom: LandingLayout, Nav, Footer, global.css, tokens.css, Hero.astro. The root cause turned out to be viewport-override conflicts, not any code issue — finding that required full context.
 
