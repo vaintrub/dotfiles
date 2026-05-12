@@ -18,48 +18,47 @@ Plug 'mattn/emmet-vim'
 
 call plug#end()
 
-" Настройки табов для python, согласно рекоммендациям
+" Python tab settings (PEP 8 recommendations)
 set tabstop=4
 set shiftwidth=4
 set smarttab
-set expandtab " Ставим табы пробелами
-set softtabstop=4 " 4 пробела в табе
+set expandtab " Use spaces, not tabs
+set softtabstop=4 " 4 spaces per tab
 set colorcolumn=80
-" Автоотступ
+" Auto-indent
 set autoindent
-" Подсвечиваем все что можно подсвечивать
+" Highlight everything that can be highlighted
 let python_highlight_all = 1
 let perl_sub_signatures = 1
-" Включаем 256 цветов в терминале, мы ведь работаем из иксов?
-" Нужно во многих терминалах, например в gnome-terminal
+" 256 colours in the terminal (needed by many terminals, e.g. gnome-terminal)
 set t_co=256
 
-" Перед сохранением вырезаем пробелы на концах (только в .py файлах)
+" Strip trailing whitespace on save (Python files only)
 autocmd bufwritepre *.py normal m`:%s/\s\+$//e ``
-" В .py файлах включаем умные отступы после ключевых слов
+" Smart indent after keywords (Python files)
 autocmd bufread *.py set smartindent cinwords=if,elif,else,for,while,try,except,finally,def,class
 
-syntax on " Включить подсветку синтаксиса
+syntax on " Enable syntax highlighting
 
-set nu " Включаем нумерацию строк
-set mousehide " Спрятать курсор мыши когда набираем текст
-set mouse=a " Включить поддержку мыши
-set termencoding=utf-8 " Кодировка терминала
-set novisualbell " Не мигать
-set t_vb= " Не пищать! (опции 'не портить текст', к сожалению, нету)
-" Удобное поведение backspace
+set nu " Show line numbers
+set mousehide " Hide mouse cursor while typing
+set mouse=a " Enable mouse support
+set termencoding=utf-8 " Terminal encoding
+set novisualbell " No screen flash
+set t_vb= " No beep either
+" Convenient backspace behaviour
 set backspace=indent,eol,start whichwrap+=<,>,[,]
-" Вырубаем черточки на табах
+" No dashes between tabs
 set showtabline=1
 
-" Переносим на другую строчку, разрываем строки
+" Wrap long lines on word boundaries
 set wrap
 set linebreak
 
-" Вырубаем .swp и ~ (резервные) файлы
+" Disable .swp and ~ (backup) files
 set nobackup
 set noswapfile
-set encoding=utf-8 " Кодировка файлов по умолчанию
+set encoding=utf-8 " Default file encoding
 set fileencodings=utf8,cp1251
 
 " Yank goes to system clipboard. macOS: both registers map to NSPasteboard.
@@ -73,10 +72,10 @@ set hidden
 nnoremap <c-n> :bnext<cr>
 nnoremap <c-p> :bprev<cr>
 
-" Выключаем звук в vim
+" Disable sound in vim
 set visualbell t_vb=
 
-" Переключение табов по cmd+number для macvim
+" Switch tabs via cmd+number (macvim)
 if has("gui_macvim")
   " Press ctrl-tab to switch between open tabs (like browser tabs) to
   " The right side. ctrl-shift-tab goes the other way.
