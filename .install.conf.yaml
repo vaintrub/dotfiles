@@ -3,7 +3,10 @@
       create: true
       relink: true
 
-- clean: ['~']
+# `clean:` removes broken symlinks at these paths (dotbot doesn't recurse,
+# so each subdir Claude/Codex own must be listed). Catches stale links
+# from renamed/removed entries above (e.g. `commands/` → `rules/` rename).
+- clean: ['~', '~/.claude', '~/.codex']
 
 - link:
     ~/.vimrc:
@@ -19,10 +22,16 @@
       path: tmux/tmux.conf.local
       force: true
     # --- Claude Code ---
-    # Settings, instructions, status-line script, and the four content
-    # dirs Claude Code looks at (agents, commands, skills, hooks).
-    # `force: true` because pre-existing files at these paths get replaced
-    # by symlinks pointing into the repo.
+    # Global Claude Code config: instructions, settings, statusline
+    # script, plus the three content dirs Claude auto-discovers:
+    #   - agents/ — custom subagents
+    #   - skills/ — custom skills (SKILL.md per subdir)
+    #   - rules/  — markdown rules with optional `paths:` frontmatter
+    #               for conditional loading (universal vs per-language)
+    # We deliberately don't symlink ~/.claude/commands (deprecated by
+    # skills per upstream docs) or ~/.claude/hooks (not a Claude
+    # convention — hooks live inline in settings.json).
+    # `force: true` replaces any pre-existing file at the target path.
     ~/.claude/CLAUDE.md:
       path: claude/CLAUDE.md
       force: true
@@ -35,25 +44,27 @@
     ~/.claude/agents:
       path: claude/agents
       force: true
-    ~/.claude/commands:
-      path: claude/commands
-      force: true
     ~/.claude/skills:
       path: claude/skills
       force: true
-    ~/.claude/hooks:
-      path: claude/hooks
+    ~/.claude/rules:
+      path: claude/rules
       force: true
     # --- OpenAI Codex CLI ---
     # config.toml is symlinked; Codex auto-writes runtime sections into it,
     # which the git clean filter (registered below) strips on `git add`.
     # skills/ is symlinked too; Codex creates `.system/` inside for built-in
     # skills — that path is .gitignore'd at repo root.
+    # AGENTS.md is Codex's per-user global instructions file (its
+    # equivalent of Claude's CLAUDE.md) — loaded for every session.
     ~/.codex/config.toml:
       path: codex/config.toml
       force: true
     ~/.codex/skills:
       path: codex/skills
+      force: true
+    ~/.codex/AGENTS.md:
+      path: codex/AGENTS.md
       force: true
 
 - shell:
