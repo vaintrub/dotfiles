@@ -74,3 +74,31 @@ tmux_conf_theme_colour_4='#5fd700'   # active highlights      — p10k OK green 
 #   window_status_bell_fg. Transient attention cues
 #   (config-reload messages, copy-mode highlight, window bell).
 tmux_conf_theme_colour_5='#d7af00'   # messages/mode/bell     — p10k DIRENV mustard (178)
+
+# --- Mouse UX: smoother scroll + native-feel double/triple click -------------
+# gpakosz binds these by default — we override two niggles:
+#
+# 1. Wheel scroll defaults to 5 lines per tick → feels jumpy. Bump to 1
+#    (one tick = one line, native macOS / GNOME trackpad feel).
+#
+# 2. Double/triple-click default chain is:
+#       copy-mode -H ; select-word ; run-shell -d 0.3 ; copy-pipe-and-cancel pbcopy
+#    The 300ms flash + immediate `cancel` makes the selection vanish — the
+#    word IS in pbcopy, but visually it looks like nothing happened. We drop
+#    the cancel (and the artificial sleep) and use `copy-pipe` instead, so
+#    the selection persists until you press q/Esc, click elsewhere, or drag
+#    to extend. Drag-end (`MouseDragEnd1Pane` in copy-mode-vi) keeps the
+#    auto-cancel — that matches macOS "release to copy and clear" gesture.
+
+bind -T copy-mode-vi WheelUpPane   select-pane \; send-keys -X -N 1 scroll-up
+bind -T copy-mode-vi WheelDownPane select-pane \; send-keys -X -N 1 scroll-down
+
+bind -T root DoubleClick1Pane  select-pane -t = \; \
+    if-shell -F "#{||:#{pane_in_mode},#{mouse_any_flag}}" \
+        { send-keys -M } \
+        { copy-mode -H ; send-keys -X select-word ; send-keys -X copy-pipe "pbcopy" }
+
+bind -T root TripleClick1Pane  select-pane -t = \; \
+    if-shell -F "#{||:#{pane_in_mode},#{mouse_any_flag}}" \
+        { send-keys -M } \
+        { copy-mode -H ; send-keys -X select-line ; send-keys -X copy-pipe "pbcopy" }
