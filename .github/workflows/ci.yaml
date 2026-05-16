@@ -41,10 +41,18 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends bats jq
 
-      - name: Install chezmoi
+      - name: Install chezmoi + put mise shims on PATH ahead of time
         run: |
           sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          # mise shims aren't installed yet, but adding the path to
+          # $GITHUB_PATH now ensures every subsequent step sees the dir
+          # once mise install populates it. Without this, the 2nd
+          # `chezmoi apply` re-renders dot_gitconfig.tmpl with
+          # `{{ lookPath "delta" }}` still false (delta exists at
+          # ~/.local/share/mise/installs/... but its shim at
+          # ~/.local/share/mise/shims/delta isn't reachable).
+          echo "$HOME/.local/share/mise/shims" >> "$GITHUB_PATH"
 
       - name: chezmoi init + apply (twice — second converges modify_ + lookPath drift)
         run: |
@@ -96,10 +104,18 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends bats jq
 
-      - name: Install chezmoi
+      - name: Install chezmoi + put mise shims on PATH ahead of time
         run: |
           sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          # mise shims aren't installed yet, but adding the path to
+          # $GITHUB_PATH now ensures every subsequent step sees the dir
+          # once mise install populates it. Without this, the 2nd
+          # `chezmoi apply` re-renders dot_gitconfig.tmpl with
+          # `{{ lookPath "delta" }}` still false (delta exists at
+          # ~/.local/share/mise/installs/... but its shim at
+          # ~/.local/share/mise/shims/delta isn't reachable).
+          echo "$HOME/.local/share/mise/shims" >> "$GITHUB_PATH"
 
       - name: Seed chezmoi.toml + symlink source
         run: |
