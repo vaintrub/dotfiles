@@ -2,7 +2,11 @@ name: ci
 on:
   push:
     branches: [master, "chore/**", "feat/**", "fix/**", "docs/**"]
-  pull_request:
+  # `pull_request` deliberately omitted: solo repo, no fork PRs expected.
+  # Pushes to branches above already cover PR sync (PR view shows latest
+  # push's CI status). Re-enable if external contributors start opening PRs
+  # from forks (push trigger doesn't fire on fork sources; only
+  # `pull_request_target` or `pull_request` does).
 
 jobs:
   unit:
