@@ -1,6 +1,6 @@
 # Working in this repo — guide for AI agents (Claude Code, OpenAI Codex CLI)
 
-Auto-loaded by both tools when `cwd` is anywhere under `~/dotfiles/`:
+Auto-loaded by both tools when `cwd` is anywhere under the chezmoi source dir (`~/.local/share/chezmoi/`, optionally symlinked as `~/dotfiles/`):
 Claude reads `CLAUDE.md` (symlinked to this file); Codex reads `AGENTS.md` directly.
 Everything below is **this repo's** conventions; for general behavioural rules
 see the global `~/.claude/CLAUDE.md` / `~/.codex/AGENTS.md`.
@@ -8,10 +8,14 @@ see the global `~/.claude/CLAUDE.md` / `~/.codex/AGENTS.md`.
 ## 1. What this repo is
 
 Personal cross-platform (macOS + Linux) dotfiles managed with
-[dotbot](https://github.com/anishathalye/dotbot). It is also the source of
-truth for portable **Claude Code** + **OpenAI Codex** configs — `~/.claude/`
-and `~/.codex/` are symlinks into this repo. Single source of truth, single
-`./install`, identical state on every device.
+[chezmoi](https://www.chezmoi.io/). It is also the source of truth for portable
+**Claude Code** + **OpenAI Codex** configs. Single source of truth, single
+`chezmoi apply` / `chezmoi update`, identical state on every device.
+
+Bootstrap on a new machine:
+```sh
+sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply vaintrub
+```
 
 ## 2. Map of the repo
 
@@ -19,120 +23,216 @@ and `~/.codex/` are symlinks into this repo. Single source of truth, single
 
 | Path | What it is |
 |---|---|
-| `zshrc`, `zsh_plugins.txt`, `p10k.zsh` | zsh + antidote + Powerlevel10k |
-| `vimrc` | vim + vim-plug |
-| `tmux/tmux.conf.local` | tmux customizations on top of gpakosz |
-| `iterm/com.googlecode.iterm2.plist` | iTerm2 preferences (binary plist) |
-| `claude/` | Claude Code: instructions, settings, rules, statusline, agents, skills |
-| `codex/` | Codex CLI: AGENTS.md, config.toml, skills, awk filter |
-| `.install.conf.yaml` | dotbot links + shell hooks |
-| `install` | bootstrap script (hard prereq checks + submodule init + dotbot) |
+| `dot_zshrc`, `dot_zsh_plugins.txt`, `dot_p10k.zsh` | zsh + antidote + Powerlevel10k |
+| `dot_vimrc` | vim + vim-plug |
+| `symlink_dot_tmux.conf`, `dot_tmux.conf.local` | tmux: symlink to oh-my-tmux external (so gpakosz's shell-as-config trick works) + our customizations |
+| `iterm/com.googlecode.iterm2.plist` | real iTerm2 binary plist (chezmoi-ignored). iTerm2 reads + writes here directly via `PrefsCustomFolder` (set by run_once_after script) |
+| `dot_claude/` | Claude Code: instructions, settings (modify_), statusline, agents, skills, rules |
+| `dot_codex/` | Codex CLI: AGENTS.md, config.toml (modify_), shared skills (symlink) |
+| `.chezmoidata/packages.yaml` | single source of truth for all packages (Mac brews/casks, Linux apt/dnf/npm) AND Claude/Codex plugin lists |
+| `.chezmoiscripts/` | install hooks (run_once_after_*, run_onchange_after_*). Per-OS subdirs: `darwin/`, `linux/`. Numerical prefix (50/60/70/80) controls ordering within `run_onchange_after_` group |
+| `.chezmoihooks/` | hook scripts registered in `.chezmoi.toml.tmpl`. `ensure-prereqs.sh` runs BEFORE source-state read on every apply, installing minimum tools (git/zsh/vim/tmux/curl + brew on Mac) |
+| `.chezmoitemplates/` | shared template partials (base configs read by `modify_` scripts via `includeTemplate`, not applied to $HOME) |
+| `lib/` | shell libraries sourced by `.chezmoiscripts/*` wrappers via `{{ .chezmoi.sourceDir }}/lib/X.sh`. Pure POSIX `sh`, no template syntax. Chezmoi-ignored so it never deploys to $HOME — also makes the libraries `source`-able by bats unit tests with mocked externals. |
+| `tests/files/*.bats` | post-apply asserts (CI: dotfile presence, tool functionality, content sanity). Profile-tagged (`common.bats` covers `core` tier today). |
+| `tests/unit/*.bats` | function-level unit tests on `lib/*.sh`. Source the lib with `INSTALL_PACKAGES_INVOKE` unset so `main` doesn't auto-run, then mock externals (`sudo`/`apt-get`/`mise`/`id`) to drive each function's branches. |
+| `.github/workflows/ci.yaml` | GitHub Actions: `unit` job (bats `tests/unit/`) → `apply-core` job (chezmoi apply in devcontainer + bats `tests/files/`). Triggers on push (master, chore/**, feat/**, fix/**, docs/**) + PRs. |
+| `.chezmoiversion`, `.chezmoiremove.tmpl` | chezmoi-native metadata: minimum-version pin + deprecation-tracking list |
+| `.chezmoi*.{toml.tmpl,ignore,external.toml.tmpl}` | chezmoi metadata (templated) |
 | `README.md`, `LICENSE` | docs / license |
-| `AGENTS.md` (this file), `CLAUDE.md` (symlink → this file) | repo-level AI guide |
+| `AGENTS.md` (this file), `CLAUDE.md` → `AGENTS.md` (symlink) | repo-level AI guide |
 
 ### Vendored / managed (don't edit directly)
 
 | Path | Source | How to influence it |
 |---|---|---|
-| `.dotbot/` | github.com/anishathalye/dotbot submodule | upstream only |
-| `tmux/oh-my-tmux/` | github.com/gpakosz/.tmux submodule | customize via `tmux/tmux.conf.local` |
-| `codex/skills/.system/` | Codex's built-in skills, gitignored | Codex auto-manages |
+| `~/.config/tmux/` | gpakosz/.tmux archive, pinned by commit SHA in `.chezmoiexternal.toml.tmpl` | bump SHA → `chezmoi apply -R` → commit |
+| `dot_claude/skills/.system/` | Codex's built-in skills (written through the codex→claude skills symlink); `.gitignore`d | Codex auto-manages |
+| `~/.cache/chezmoi/` | chezmoi external cache (outside repo) | chezmoi-managed |
 
-## 3. Symlink table (source of truth for Claude / Codex)
+## 3. Source-state naming (chezmoi conventions)
 
-| Live path | Real path |
+The mapping from source file name to live `$HOME` path is mechanical and chezmoi-defined:
+
+| Source attribute | Effect |
 |---|---|
-| `~/.claude/CLAUDE.md` | `~/dotfiles/claude/CLAUDE.md` |
-| `~/.claude/settings.json` | `~/dotfiles/claude/settings.json` |
-| `~/.claude/statusline-command.sh` | `~/dotfiles/claude/statusline-command.sh` |
-| `~/.claude/agents` | `~/dotfiles/claude/agents` |
-| `~/.claude/skills` | `~/dotfiles/claude/skills` |
-| `~/.claude/rules` | `~/dotfiles/claude/rules` |
-| `~/.codex/AGENTS.md` | `~/dotfiles/codex/AGENTS.md` |
-| `~/.codex/config.toml` | `~/dotfiles/codex/config.toml` |
-| `~/.codex/skills` | `~/dotfiles/codex/skills` |
+| `dot_X` | becomes `.X` in target ($HOME) |
+| `executable_X` | mode +x |
+| `private_X` | mode 0600 (or 0700 dir) |
+| `readonly_X` | mode 0400 |
+| `symlink_X` | becomes a symbolic link; file content = link target string |
+| `modify_X` | runs as a script: stdin = existing file content, stdout = new file content |
+| `modify_X` + `#chezmoi:modify-template` annotation | template; `.chezmoi.stdin` = existing; output = new content |
+| `.tmpl` suffix | file rendered as Go template before use |
+| `.chezmoiscripts/run_*` | scripts that don't create `$HOME` files (bootstrap, install hooks) |
 
-**Always edit the dotfiles path**, never the live symlink — the diff stays
-unambiguous and the source of truth is clear to anyone reviewing.
+Live ↔ source mapping for our key paths:
+
+| Live ($HOME) | Source (this repo) | Pattern |
+|---|---|---|
+| `~/.zshrc` | `dot_zshrc` | plain |
+| `~/.zsh_plugins.txt` | `dot_zsh_plugins.txt` | plain (antidote static-cache input) |
+| `~/.zshrc_local` | `create_dot_zshrc_local` | `create_`: seeded ONCE at first apply with commented stub, then never overwritten. Per-machine override file (sourced last by `~/.zshrc`). |
+| `~/.vimrc` | `dot_vimrc` | plain |
+| `~/.p10k.zsh` | `dot_p10k.zsh` | plain (generated by `p10k configure`) |
+| `~/.tmux.conf` | `symlink_dot_tmux.conf` (body: `.config/tmux/.tmux.conf`) | symlink (gpakosz's shell-as-config trick requires `$TMUX_CONF` to point at gpakosz's file, not a 1-liner wrapper) |
+| `~/.tmux.conf.local` | `dot_tmux.conf.local` | plain |
+| `~/.gitconfig` | `dot_gitconfig.tmpl` | Go template (renders `[user]` block conditionally; `[core] hooksPath` for gitleaks; `[delta]` block iff delta on PATH at apply time) |
+| `~/.gitignore_global` | `dot_gitignore_global` | plain (referenced by `core.excludesFile` in dot_gitconfig.tmpl; OS junk + editor backups) |
+| (no `~/.Brewfile`) | `.chezmoidata/packages.yaml` | rendered inline by install-packages script and piped to `brew bundle --file=/dev/stdin` |
+| `~/.claude/CLAUDE.md` | `dot_claude/CLAUDE.md` | plain |
+| `~/.claude/settings.json` | `dot_claude/modify_settings.json.tmpl` + `.chezmoitemplates/claude-settings-base.json` | modify_ jq merge |
+| `~/.claude/statusline-command.sh` | `dot_claude/executable_statusline-command.sh` | plain +x |
+| `~/.claude/rules/*.md` | `dot_claude/rules/*.md` | plain |
+| `~/.claude/skills/save-to-dotfiles/SKILL.md` | `dot_claude/skills/save-to-dotfiles/SKILL.md` | plain |
+| `~/.codex/AGENTS.md` | `dot_codex/AGENTS.md.tmpl` | Go template (renders `@{{ .chezmoi.homeDir }}/.codex/RTK.md` to absolute path) |
+| `~/.codex/config.toml` | `dot_codex/modify_config.toml` + `.chezmoitemplates/codex-config-base.toml` | modify-template (fromToml / toToml) |
+| `~/.codex/skills/save-to-dotfiles/SKILL.md` | `dot_codex/skills/save-to-dotfiles/symlink_SKILL.md` (body: `../../../.claude/skills/save-to-dotfiles/SKILL.md`) | file-level symlink to Claude's copy (single source for the only chezmoi-managed shared skill) |
+| iTerm2 plist | `iterm/com.googlecode.iterm2.plist` (source root, chezmoi-ignored) | iTerm2 reads + writes directly via `PrefsCustomFolder` setting (no chezmoi-managed symlink) |
+| `~/.config/tmux/` | `.chezmoiexternal.toml.tmpl` | archive external |
+| `~/.config/mise/config.toml` | `dot_config/mise/config.toml.tmpl` | Go template (profile-aware: core tier = fzf+zoxide only; dev/workstation = full toolchain) |
+| `~/.config/git/hooks/pre-push` | `dot_config/git/hooks/executable_pre-push` | plain +x. Wired globally via `core.hooksPath = ~/.config/git/hooks` in `dot_gitconfig.tmpl`. Runs `gitleaks git --log-opts=<remote..local>` against outbound commits; fails-open when `gitleaks` not on PATH (core-profile machines without dev toolchain). Per-repo opt-out: `git config --local core.hooksPath ''`. |
+| `~/Library/Fonts/MesloLGS NF *.ttf` + `MonaspaceNeon-*.otf` (Mac) or `~/.local/share/fonts/...` (Linux) | `.chezmoiexternal.toml.tmpl` | externals (4 MesloLGS NF files + 4 Monaspace Neon via archive-file from the static release zip; headless-skip) |
+
+**Always edit the source path**, never the live target — the diff stays in source, ready to commit.
+
+Source-of-truth location is `~/.local/share/chezmoi/` — chezmoi's default (XDG_DATA_HOME compliant). No `sourceDir` override in `~/.config/chezmoi/chezmoi.toml`. On my Mac there is a back-compat symlink `~/dotfiles → ~/.local/share/chezmoi/` for muscle memory; not required.
 
 ## 4. Per-area conventions
 
-### zsh — `zshrc` / `zsh_plugins.txt` / `p10k.zsh`
+### zsh — `dot_zshrc` / `dot_zsh_plugins.txt` / `dot_p10k.zsh`
 
 - **Section dividers**: `# --- xxx ---`. Each logical section gets its own header.
 - **Plugins**: managed by [antidote](https://github.com/mattmc3/antidote) in
-  static-cache mode. Add a line to `zsh_plugins.txt`; the cache rebuilds on
+  static-cache mode. Add a line to `dot_zsh_plugins.txt`; cache rebuilds on
   next shell start.
-- **`p10k.zsh`** is GENERATED by `p10k configure` — don't hand-edit for major
-  theme changes (rerun `p10k configure` instead). One-line tweaks (e.g. an
-  individual `POWERLEVEL9K_*` override) in-place are fine.
-- **`code()` function** is non-trivial — see comment block in `zshrc` for
+- **`dot_p10k.zsh`** is GENERATED by `p10k configure` — don't hand-edit for
+  major theme changes. One-line `POWERLEVEL9K_*` overrides in-place are fine.
+- **`code()` function** is non-trivial — see comment block in `dot_zshrc` for
   VSCode Remote-SSH IPC-socket sweep and URL-fallback rationale.
-- **SSH visual tints** at the bottom of `zshrc` are **coordinated with
-  `tmux/tmux.conf.local` palette**. Touching one without the other breaks
-  hue alignment (see §10).
+- **SSH visual tints** at the bottom of `dot_zshrc` are **coordinated with
+  `dot_tmux.conf.local` palette**. See §10.
+- **Cross-platform via runtime feature detection** (`command -v X`,
+  `case "$(uname -s)"` inside the file). chezmoi templates not used here —
+  the file applies as-is on Mac and Linux.
 
-### vim — `vimrc`
+### vim — `dot_vimrc`
 
 - **vim-plug bootstrap** at the top auto-installs on first launch.
-- **Plugins** go inside the `call plug#begin … call plug#end` block; run
+- **Plugins** inside the `call plug#begin … call plug#end` block; run
   `:PlugInstall` in vim after adding.
-- **Comments in English** (we standardized; matches the rest of the repo).
+- Comments in English.
 
-### tmux — `tmux/tmux.conf.local`
+### tmux — `dot_tmux.conf` + `dot_tmux.conf.local`
 
-- **Only `tmux.conf.local` is ours.** `tmux/oh-my-tmux/` is the gpakosz
-  submodule — **never edit there**.
-- **Prefix** is `C-a` (screen-style), `C-b` unbound.
-- **Reload after change**: `prefix r` in a running tmux session.
-- Customizations group: own keybindings/colours at the top; `tmux_conf_*=`
-  flags (gpakosz native variables) below. See file header for boundaries.
+- **`dot_tmux.conf`** is a 1-liner: `source-file ~/.config/tmux/.tmux.conf`.
+  That target file comes from the **chezmoi external** (gpakosz/.tmux archive,
+  SHA-pinned in `.chezmoiexternal.toml.tmpl`).
+- **`dot_tmux.conf.local`** is OUR customization layer (sources after the
+  upstream one per oh-my-tmux convention).
+- **NEVER edit `~/.config/tmux/.tmux.conf`** directly — it's auto-extracted
+  from the upstream archive and re-extracted on every `chezmoi apply -R`.
+- Bump cycle: pick newer commit SHA from gpakosz/.tmux, edit URL in
+  `.chezmoiexternal.toml.tmpl`, `chezmoi apply -R`, commit.
+- Prefix is `C-a` (screen-style), `C-b` unbound.
+- Reload after change: `prefix r` in a running tmux session.
 
 ### iTerm2 — `iterm/com.googlecode.iterm2.plist`
 
-- **Binary plist** — do NOT hand-edit. Two safe paths:
-  - **Surgical key edit**: `defaults write com.googlecode.iterm2 <key> ...`
-  - **GUI round-trip**: edit prefs in iTerm2 → `cp ~/Library/Preferences/com.googlecode.iterm2.plist iterm/`
-- iTerm2 reads this folder via `PrefsCustomFolder` (set by `./install`).
-- **Reload**: quit and relaunch iTerm2 ("Don't Save" if prompted).
-- Trigger action names are bare ObjC class names (`ScriptTrigger`, not the
-  GUI label) — see "Gotcha" in README iTerm2 section.
+- **Binary plist**, do NOT hand-edit. Edit via iTerm2 GUI → preferences
+  written directly into `~/.local/share/chezmoi/iterm/com.googlecode.iterm2.plist`
+  → `git status` (in source) shows the dirty plist for review.
+- The path `iterm/` at source root is INTENTIONALLY outside `dot_*` so chezmoi
+  doesn't try to apply it (it's in `.chezmoiignore`). iTerm2 reads + writes
+  here directly via `PrefsCustomFolder` setting.
+- **No symlink in `~/.config/iterm/`** — that would clash visually with
+  iTerm2's own `~/.config/iterm2/` (AppSupport + sockets dir).
+  `PrefsCustomFolder` is set to `<sourceDir>/iterm/` (renders to
+  `/Users/vaintrub/.local/share/chezmoi/iterm/` on this machine), so iTerm2
+  operates directly on the source-tracked binary.
+- `PrefsCustomFolder` is set on first apply by
+  `.chezmoiscripts/darwin/run_once_after_configure-iterm2.sh.tmpl`.
+- Reload: quit and relaunch iTerm2 (answer "Don't Save" only if you don't want
+  your live edits persisted to source).
 
-### claude/ — Claude Code
+### Claude Code — `dot_claude/`
 
 - See **§5 Three gates** for "save this globally" intents.
-- `claude/rules/*.md` are auto-loaded by Claude every session. Optional
+- `dot_claude/rules/*.md` are auto-loaded by Claude every session. Optional
   `paths:` glob in frontmatter makes a rule load only when matching files
   are open.
-- `claude/skills/*/SKILL.md` are discoverable skills, intent-matched via
+- `dot_claude/skills/*/SKILL.md` are discoverable skills, intent-matched via
   the frontmatter `description` field.
-- `claude/settings.json` carries permissions / statusline / plugin enables.
-- `claude/agents/` and `claude/skills/` directories use `.gitkeep` so
-  they stay tracked when empty. `claude/skills/save-to-dotfiles/` is the
-  first real skill (see §5); add new agents/skills as sibling subdirs.
+- **`dot_claude/modify_settings.json.tmpl`** uses jq-additive merge to preserve
+  keys added by `rtk init`, `claude plugin install`, etc. See §9.
+- The curated base lives at `.chezmoitemplates/claude-settings-base.json`
+  (canonical chezmoi location for files read by templates but not applied);
+  loaded via `includeTemplate "claude-settings-base.json" .`.
 
-### codex/ — OpenAI Codex CLI
+### Codex — `dot_codex/`
 
-- `codex/AGENTS.md` is Codex's global instructions (analogue of `CLAUDE.md`).
-- `codex/config.toml` carries model + reasoning effort + plugin enables.
-  Runtime-mutated sections are stripped by the git clean filter (§9).
-- `codex/skills/*/SKILL.md` mirror Claude skills. A skill can be shared
-  across both tools via a symlink (e.g. `codex/skills/save-to-dotfiles →
-  ../../claude/skills/save-to-dotfiles`).
-- Codex auto-creates `codex/skills/.system/` for its built-in skills;
-  that path is `.gitignore`d at repo root.
+- `dot_codex/AGENTS.md` is Codex's global instructions (analogue of CLAUDE.md).
+- **`dot_codex/modify_config.toml`** uses chezmoi-native `fromToml` / `toToml`
+  via `#chezmoi:modify-template` annotation. See §9.
+- The curated base lives at `.chezmoitemplates/codex-config-base.toml`
+  (canonical chezmoi location); loaded via
+  `includeTemplate "codex-config-base.toml" .`.
+- `dot_codex/skills/save-to-dotfiles/symlink_SKILL.md` makes the
+  `save-to-dotfiles` skill visible to Codex via a FILE-level symlink to
+  Claude's copy at `~/.claude/skills/save-to-dotfiles/SKILL.md`. The
+  `~/.codex/skills/` directory is otherwise its own dir (NOT a dir-level
+  symlink to `~/.claude/skills/`) — earlier dir-symlink design caused
+  cross-contamination (skills installed for Codex leaked into Claude's
+  scan path → duplicate registrations). Caveman uses Claude's plugin
+  install for its Claude side; Codex side is manual (`npx skills add ...
+  -a codex` doesn't currently wire per-agent symlinks).
 
-### dotbot — `.install.conf.yaml` + `install`
+### Bootstrap scripts — `.chezmoiscripts/`
 
-- **`link:`** entries create symlinks under `$HOME`. `force: true` replaces
-  any pre-existing file at the target path.
-- **`clean: ['~', '~/.claude', '~/.codex']`** sweeps broken symlinks at these
-  paths on each `./install`. dotbot doesn't recurse, so each subdir we own
-  must be listed.
-- **`shell:`** hooks run in order during `./install`. Must work in POSIX `sh`
-  (`/bin/sh` on Ubuntu is `dash`) — no bashisms. See §8.
-- **`./install` is idempotent** — every hook checks state before mutating
-  and prints "already X" when there's nothing to do.
+Scripts here don't create `$HOME` files (no `dot_*` sibling). They run as part
+of `chezmoi apply`:
+
+- **`run_once_before_*`** — run ONCE per machine, BEFORE file ops. Used for
+  hard prereq checks (zsh/vim/tmux), brew install (Mac).
+- **`run_onchange_after_*`** — run AFTER all file ops, only when script
+  contents change (chezmoi tracks hash). Used for brew bundle, rtk install,
+  caveman install.
+- **`run_once_after_*`** — run ONCE per machine, AFTER file ops. Used for
+  iTerm2 `defaults write PrefsCustomFolder`.
+
+All scripts are templates (`.tmpl`) — OS branching via `{{ if eq .chezmoi.os "darwin" }}`,
+runtime feature detection via `command -v X`, etc.
+
+Distro dispatch keys off `.osid` — a composite key derived once in
+`.chezmoi.toml.tmpl` from `.chezmoi.os` + `.chezmoi.osRelease.id`:
+
+- `darwin`
+- `linux-ubuntu`, `linux-debian`, `linux-fedora`, `linux-pop`, ...
+
+Use as `{{ if eq .osid "linux-ubuntu" "linux-debian" }}` or via a
+predicate function in `lib/install-packages.sh::is_debian_family`.
+Fall back to `.chezmoi.osRelease.idLike` for derivatives that don't
+match the canonical `id` list (Pop!_OS, Mint, Raspbian).
+
+### Bootstrap script split — thin wrapper + `lib/`
+
+The biggest install script (`run_onchange_after_50-install-packages.sh.tmpl`)
+is intentionally a 25-LOC wrapper that:
+
+1. Renders chezmoi facts (profile, osid, osRelease.idLike, every package
+   list from `.chezmoidata/packages.yaml`) into `DOTFILES_*` env vars.
+2. Sets `INSTALL_PACKAGES_INVOKE=1` and sources
+   `{{ .chezmoi.sourceDir }}/lib/install-packages.sh`.
+
+The library is pure POSIX `sh` with no template syntax — bats unit tests
+under `tests/unit/install-packages.bats` `source` it (with the invoke
+flag unset so `main` doesn't auto-run) and exercise each function with
+mocked `sudo`/`apt-get`/`mise`/`id`. Pattern: shunk031/dotfiles
+(https://github.com/shunk031/dotfiles) testable-dotfiles convention.
+
+When adding a new install script that has non-trivial logic, follow the
+same split: wrapper renders env, library implements the logic, bats tests
+the library.
 
 ## 5. Saving portable settings — three gates
 
@@ -147,67 +247,102 @@ The gates, in summary:
 absolute local path, a specific hostname, hardware-specific behaviour,
 secrets / tokens, or per-machine auth state — it's **not** for dotfiles.
 Suggest a local alternative: `~/.zshrc.local`, an env var, 1Password,
-or per-machine `settings.local.json`.
+or per-machine `~/.claude/settings.local.json`.
 
 ### Gate 2 — Platform
-*Cross-platform, macOS-only, or Linux-only?* Wrap macOS-only logic with
-`[ "$(uname -s)" = "Darwin" ]`; Linux-only with `"Linux"`; conditional
-on tool availability with `command -v X >/dev/null 2>&1`. If unsure, ask
-the user explicitly.
+*Cross-platform, macOS-only, or Linux-only?* For shell hooks, wrap macOS-only
+logic with `{{ if eq .chezmoi.os "darwin" }}`; Linux-only with `"linux"`;
+conditional on tool availability with `command -v X >/dev/null 2>&1`.
+If unsure, ask the user explicitly.
 
 ### Gate 3 — Routing
 *Which file does this belong in?* Use the skill's routing table (alias →
-zshrc, vim setting → vimrc, tmux binding → `tmux.conf.local`, Claude rule
-→ `claude/rules/<name>.md`, etc.). When multiple targets are reasonable,
-propose options, don't guess.
+`dot_zshrc`, vim setting → `dot_vimrc`, tmux binding → `dot_tmux.conf.local`,
+Claude rule → `dot_claude/rules/<name>.md`, etc.). When multiple targets
+are reasonable, propose options, don't guess.
 
-Full procedure including taxonometers and the routing table lives in the
-skill body: see `claude/skills/save-to-dotfiles/SKILL.md`.
+Full procedure including taxonometers and routing table lives in the skill
+body: see `dot_claude/skills/save-to-dotfiles/SKILL.md`.
 
-## 6. dotbot workflow
+## 6. chezmoi workflow
 
-### Modifying an existing symlinked file
+### Modifying an existing managed file
 
-1. Edit the **dotfiles target path** (not the symlink itself).
-2. No `./install` needed — the symlink resolves to the new content automatically.
+```sh
+chezmoi edit ~/.zshrc        # opens dot_zshrc in $EDITOR; chezmoi knows the mapping
+# or:
+chezmoi cd                   # opens subshell in source dir (~/.local/share/chezmoi/)
+$EDITOR dot_zshrc            # direct edit of source
+chezmoi diff                 # preview what would change in $HOME
+chezmoi apply                # write changes to $HOME
+```
 
-### Adding a NEW symlink
+Then commit (still inside the `chezmoi cd` subshell):
+```sh
+git commit -am '...'
+git push
+exit                          # leave the chezmoi-cd subshell
+```
 
-1. Create the source file: `~/dotfiles/<area>/<file>`.
-2. Add a `link:` entry to `.install.conf.yaml` mapping live → dotfiles.
-3. `cd ~/dotfiles && ./install` to create the symlink.
+### Adding a NEW managed file
+
+```sh
+chezmoi add ~/.foo            # copy live file → dot_foo in source
+chezmoi cd                    # opens shell in source dir
+$EDITOR dot_foo               # customize
+chezmoi apply                 # write back to $HOME
+```
 
 ### Adding an install-time hook
 
-1. Add a `shell:` entry to `.install.conf.yaml`.
-2. **POSIX `sh` only** (see §8). OS-branch with `case "$(uname -s)" in Darwin) … ;; Linux) … ;; esac`.
-3. Be idempotent — check before mutating, print "already X" when done.
+1. Create file in `.chezmoiscripts/run_<when>_<name>.sh.tmpl`. Prefix:
+   - `run_once_before_` — runs once per machine, before file ops
+   - `run_onchange_after_` — runs when content hash changes, after file ops
+   - `run_once_after_` — runs once per machine, after file ops
+2. POSIX `sh` only (template renders, then runs).
+3. OS-branch via `{{ if eq .chezmoi.os "darwin" }}` template directive.
+4. Be idempotent — check before mutating, print "Already X" when done.
+
+### Bumping the oh-my-tmux external
+
+```sh
+# 1. Find newer SHA: https://github.com/gpakosz/.tmux/commits/master
+# 2. Edit .chezmoiexternal.toml.tmpl — replace SHA in URL
+# 3. Force refresh + apply:
+chezmoi apply -R
+# 4. Commit
+chezmoi cd && git commit -am 'tmux: bump oh-my-tmux to <SHA>' && exit
+```
 
 ## 7. Cross-platform conventions
 
 ### Hard prerequisites
-`git`, `python3`, `zsh`, `vim`, `tmux`. The `install` script fails fast with
-`brew install …` / `apt install …` suggestion if any is missing.
+`git`, `zsh`, `vim`, `tmux`, `curl`. Installed automatically by
+`.chezmoihooks/ensure-prereqs.sh` (registered as `hooks.read-source-state.pre`
+in `.chezmoi.toml.tmpl`) on every apply — runs apt/dnf on Linux, brew on Mac.
+Hook skips with a warning if non-interactive (sudo prompt would block).
 
 ### Soft prerequisites (per-feature, skip with reason if missing)
-`brew` (macOS casks), `curl` + `fontconfig` (Linux fonts), `claude`,
-`codex`, `code`, `fnm`, `zoxide`. Missing tool → that feature skips with
-a printed reason, not a hard fail.
+`brew` on Mac + `mise` cross-platform (both installed by the prereqs hook);
+`claude`, `codex`, `code`, `zoxide` — installed by
+`run_onchange_after_50-install-packages.sh.tmpl` from `.chezmoidata/packages.yaml`.
+Each is guarded with `command -v` in scripts + zshrc — missing → feature skips,
+not a hard fail. `mise` then materializes the toolchain per
+`dot_config/mise/config.toml.tmpl` (profile-aware: `core` = fzf+zoxide only;
+`dev`/`workstation` = full set including Go/Python/Node/Rust + 25 aqua tools).
 
-### Headless SSH detection
+### Headless SSH detection (for things like font install)
 ```sh
 [ -n "$SSH_CONNECTION" ] && [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ]
 ```
-Used to skip font install on remote machines (glyphs render on the local
-terminal — the remote box never sees them).
 
-### OS branching pattern
-```sh
-case "$(uname -s)" in
-  Darwin) … ;;
-  Linux)  … ;;
-  *)      echo "Unsupported OS: $(uname -s)" >&2 ; exit 1 ;;
-esac
+### OS branching pattern in .tmpl files
+```
+{{ if eq .chezmoi.os "darwin" -}}
+  # macOS-only block
+{{- else if eq .chezmoi.os "linux" -}}
+  # Linux-only block
+{{- end }}
 ```
 
 ## 8. Shell conventions
@@ -216,43 +351,51 @@ esac
 
 | File | Dialect | Notes |
 |---|---|---|
-| `zshrc`, `p10k.zsh` | **zsh 5+** | Use zsh-specific features freely: `zsocket`, glob qualifiers `(Nom)`, `typeset`, `[[ ]]`, `${var:A}` |
-| `install` | **bash** | `set -e` at top, `[[ ]]` OK, `(( … ))` for arithmetic, `${#arr[@]}` for arrays |
-| `.install.conf.yaml` `shell:` hooks | **POSIX `sh`** (runs under `dash` on Ubuntu) | **NO bashisms**: no `[[ ]]`, no arrays, no `${var^^}`, no `<()`, no `local` |
-| `claude/statusline-command.sh` | **POSIX `sh`** | shebang `#!/bin/sh`, `jq` allowed (it's the standard tool here) |
-| `codex/scripts/*.awk` | **POSIX awk** | gnu/mawk-compatible |
+| `dot_zshrc`, `dot_p10k.zsh` | **zsh 5+** | Full zsh syntax: `zsocket`, glob qualifiers `(Nom)`, `typeset`, `[[ ]]`, `${var:A}` |
+| `.chezmoiscripts/*.sh.tmpl` | **POSIX `sh`** | No bashisms — must work in `dash`. Templates render to `sh` scripts. |
+| `dot_claude/executable_statusline-command.sh` | **POSIX `sh`** | `#!/bin/sh`, `jq` allowed (standard here) |
+| `dot_claude/modify_settings.json` | **POSIX `sh`** | jq-based merge, runs on every apply |
+| `dot_codex/modify_config.toml` | **Go template** | `#chezmoi:modify-template` annotation, uses chezmoi `fromToml`/`toToml`/`mergeOverwrite` |
 
 ### Lint
-- `shellcheck install` — clean (bash mode)
-- `shellcheck -s sh codex/scripts/...` if shell hooks become non-trivial
-- `shellcheck` doesn't support zsh — `zshrc` / `p10k.zsh` are not linted
+- `shellcheck` for shell scripts in `.chezmoiscripts/` and `dot_claude/`
+- `shellcheck` doesn't support zsh — `dot_zshrc` / `dot_p10k.zsh` not linted
 
 ### Style
-- **Indent**: 4 spaces (matches `install` + `.install.conf.yaml`)
+- **Indent**: 4 spaces
 - **Quote variables**: `"$var"` always. Exception: intentional glob expansion.
-- **Tests**: `[ "$x" = "y" ]` (POSIX) or `[[ ]]` (bash/zsh) — never `[ $x == $y ]`
+- **Tests**: `[ "$x" = "y" ]` (POSIX) — never `[ $x == $y ]`
 - **Feature detection**: `command -v foo >/dev/null 2>&1`, never `which`
-- **Idempotency in hooks**: check state first, print "Already X" when there's nothing to do
-- **Output**: prefer `printf '%s\n' "$x"` over `echo -e`; `echo` is fine for plain strings
+- **Idempotency**: check state first, print "Already X" when there's nothing to do
 
-## 9. Codex git clean filter
+## 9. Codex runtime-section strip (via chezmoi `modify_`)
 
-`~/.codex/config.toml` is symlinked into `codex/config.toml`. Codex auto-writes
-several sections (`[projects."<path>"]`, `[notice]`, `[tui.*]`, `[tool_suggest]`,
-top-level `windows_wsl_setup_acknowledged`) into that file after every session.
+Codex auto-writes several sections into `~/.codex/config.toml` after every
+session: `[projects."<path>"]` (trust state), `[notice]` (UI dismissals),
+`[tui.*]` (theme + NUX counters), `[tool_suggest]` (disabled tools),
+top-level `windows_wsl_setup_acknowledged`.
 
-A `clean` filter at `codex/scripts/strip-runtime-sections.awk` strips these on
-`git add`; the matching `smudge = cat` half is identity passthrough on
-checkout. Both halves are **required** (`required = true`) — without smudge,
-`git checkout` of any branch touching `codex/config.toml` fails with
-`fatal: ... smudge filter codex-strip failed`.
+These are per-machine runtime state — we don't sync them across machines.
+`dot_codex/modify_config.toml` handles this: on every `chezmoi apply`,
+the existing target file is piped in, runtime sections are dropped via
+chezmoi's `fromToml` / `unset` template functions, our curated base from
+`.chezmoitemplates/codex-config-base.toml` is `mergeOverwrite`-ed on top,
+then serialized back via `toToml`. Idempotent — applies don't grow the file.
 
-The filter is registered per-clone by `./install`'s shell hook.
+The annotation `#chezmoi:modify-template` at the top of the file tells
+chezmoi to render it as a Go template (not run as a script) and exposes
+the existing target file's contents as `.chezmoi.stdin`.
 
 When the **`ConfigEdit` enum** in
 [`codex-rs/core/src/config/edit.rs`](https://github.com/openai/codex/tree/main/codex-rs/core/src/config/edit.rs)
-gains a new variant, mirror it in `codex/scripts/strip-runtime-sections.awk`'s
-section-skip regex.
+gains a new runtime section variant, add it to the `unset` chain in
+`dot_codex/modify_config.toml`.
+
+`dot_claude/modify_settings.json.tmpl` does the analogous thing for Claude
+Code, but via shell + jq (instead of pure Go template) — Claude's
+`settings.json` is JSON, easier to merge with jq's `*` deep-merge operator.
+Both modify_ scripts pull their base from `.chezmoitemplates/` via
+`includeTemplate`.
 
 ## 10. Visual coordination — SSH cues
 
@@ -260,19 +403,18 @@ Three coordinated signals so I can't type into the wrong machine by accident:
 
 | Cue | Source | Colour | Hex |
 |---|---|---|---|
-| p10k prompt `❯` | `zshrc` line ~136 | orange 208 | `#ff8700` |
-| tmux bar background | `zshrc` lines ~149-151 | dark amber | `#5f2f00` |
-| p10k REMOTE context segment | `p10k.zsh` | peach 180 | `#d7af87` |
+| p10k prompt `❯` | `dot_zshrc` line ~136 | orange 208 | `#ff8700` |
+| tmux bar background | `dot_zshrc` lines ~149-151 | dark amber | `#5f2f00` |
+| p10k REMOTE context segment | `dot_p10k.zsh` | peach 180 | `#d7af87` |
 
 All three share ~30° hue (orange / amber / peach). When changing any of them,
 **preserve the hue family**. The dark amber for tmux bg must keep gpakosz's
-grey #8a8a8a icons at WCAG AA-Large (3.21:1) — don't darken further without
+grey `#8a8a8a` icons at WCAG AA-Large (3.21:1) — don't darken further without
 checking contrast.
 
-The tmux overrides live in `zshrc` (not `tmux.conf.local`) because gpakosz's
-`_apply_theme` reads `tmux_conf_*` via `printenv` — values must be in the env
-**before** the tmux server starts. A `${SSH_CONNECTION:+…}` branch inside
-`.tmux.conf.local` would reach the helper as a literal string and get rejected.
+The tmux overrides live in `dot_zshrc` (not `dot_tmux.conf.local`) because
+gpakosz's `_apply_theme` reads `tmux_conf_*` via `printenv` — values must
+be in the env **before** the tmux server starts.
 
 ## 11. Git commit conventions (this repo)
 
@@ -286,25 +428,36 @@ Observed prefixes (in `git log`):
 | `chore:` | housekeeping (whitespace, deps, license) |
 | `tweak:` | small adjustment to existing feature |
 | `revert:` | undo a previous change |
-| area-prefixed (`tmux:`, `iterm:`, `code:`, `install:`, `zshrc:`) | when the change is scoped to one area |
+| area-prefixed (`tmux:`, `iterm:`, `code:`, `chezmoi:`, `zshrc:`) | when the change is scoped to one area |
 
 Rules:
 - **Short, lowercase, imperative** — max 72 chars on summary line
 - **No AI attribution** (`Co-Authored-By: Claude` / `Codex` etc.)
 - **NEW commits**, not amends, unless explicitly requested
-- **Body explains WHY** when non-obvious; the `what` is in the diff
+- **Body explains WHY** when non-obvious
 - **Branch names**: kebab-case, prefix `feature/`, `fix/`, `docs/`, `chore/`
 
-## 12. Submodules
+## 12. Externals (replacing submodules)
 
-| Submodule | Source | Customize via |
-|---|---|---|
-| `.dotbot/` | github.com/anishathalye/dotbot | upstream only — pin in `.gitmodules` |
-| `tmux/oh-my-tmux/` | github.com/gpakosz/.tmux | `tmux/tmux.conf.local` (our file) |
+| External | Source | Pin | Customize via |
+|---|---|---|---|
+| `~/.config/tmux/` | gpakosz/.tmux archive | commit SHA in URL | `dot_tmux.conf.local` (our file) |
 
-Both are pinned to floating `master`. `./install` runs
-`git submodule update --init --recursive` automatically on every invocation
-— stale clones get re-synced.
+`.chezmoiexternal.toml.tmpl`:
+```toml
+[".config/tmux"]
+    type = "archive"
+    url = "https://github.com/gpakosz/.tmux/archive/<sha>.tar.gz"
+    exact = true
+    stripComponents = 1
+    refreshPeriod = "720h"
+```
 
-**Never edit anything inside a submodule directory.** Changes there will be
-silently overwritten on the next submodule update.
+**Never edit `~/.config/tmux/` contents directly** — re-extracted from the
+archive on every `chezmoi apply -R`. Customizations go in our own
+`dot_tmux.conf.local` (sources after the upstream one per oh-my-tmux
+convention).
+
+No git submodules in this repo — chezmoi externals replace them. No
+`.gitmodules` file, no `git submodule update --init` step needed for new
+clones.

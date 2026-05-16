@@ -1,0 +1,48 @@
+{{ if eq .chezmoi.os "darwin" -}}
+#!/bin/sh
+# Enable Touch ID for sudo on macOS. Idempotent; survives system updates.
+#
+# Sonoma+ (macOS 14+) ships /etc/pam.d/sudo_local.template (Apple-blessed
+# extension point that survives system updates — /etc/pam.d/sudo gets
+# rewritten on major macOS upgrades, /etc/pam.d/sudo_local does not).
+# Pre-Sonoma falls back to direct edit of /etc/pam.d/sudo.
+#
+# Needs a TTY for sudo's password prompt on first run; skips with a notice
+# on non-interactive applies (chezmoi will retry on next interactive apply).
+set -eu
+
+if ! tty -s; then
+    echo "[touchid-sudo] non-interactive run — skipping (re-apply from a TTY)." >&2
+    exit 0
+fi
+
+PAM_LINE='auth       sufficient     pam_tid.so'
+
+if [ -f /etc/pam.d/sudo_local.template ]; then
+    # Sonoma+ path.
+    target=/etc/pam.d/sudo_local
+    if [ ! -f "$target" ]; then
+        echo "[touchid-sudo] creating $target from template"
+        sudo cp /etc/pam.d/sudo_local.template "$target"
+    fi
+    # Template ships the pam_tid line commented out — uncomment it.
+    if grep -qE '^#auth[[:space:]]+sufficient[[:space:]]+pam_tid\.so' "$target"; then
+        echo "[touchid-sudo] uncommenting pam_tid.so in $target"
+        sudo sed -i '' -E 's/^#(auth[[:space:]]+sufficient[[:space:]]+pam_tid\.so)/\1/' "$target"
+    elif ! grep -qF 'pam_tid.so' "$target"; then
+        echo "[touchid-sudo] appending pam_tid line to $target"
+        echo "$PAM_LINE" | sudo tee -a "$target" >/dev/null
+    else
+        echo "[touchid-sudo] pam_tid.so already active in $target"
+    fi
+else
+    # Pre-Sonoma: edit /etc/pam.d/sudo directly. Prepend so pam_tid runs first.
+    if ! grep -qF 'pam_tid.so' /etc/pam.d/sudo; then
+        echo "[touchid-sudo] prepending pam_tid to /etc/pam.d/sudo (pre-Sonoma)"
+        sudo sed -i '' "1s|^|${PAM_LINE}\\
+|" /etc/pam.d/sudo
+    else
+        echo "[touchid-sudo] pam_tid.so already in /etc/pam.d/sudo"
+    fi
+fi
+{{- end }}

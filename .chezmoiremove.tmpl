@@ -1,0 +1,11 @@
+{{- /*
+  Lists target-state paths (relative to $HOME) that chezmoi should remove on
+  next `chezmoi apply`. Use when deprecating a managed file — list it here
+  so chezmoi cleans it up on every machine, then remove from this file once
+  all machines have been applied.
+
+  Empty by default. Add entries one per line, e.g.:
+
+      .config/old-tool/config
+      .some-removed-dotfile
+*/ -}}

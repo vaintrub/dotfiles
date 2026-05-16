@@ -1,0 +1,23 @@
+#chezmoi:modify-template
+{{- /*
+  chezmoi modify_ template for ~/.codex/config.toml.
+  Annotation tells chezmoi to render this as a template; .chezmoi.stdin
+  contains current target file contents. Template output IS new file content.
+
+  Strategy:
+  - parse existing TOML
+  - drop runtime sections that Codex auto-writes
+  - mergeOverwrite our curated base on top (base wins for managed keys)
+  - serialize back to TOML
+
+  Replaces the .gitattributes/codex-strip git-clean-filter mechanism.
+*/ -}}
+{{- $existing := fromToml .chezmoi.stdin -}}
+{{- $base := fromToml (includeTemplate "codex-config-base.toml" .) -}}
+{{- $existing = unset $existing "projects" -}}
+{{- $existing = unset $existing "notice" -}}
+{{- $existing = unset $existing "tui" -}}
+{{- $existing = unset $existing "tool_suggest" -}}
+{{- $existing = unset $existing "windows_wsl_setup_acknowledged" -}}
+{{- $merged := mergeOverwrite $existing $base -}}
+{{- toToml $merged -}}

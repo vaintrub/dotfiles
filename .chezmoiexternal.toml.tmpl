@@ -1,0 +1,55 @@
+{{- /*
+  Vendored external dependencies.
+  - gpakosz/.tmux: cross-platform, SHA-pinned via URL (URL = lockfile).
+  - MesloLGS NF + Monaspace Neon fonts: cross-platform, downloaded into the
+    OS-native font dir on machines with a graphical session. Skipped on
+    headless boxes (SSH session with no DISPLAY/WAYLAND_DISPLAY) — saves
+    ~2 MB of needless download and avoids fc-cache on systems where
+    fontconfig may not even be installed.
+*/ -}}
+{{- $monaspaceVer := "v1.400" -}}
+{{- $headless := false -}}
+{{- if and (ne (env "SSH_CONNECTION") "") (eq (env "DISPLAY") "") (eq (env "WAYLAND_DISPLAY") "") -}}
+{{- $headless = true -}}
+{{- end -}}
+
+[".config/tmux"]
+    type = "archive"
+    # Pinned to commit af33f07 (same as previous git-submodule HEAD)
+    url = "https://github.com/gpakosz/.tmux/archive/af33f07134b76134acca9d01eacbdecca9c9cda6.tar.gz"
+    exact = true
+    stripComponents = 1
+    refreshPeriod = "720h"  # 30d safety net; SHA pinning is the real control
+
+{{ if not $headless -}}
+{{- $fontDir := "" -}}
+{{- if eq .chezmoi.os "darwin" -}}{{ $fontDir = "Library/Fonts" -}}{{- end -}}
+{{- if eq .chezmoi.os "linux" -}}{{ $fontDir = ".local/share/fonts" -}}{{- end -}}
+{{- if $fontDir }}
+
+# MesloLGS NF — the font Powerlevel10k expects. Glyphs include Powerline
+# arrows used by tmux Powerline separators (U+E0B0–E0B3) and all p10k icons.
+# Refresh weekly; the upstream repo updates infrequently.
+{{- range $font := list "MesloLGS NF Regular.ttf" "MesloLGS NF Bold.ttf" "MesloLGS NF Italic.ttf" "MesloLGS NF Bold Italic.ttf" }}
+
+["{{ $fontDir }}/{{ $font }}"]
+    type = "file"
+    url = "https://github.com/romkatv/powerlevel10k-media/raw/master/{{ $font | replace " " "%20" }}"
+    refreshPeriod = "168h"
+{{- end }}
+
+# Monaspace Neon — GitHub's monospace family (sans-serif neo-grotesque),
+# optional alternative to MesloLGS for editors / iTerm2. Distributed only
+# in release zips (no raw OTFs in main); extract the four canonical weights
+# via archive-file. chezmoi caches the zip by URL — all 4 declarations
+# trigger only one download.
+{{- range $font := list "MonaspaceNeon-Regular.otf" "MonaspaceNeon-Bold.otf" "MonaspaceNeon-Italic.otf" "MonaspaceNeon-BoldItalic.otf" }}
+
+["{{ $fontDir }}/{{ $font }}"]
+    type = "archive-file"
+    url = "https://github.com/githubnext/monaspace/releases/download/{{ $monaspaceVer }}/monaspace-static-{{ $monaspaceVer }}.zip"
+    path = "Static Fonts/Monaspace Neon/{{ $font }}"
+    refreshPeriod = "720h"
+{{- end }}
+{{- end }}
+{{- end }}

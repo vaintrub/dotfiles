@@ -1,0 +1,76 @@
+{{- /*
+  Global mise config — managed by chezmoi (rendered from .tmpl).
+  Profile-aware: at profile=core, only the dotfile-essential tools are
+  registered (fzf+zoxide power zshrc bindings). At profile=dev|workstation,
+  the full dev toolchain registers (languages + 25 aqua tools).
+
+  Per-project pins still live in <project>/.mise.toml or .tool-versions.
+  Per-machine opt-out: untracked ~/.config/mise/config.local.toml — mise
+  auto-merges later files over this one.
+
+  Adding a tool: `mise registry | grep -i <name>` → use the aqua slug shown.
+*/ -}}
+{{- $profile := .profile | default "core" -}}
+{{- $isDev   := or (eq $profile "dev") (eq $profile "workstation") -}}
+[settings]
+# Enable idiomatic version files (.nvmrc, .python-version, .go-version).
+# Disabled by default since mise 2025.10.0; we want them on for back-compat
+# with existing projects that pre-date our move to .mise.toml.
+idiomatic_version_file_enable_tools = ["node", "python", "go"]
+
+[tools]
+# --- Core tier — minimum to make dotfile integrations work --------------
+"aqua:junegunn/fzf"                         = "latest"   # zshrc Ctrl-R, Ctrl-T
+"aqua:ajeetdsouza/zoxide"                   = "latest"   # zshrc z, zi
+
+{{- if $isDev }}
+
+# --- Languages (core backends) ------------------------------------------
+node   = "lts"
+go     = "latest"
+python = "3.12"
+rust   = "stable"
+
+# --- CLI utilities ------------------------------------------------------
+"aqua:jqlang/jq"                            = "latest"   # JSON CLI
+"aqua:cli/cli"                              = "latest"   # gh (GitHub CLI)
+"aqua:dandavison/delta"                     = "latest"   # git pager
+"aqua:koalaman/shellcheck"                  = "latest"   # POSIX linter
+"aqua:sharkdp/fd"                           = "latest"   # better find
+"aqua:gitleaks/gitleaks"                    = "latest"   # pre-push secret scan
+"aqua:mikefarah/yq"                         = "latest"   # YAML CLI (Go yq, NOT Python)
+
+# --- Cloud + Kubernetes -------------------------------------------------
+"aqua:helm/helm"                            = "latest"
+"aqua:kubernetes/kubernetes/kubectl"        = "latest"
+"aqua:derailed/k9s"                         = "latest"
+"aqua:kubernetes-sigs/kustomize"            = "latest"
+"aqua:stern/stern"                          = "latest"
+"aqua:argoproj/argo-cd"                     = "latest"   # argocd
+"aqua:opentofu/opentofu"                    = "latest"   # tofu
+"aqua:aws/aws-cli"                          = "latest"
+"aqua:rclone/rclone"                        = "latest"
+"aqua:cloudflare/cloudflared"               = "latest"
+
+# --- Networking ---------------------------------------------------------
+"aqua:vi/websocat"                          = "latest"
+
+# --- Go ecosystem (binaries — Go runtime itself is above) ---------------
+"aqua:bufbuild/buf"                         = "latest"
+"aqua:golangci/golangci-lint"               = "latest"
+"aqua:goreleaser/goreleaser"                = "latest"
+"aqua:gotestyourself/gotestsum"             = "latest"
+"aqua:protocolbuffers/protobuf-go/protoc-gen-go" = "latest"
+
+# --- JS / Python pkg managers -------------------------------------------
+"aqua:pnpm/pnpm"                            = "latest"
+"aqua:astral-sh/uv"                         = "latest"
+
+# Not in mise:
+#   - goimports → `go install golang.org/x/tools/cmd/goimports@latest` after Go.
+#   - ssh-audit → `uv tool install ssh-audit` after uv.
+#   - rtk      → mise registry has wrong project; stays on its own curl-pipe.
+#   - mongosh  → heavy (~80MB) JS bundle; install ad-hoc when needed.
+#   - htop/tree/nmap/wireguard-tools/telnet/postgresql-client → OS-native
+#     (apt/dnf on Linux, brew on Mac) for C-library + system-integration reasons.
+{{- end }}

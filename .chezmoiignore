@@ -1,0 +1,45 @@
+# Patterns are TARGET paths (relative to destDir, default $HOME).
+# Use `.foo` style — what the file is in $HOME — not source-state names.
+
+# Repo-level docs and project-level AI guides — not applied to $HOME
+README.md
+LICENSE
+AGENTS.md
+CLAUDE.md
+
+# iTerm2 plist lives at source root `iterm/` (outside dot_*) so chezmoi doesn't
+# materialise it into $HOME. iTerm2 reads + writes the plist there directly,
+# driven by `defaults write com.googlecode.iterm2 PrefsCustomFolder` (set by
+# .chezmoiscripts/run_once_after_configure-iterm2.sh.tmpl). No symlink layer.
+iterm
+
+# Custom hooks dir at source root (we don't use `.chezmoihooks/` because
+# chezmoi doctor flags any `.chezmoi*` dir not in its hardcoded whitelist
+# as 'suspicious-entries'). Scripts here are invoked via .chezmoi.toml.tmpl
+# [hooks.read-source-state.pre.command] = "{{ .chezmoi.workingTree }}/hooks/..."
+# Not for $HOME materialization — ignore the target path.
+hooks
+
+# Bats post-apply smoke tests (CI runs them after `chezmoi apply` in a
+# devcontainer). Never materialised into $HOME — only used from CI or
+# locally via `bats tests/files/*.bats`.
+tests
+
+# GitHub Actions workflows. Not part of $HOME state — only relevant to
+# remote CI runners.
+.github
+
+# Shell libraries sourced by .chezmoiscripts/ wrappers via {{ .chezmoi.sourceDir }}.
+# Never materialised into $HOME — lib functions only callable from chezmoi
+# scripts or bats unit tests, both of which know the source-dir path.
+lib
+
+# Per-machine files written by external tools (rtk init writes RTK.md fresh
+# each install — bundled rtk version's content, not ours to track)
+.claude/RTK.md
+.codex/RTK.md
+
+# rtk init writes RTK.md into cwd when run from project dir. We don't want it
+# tracked at source root — the per-machine RTK.md lives at ~/.claude/RTK.md
+# and ~/.codex/RTK.md (both in .chezmoiignore above).
+RTK.md
