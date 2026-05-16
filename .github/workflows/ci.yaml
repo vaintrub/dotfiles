@@ -61,3 +61,64 @@ jobs:
 
       - name: Verify post-apply state
         run: bats tests/files/common.bats
+
+  apply-dev:
+    name: apply (profile=dev, Ubuntu)
+    runs-on: ubuntu-latest
+    needs: unit
+    env:
+      # Lifts mise's 60/hr anonymous GitHub API rate-limit to 1000/hr.
+      # Needed for the 25-tool aqua-backend fetch (~30-50 API calls).
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      DEBIAN_FRONTEND: noninteractive
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache mise installs
+        uses: actions/cache@v4
+        with:
+          # mise extracts every aqua / language toolchain into per-tool dirs
+          # under ~/.local/share/mise/installs/. Cache keyed by hash of the
+          # mise config so adding/removing a tool busts the cache cleanly.
+          path: ~/.local/share/mise/installs
+          key: mise-${{ runner.os }}-${{ hashFiles('dot_config/mise/config.toml.tmpl') }}
+          restore-keys: mise-${{ runner.os }}-
+
+      - name: Install bats + jq
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends bats jq
+
+      - name: Install chezmoi
+        run: |
+          sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Seed chezmoi.toml + symlink source
+        run: |
+          # Pre-create chezmoi.toml with profile=dev so promptChoiceOnce
+          # finds the value and skips the prompt (would otherwise hang on
+          # no-TTY CI). Symlink workspace to default source dir so every
+          # chezmoi invocation finds the source without --source.
+          mkdir -p "$HOME/.config/chezmoi" "$HOME/.local/share"
+          ln -s "$GITHUB_WORKSPACE" "$HOME/.local/share/chezmoi"
+          cat > "$HOME/.config/chezmoi/chezmoi.toml" <<EOF
+          [data]
+              name    = "CI Tester"
+              email   = "ci@example.com"
+              profile = "dev"
+              osid    = "linux-ubuntu"
+          [hooks]
+            [hooks.read-source-state]
+              [hooks.read-source-state.pre]
+                command = "$HOME/.local/share/chezmoi/hooks/ensure-prereqs.sh"
+          EOF
+
+      - name: chezmoi apply
+        run: chezmoi apply
+
+      - name: Verify post-apply state
+        run: |
+          bats tests/files/common.bats
+          bats tests/files/dev.bats
