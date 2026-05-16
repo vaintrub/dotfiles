@@ -153,7 +153,21 @@ mise_install_tools() {
         return 0
     fi
     mise trust "$HOME/.config/mise/config.toml" >/dev/null 2>&1 || true
-    mise install --yes || echo "mise install had failures — re-run interactively." >&2
+    mise install --yes || echo "mise install had failures — see warnings above." >&2
+
+    # Surface clear recovery hint if any declared tools didn't land. Common
+    # cause on a slow link / shared IP: GitHub anonymous 60/hr API limit was
+    # exhausted before all 25 aqua tools could resolve their release tag.
+    missing_count=$(mise ls 2>/dev/null | grep -c '(missing)' || true)
+    if [ "${missing_count:-0}" -gt 0 ]; then
+        echo "" >&2
+        echo "[install-packages] WARNING: $missing_count mise tool(s) missing." >&2
+        echo "  Most common cause: GitHub API rate-limit (60/hr anonymous)." >&2
+        echo "  Fix once: gh auth login   # token auto-detected next apply" >&2
+        echo "  Or 1Password: create 'op://Personal/GitHub API Token/credential'" >&2
+        echo "  Then re-run: chezmoi apply   (or: mise install --yes)" >&2
+        echo "" >&2
+    fi
 }
 
 post_install_goimports() {

@@ -237,6 +237,45 @@ setup() {
     grep -q 'mise install --yes' "$mise_log"
 }
 
+@test "mise_install_tools: emits WARNING when (missing) tools post-install" {
+    command() {
+        case "$2" in mise) return 0 ;; *) builtin command "$@" ;; esac
+    }
+    # mise install → silent success. mise ls → returns one (missing) line.
+    mise() {
+        case "$1" in
+            install) return 0 ;;
+            trust)   return 0 ;;
+            ls)      echo "aqua:foo/bar  1.0  ~/.config/mise/config.toml  latest (missing)" ;;
+            *) :; ;;
+        esac
+    }
+
+    run mise_install_tools
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "WARNING: 1 mise tool" ]]
+    [[ "$output" =~ "gh auth login" ]]
+    [[ "$output" =~ "op://Personal/GitHub API Token" ]]
+}
+
+@test "mise_install_tools: NO warning when mise ls is clean" {
+    command() {
+        case "$2" in mise) return 0 ;; *) builtin command "$@" ;; esac
+    }
+    mise() {
+        case "$1" in
+            install) return 0 ;;
+            trust)   return 0 ;;
+            ls)      echo "aqua:foo/bar  1.0  ~/.config/mise/config.toml  latest" ;;
+            *) :; ;;
+        esac
+    }
+
+    run mise_install_tools
+    [ "$status" -eq 0 ]
+    [[ ! "$output" =~ "WARNING" ]]
+}
+
 # --- main dispatcher -------------------------------------------------------
 
 @test "main: core profile → no post-installs run" {

@@ -92,6 +92,102 @@ users keep their GUI install across the upgrade. After the single re-init,
 System Settings → Network → Firewall. Linux core tier installs `ufw` (disabled
 by default — `sudo ufw enable` to activate).
 
+## First-time bootstrap checklist
+
+For a fresh machine (Mac or Linux), step-by-step:
+
+```sh
+# 1. (Optional but recommended) Pre-auth GitHub for mise tool downloads.
+#    Lifts mise's 60/hr anonymous limit to 1000/hr — important on slow
+#    links or shared IPs.
+gh auth login                  # gh CLI's interactive auth
+# OR if you use 1Password: create the item once
+op item create --vault Personal --title 'GitHub API Token' \
+    credential=ghp_yourToken   # install-packages auto-reads via `op read`
+
+# 2. Bootstrap one-liner — installs chezmoi, clones source, runs apply.
+sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply vaintrub
+
+# 3. At the prompt, pick your profile (default core; pick workstation on
+#    Mac laptop, dev on jetson / Linux server, core elsewhere).
+
+# 4. After apply finishes, reload your shell so mise shims land on PATH:
+exec zsh
+
+# 5. Verify the install:
+mise ls                         # all rows should be without "(missing)"
+chezmoi diff                    # should be empty
+```
+
+If step 5 shows any `(missing)` rows OR command-not-found errors, jump to
+the Recovery section below.
+
+## Recovery (broken / partial first apply)
+
+```sh
+# Anonymous GitHub rate-limit ran out → some mise tools missing:
+gh auth login                   # cache token (next apply auto-detects)
+chezmoi apply                   # picks up token, retries missing tools
+# OR seed token in 1Password (item: op://Personal/GitHub API Token/credential)
+
+# mise shims out of date / new tools not yet symlinked:
+mise reshim
+exec zsh
+
+# `chezmoi.toml` cache has stale keys (old `personal`/`headless`, or `mac`):
+chezmoi init --promptDefaults   # rewrites from current template
+chezmoi apply
+
+# Touch ID for sudo accidentally rolled back by a macOS major update:
+chezmoi state delete-bucket --bucket=scriptState
+chezmoi apply                   # re-runs run_once_after_* scripts (incl. pam_tid)
+```
+
+## Per-machine override (skip heavy tools on a small VPS)
+
+Drop a `~/.config/mise/config.local.toml` (untracked, never overwritten) to
+override specific tools per machine:
+
+```toml
+[tools]
+# Skip Rust on a 2 GB VPS — no need for ~300 MB toolchain.
+rust = "skip"
+# Use older Python on this box (mise resolves to latest 3.11.x).
+python = "3.11"
+# Don't install gh on a box where you only need kubectl + jq.
+"aqua:cli/cli" = "skip"
+```
+
+`mise` merges `config.toml` (chezmoi-managed) and `config.local.toml` (user-
+owned) at runtime — local wins on key conflicts. After editing, `mise install`
+to apply.
+
+## 1Password integration
+
+If you have the 1Password CLI (`op`) installed and signed in, the install-
+packages wrapper auto-reads `GITHUB_TOKEN` from an item at the conventional
+path:
+
+    op://Personal/GitHub API Token/credential
+
+Mac: install via `brew install 1password-cli` (auto-installed at dev/workstation
+profile) + 1Password desktop app (auto-installed at workstation, enables Touch
+ID biometric unlock so `op read` works without `op signin`).
+
+Linux: install manually from https://1password.com/downloads/command-line
+(headless boxes can use `OP_SERVICE_ACCOUNT_TOKEN` instead of biometric).
+
+Custom vault layout? Override the item reference per machine:
+
+```sh
+# ~/.zshrc_local
+export DOTFILES_OP_GITHUB_REF='op://Private/My-GH-Token/value'
+```
+
+The wrapper's cascade is `op` → `gh auth token` → anonymous. If `op` isn't
+installed (Linux jetson, core profile) the `gh` path picks up; if neither, the
+anonymous path still works (60/hr) for small bootstraps.
+
 ## Tools managed by mise (cross-platform via aqua backend)
 
 Defined declaratively in `dot_config/mise/config.toml.tmpl` (profile-aware — rendered to `~/.config/mise/config.toml`). Same tools install identically on Mac + Linux.
