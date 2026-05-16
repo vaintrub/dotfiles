@@ -350,7 +350,7 @@ Global, cross-machine config for both CLIs. **Only user-curated settings are tra
 | Source path | Becomes in `$HOME` | Pattern | Purpose |
 |---|---|---|---|
 | `dot_claude/CLAUDE.md` | `~/.claude/CLAUDE.md` | plain | global instructions (bootstrap + TL;DR rule index) |
-| `dot_claude/modify_settings.json.tmpl` | `~/.claude/settings.json` | `modify_` (jq merge) | global settings, preserves tool-added keys |
+| `dot_claude/modify_settings.json` | `~/.claude/settings.json` | `modify_` (jq merge) | global settings, preserves tool-added keys |
 | `.chezmoitemplates/claude-settings-base.json` | (not applied) | template partial | curated base, loaded via `includeTemplate` from `modify_` |
 | `dot_claude/executable_statusline-command.sh` | `~/.claude/statusline-command.sh` | plain +x | custom status-line renderer |
 | `dot_claude/agents/` | `~/.claude/agents/` | plain dir | custom subagents |

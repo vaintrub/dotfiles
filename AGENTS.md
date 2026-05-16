@@ -81,7 +81,7 @@ Live ↔ source mapping for our key paths:
 | `~/.gitignore_global` | `dot_gitignore_global` | plain (referenced by `core.excludesFile` in dot_gitconfig.tmpl; OS junk + editor backups) |
 | (no `~/.Brewfile`) | `.chezmoidata/packages.yaml` | rendered inline by install-packages script and piped to `brew bundle --file=/dev/stdin` |
 | `~/.claude/CLAUDE.md` | `dot_claude/CLAUDE.md` | plain |
-| `~/.claude/settings.json` | `dot_claude/modify_settings.json.tmpl` + `.chezmoitemplates/claude-settings-base.json` | modify_ jq merge |
+| `~/.claude/settings.json` | `dot_claude/modify_settings.json` + `.chezmoitemplates/claude-settings-base.json` | modify_ jq merge |
 | `~/.claude/statusline-command.sh` | `dot_claude/executable_statusline-command.sh` | plain +x |
 | `~/.claude/rules/*.md` | `dot_claude/rules/*.md` | plain |
 | `~/.claude/skills/save-to-dotfiles/SKILL.md` | `dot_claude/skills/save-to-dotfiles/SKILL.md` | plain |
@@ -163,7 +163,7 @@ Source-of-truth location is `~/.local/share/chezmoi/` — chezmoi's default (XDG
   are open.
 - `dot_claude/skills/*/SKILL.md` are discoverable skills, intent-matched via
   the frontmatter `description` field.
-- **`dot_claude/modify_settings.json.tmpl`** uses jq-additive merge to preserve
+- **`dot_claude/modify_settings.json`** uses jq-additive merge to preserve
   keys added by `rtk init`, `claude plugin install`, etc. See §9.
 - The curated base lives at `.chezmoitemplates/claude-settings-base.json`
   (canonical chezmoi location for files read by templates but not applied);
@@ -354,7 +354,7 @@ not a hard fail. `mise` then materializes the toolchain per
 | `dot_zshrc`, `dot_p10k.zsh` | **zsh 5+** | Full zsh syntax: `zsocket`, glob qualifiers `(Nom)`, `typeset`, `[[ ]]`, `${var:A}` |
 | `.chezmoiscripts/*.sh.tmpl` | **POSIX `sh`** | No bashisms — must work in `dash`. Templates render to `sh` scripts. |
 | `dot_claude/executable_statusline-command.sh` | **POSIX `sh`** | `#!/bin/sh`, `jq` allowed (standard here) |
-| `dot_claude/modify_settings.json` | **POSIX `sh`** | jq-based merge, runs on every apply |
+| `dot_claude/modify_settings.json` | **Go template** | `#chezmoi:modify-template` annotation → fromJson/mergeOverwrite/toPrettyJson. `private_` → target mode 0600 (matches rtk init's write mode + secret-ish content). |
 | `dot_codex/modify_config.toml` | **Go template** | `#chezmoi:modify-template` annotation, uses chezmoi `fromToml`/`toToml`/`mergeOverwrite` |
 
 ### Lint
@@ -391,7 +391,7 @@ When the **`ConfigEdit` enum** in
 gains a new runtime section variant, add it to the `unset` chain in
 `dot_codex/modify_config.toml`.
 
-`dot_claude/modify_settings.json.tmpl` does the analogous thing for Claude
+`dot_claude/modify_settings.json` does the analogous thing for Claude
 Code, but via shell + jq (instead of pure Go template) — Claude's
 `settings.json` is JSON, easier to merge with jq's `*` deep-merge operator.
 Both modify_ scripts pull their base from `.chezmoitemplates/` via

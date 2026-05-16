@@ -1,23 +1,18 @@
 #!/usr/bin/env bats
-# Post-apply asserts for `profile=core` on Linux. Runs in CI after
-# `chezmoi apply` against a clean devcontainer (Codespaces-style):
-# verifies dotfile presence, content sanity, OS-package install, and
-# mise-managed core tools (fzf + zoxide).
+# Profile-AGNOSTIC post-apply asserts. Runs from BOTH apply-core and apply-dev
+# CI jobs (and locally on any profile). Verifies things that should be true on
+# every machine after chezmoi apply, regardless of which profile is active.
 #
-# Profile-aware: stricter asserts (dev/mac tools) would go in
-# tests/files/dev.bats / tests/files/mac.bats — out of scope for the
-# minimal Phase-1 smoke harness.
+# Profile-SPECIFIC asserts live in:
+#   tests/files/core.bats — core-only (no rtk, no dev tools)
+#   tests/files/dev.bats  — dev tier asserts (mise tools, claude CLI, etc.)
 
 setup() {
     export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
     hash -r 2>/dev/null || true
 }
 
-# --- chezmoi config + profile ----------------------------------------------
-
-@test "chezmoi config profile is core" {
-    grep -qE '^\s*profile\s*=\s*"core"' "$HOME/.config/chezmoi/chezmoi.toml"
-}
+# --- chezmoi state ---------------------------------------------------------
 
 @test "chezmoi diff is empty post-apply (idempotent)" {
     run chezmoi diff
@@ -78,8 +73,6 @@ setup() {
 }
 
 @test "~/.zshrc sources ~/.zshrc_local LAST (after p10k + SSH tints, so local wins)" {
-    # The source line must come after the SSH tint block that sets
-    # tmux_conf_theme_*. Grep both anchors; assert line order.
     src_line=$(grep -n 'source ~/.zshrc_local' "$HOME/.zshrc" | tail -1 | cut -d: -f1)
     ssh_line=$(grep -n 'tmux_conf_theme_status_bg' "$HOME/.zshrc" | tail -1 | cut -d: -f1)
     [ -n "$src_line" ]
@@ -110,20 +103,15 @@ setup() {
     [ -f "$HOME/.codex/config.toml" ]
 }
 
-# --- mise config + tools (profile=core: only fzf + zoxide) -----------------
+# --- mise itself + core tools (fzf + zoxide installed at every tier) ------
 
 @test "~/.config/mise/config.toml exists" {
     [ -f "$HOME/.config/mise/config.toml" ]
 }
 
-@test "~/.config/mise/config.toml has core tools" {
+@test "~/.config/mise/config.toml has core tools (fzf + zoxide)" {
     grep -q 'aqua:junegunn/fzf' "$HOME/.config/mise/config.toml"
     grep -q 'aqua:ajeetdsouza/zoxide' "$HOME/.config/mise/config.toml"
-}
-
-@test "~/.config/mise/config.toml does NOT have dev tools at core profile" {
-    ! grep -q 'aqua:kubernetes/kubernetes/kubectl' "$HOME/.config/mise/config.toml"
-    ! grep -q '^node ' "$HOME/.config/mise/config.toml"
 }
 
 @test "mise binary on PATH" {
@@ -138,7 +126,7 @@ setup() {
     command -v zoxide
 }
 
-# --- OS-native core packages (Linux apt) -----------------------------------
+# --- OS-native core packages (Linux apt — always installed at every tier) -
 
 @test "apt: zsh installed" {
     command -v zsh
@@ -172,12 +160,4 @@ setup() {
 
 @test "no stale pyenv directory" {
     [ ! -e "$HOME/.pyenv" ]
-}
-
-@test "no rtk binary at core profile (gated to dev|workstation)" {
-    ! command -v rtk
-}
-
-@test "no claude CLI at core profile (npm globals gated to dev|workstation)" {
-    ! command -v claude
 }

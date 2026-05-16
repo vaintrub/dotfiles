@@ -46,21 +46,27 @@ jobs:
           sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-      - name: chezmoi init + apply
+      - name: chezmoi init + apply (twice — second converges modify_ + lookPath drift)
         run: |
           # Symlink workspace to chezmoi's default source dir so every
           # subsequent `chezmoi *` invocation (e.g. `chezmoi diff` in bats)
-          # finds the source without needing --source flag. `chezmoi init
-          # --source=PATH` only takes effect for the current invocation;
-          # it does NOT persist sourceDir to ~/.config/chezmoi/chezmoi.toml.
+          # finds the source without needing --source flag.
           mkdir -p "$HOME/.local/share"
           ln -s "$GITHUB_WORKSPACE" "$HOME/.local/share/chezmoi"
           chezmoi init --apply --promptDefaults
           echo "--- chezmoi data ---"
           chezmoi data
+          # Second apply: re-rendering settles two convergence cases —
+          #   (a) modify_settings.json regenerates against the settings.json
+          #       the rtk init wrote in pass 1 (alphabetised vs insertion-order)
+          #   (b) dot_gitconfig.tmpl `{{ lookPath "delta" }}` block becomes
+          #       truthy now that mise installed delta in pass 1.
+          chezmoi apply
 
       - name: Verify post-apply state
-        run: bats tests/files/common.bats
+        run: |
+          bats tests/files/common.bats
+          bats tests/files/core.bats
 
   apply-dev:
     name: apply (profile=dev, Ubuntu)
@@ -115,8 +121,16 @@ jobs:
                 command = "$HOME/.local/share/chezmoi/hooks/ensure-prereqs.sh"
           EOF
 
-      - name: chezmoi apply
-        run: chezmoi apply
+      - name: chezmoi apply (twice — second converges modify_ + lookPath drift)
+        run: |
+          chezmoi apply
+          # Second apply: re-rendering settles two convergence cases —
+          #   (a) modify_settings.json regenerates against the settings.json
+          #       the rtk init wrote in pass 1 (alphabetised output vs
+          #       insertion-order writes by rtk).
+          #   (b) dot_gitconfig.tmpl `{{ lookPath "delta" }}` block becomes
+          #       truthy now that mise installed delta in pass 1.
+          chezmoi apply
 
       - name: Verify post-apply state
         run: |
