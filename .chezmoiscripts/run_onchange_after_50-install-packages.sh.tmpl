@@ -46,11 +46,35 @@ export DOTFILES_DEV_NPM_GLOBAL={{ (.packages.dev.npm_global | default (list)) | 
 
 # Auto-detect GitHub API token to lift mise's 60/hr anonymous rate limit
 # (matters on fresh bootstrap of the dev/workstation tier — 25 aqua tools
-# = 25-50 GH API calls). First apply: gh not yet installed → no-op.
-# Subsequent applies: gh on PATH via mise shims → reads cached token from
-# `gh auth login`. User can also set GITHUB_TOKEN manually before apply.
-if [ -z "${GITHUB_TOKEN:-}" ] && command -v gh >/dev/null 2>&1; then
-    GITHUB_TOKEN="$(gh auth token 2>/dev/null || true)"
+# = 25-50 GH API calls). Cascade: 1Password → gh CLI cached token → anon.
+#
+# Template-time lookPath guards keep the rendered .sh lean — machines
+# without `op` get only the gh path; machines without either get just
+# the empty-token fall-through.
+#
+# `op read` is preferred over chezmoi's native `onepasswordRead` template
+# func: native bakes the secret as a literal string into the rendered .sh
+# under $TMPDIR, leaving a disk-window between render and exec. Shell
+# runtime `op read` keeps the token in process env only. The rendered .sh
+# contains the REFERENCE PATH (op://Personal/GitHub API Token/credential),
+# not the credential itself.
+if [ -z "${GITHUB_TOKEN:-}" ]; then
+{{- if lookPath "op" }}
+    # 1Password (most secure — Touch ID per call on Mac, token only in process env).
+    # Item path overridable via $DOTFILES_OP_GITHUB_REF for non-default vault layouts.
+    # --no-newline avoids trailing \n that would corrupt Authorization: Bearer headers.
+    GITHUB_TOKEN="$(op read --no-newline \
+        "${DOTFILES_OP_GITHUB_REF:-op://Personal/GitHub API Token/credential}" \
+        2>/dev/null || true)"
+{{- end }}
+{{- if lookPath "gh" }}
+    if [ -z "${GITHUB_TOKEN:-}" ]; then
+        # gh CLI cached token (works after `gh auth login`).
+        GITHUB_TOKEN="$(gh auth token 2>/dev/null || true)"
+    fi
+{{- end }}
+    # Else fall through anonymously — mise hits 60/hr limit; partial-install
+    # warning in lib/install-packages.sh::mise_install_tools() surfaces it.
     [ -n "$GITHUB_TOKEN" ] && export GITHUB_TOKEN
 fi
 

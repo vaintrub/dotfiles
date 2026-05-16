@@ -61,6 +61,7 @@ packages:
       - libpq                      # psql/pg_dump (keg-only, force-linked)
       - wireguard-tools            # VPN CLI
       - rtk                        # token-saving Claude/Codex proxy
+      - 1password-cli              # `op` CLI — install-packages auto-reads GITHUB_TOKEN via `op read`
     # Linux apt: OS-native dev tools (symmetric to brews above).
     # Docker engine intentionally NOT here — too distro-specific and
     # conflict-prone: `docker.io` (Ubuntu repo) and `docker-ce` (Docker's
@@ -105,6 +106,7 @@ packages:
       - docker-desktop             # Docker engine + UI (Mac equivalent of Linux docker.io)
       - visual-studio-code
       - ngrok                      # tunnel UI
+      - 1password                  # desktop app — enables Touch ID biometric unlock for `op` CLI
       - font-meslo-lg-nerd-font    # MesloLGS — backstop alongside .chezmoiexternal font drop
       - font-monaspace             # GitHub Monaspace family
     # Linux GUI packages. Installed when profile=workstation AND OS=linux.
