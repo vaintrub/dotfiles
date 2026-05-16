@@ -1,0 +1,91 @@
+{{- /*
+  rtk install + init — only at profile=dev or workstation (where claude/codex
+  are installed). At profile=core the script exits early since rtk has no
+  consumer (Claude Code + Codex CLIs ship via dev tier's npm globals).
+*/ -}}
+{{- $profile := .profile | default "core" -}}
+{{- $isDev   := or (eq $profile "dev") (eq $profile "workstation") -}}
+#!/bin/sh
+# Install rtk (token-saving CLI proxy) and wire it into Claude Code + Codex.
+# rtk init -g writes ~/.claude/RTK.md, adds @RTK.md reference to ~/.claude/CLAUDE.md,
+# adds hook entry to ~/.claude/settings.json. Our modify_settings.json preserves
+# that hook entry across applies.
+#
+# Idempotent: rtk init detects already-wired state.
+set -eu
+
+{{- if not $isDev }}
+echo "[install-rtk] profile=core — skipping (no claude/codex consumer at this tier)."
+exit 0
+{{- end }}
+
+{{ if eq .chezmoi.os "darwin" -}}
+# On fresh Mac (first-time `chezmoi init --apply` via the curl one-liner),
+# the parent shell may not yet have /opt/homebrew/bin on PATH — chezmoi
+# inherits that bare PATH and scripts can't find brew-installed binaries
+# (rtk, claude, codex) even though script 50 just installed them. Re-eval
+# brew shellenv per Mac script to set PATH deterministically.
+if [ -x /opt/homebrew/bin/brew ]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+elif [ -x /usr/local/bin/brew ]; then
+    eval "$(/usr/local/bin/brew shellenv)"
+fi
+{{- end }}
+
+# Ensure binary is on PATH.
+# On macOS rtk lives in packages.yaml under packages.dev.brews and the
+# install-packages script (50-install-packages) runs first because 50 < 60
+# alphabetically. Binary should be present here at dev/workstation profile.
+# On Linux the install-packages script doesn't bundle rtk (not in apt/dnf),
+# so the Linux fallback below is the install path.
+if ! command -v rtk >/dev/null 2>&1; then
+{{ if ne .chezmoi.os "darwin" -}}
+    curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh
+    export PATH="$HOME/.local/bin:$PATH"
+{{- else -}}
+    echo "rtk not found on PATH after install-packages." >&2
+    echo "Common cause: brew bundle aborted (e.g. VSCode or Docker cask" >&2
+    echo "adoption needs sudo, blocking non-interactive apply)." >&2
+    echo "Fix: rerun 'chezmoi apply' from a TTY, or 'sudo -v' beforehand" >&2
+    echo "to cache credentials, then retry." >&2
+    exit 1
+{{- end }}
+fi
+
+# rtk's Linux arm64 build is dynamically linked against glibc >=2.39
+# (Ubuntu 24.04+); on Ubuntu 22.04 jammy (glibc 2.35) it fails with
+# "version `GLIBC_2.39' not found". No musl/static alternative is shipped
+# upstream as of 2026-05. Skip rtk init gracefully on too-old glibc rather
+# than fail the whole apply — claude/codex still work without the rtk hook.
+if ! rtk --version >/dev/null 2>&1; then
+    echo "rtk binary fails to execute on this system (likely glibc too old)." >&2
+    echo "Upstream ships glibc-2.39 build only for linux-arm64; needs Ubuntu 24.04+." >&2
+    echo "Skipping rtk init. claude/codex still usable without rtk hook." >&2
+    exit 0
+fi
+
+# Init for Claude Code (only if claude binary is present).
+# --auto-patch is Claude-specific: writes the PreToolUse hook entry into
+# ~/.claude/settings.json without prompting. Codex doesn't have an equivalent
+# settings hook (rtk wires Codex via @RTK.md in AGENTS.md instead), so the
+# flag is intentionally absent below.
+if command -v claude >/dev/null 2>&1; then
+    rtk init -g --auto-patch
+fi
+
+# Init for Codex (only if codex binary is present).
+# `-g --codex` writes to ~/.codex/{AGENTS.md, RTK.md} — GLOBAL Codex config.
+# Without `-g`, rtk init --codex would write to cwd (which is $HOME when run
+# from chezmoi apply), polluting $HOME with stray AGENTS.md and RTK.md.
+# Verified in rtk source: src/hooks/init.rs::run_codex_mode() — when global=true,
+# paths resolve to resolve_codex_dir() which uses $CODEX_HOME or ~/.codex/.
+if command -v codex >/dev/null 2>&1; then
+    rtk init -g --codex
+fi
+
+echo "rtk: $(rtk --version) — initialized"
+
+# Script content hash already triggers re-run on changes. No need to embed
+# `output "rtk" "--version"` here — that would call rtk binary at chezmoi
+# template-render time, which aborts apply on systems where rtk can't
+# execute (e.g. jammy arm64 — rtk requires glibc 2.39 not in Ubuntu 22.04).

@@ -1,0 +1,203 @@
+# Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
+# Initialization code that may require console input (password prompts, [y/n]
+# confirmations, etc.) must go above this block; everything else may go below.
+if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+    source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+fi
+
+# --- Antidote Plugin Manager (static-cache mode) ---
+DISABLE_MAGIC_FUNCTIONS=true
+
+if [[ ! -d ${ZDOTDIR:-$HOME}/.antidote ]]; then
+    git clone --depth=1 https://github.com/mattmc3/antidote.git ${ZDOTDIR:-$HOME}/.antidote
+fi
+
+zsh_plugins=${ZDOTDIR:-$HOME}/.zsh_plugins
+if [[ ! ${zsh_plugins}.zsh -nt ${zsh_plugins}.txt ]]; then
+    (
+        source ${ZDOTDIR:-$HOME}/.antidote/antidote.zsh
+        antidote bundle <${zsh_plugins}.txt >${zsh_plugins}.zsh
+    )
+fi
+source ${zsh_plugins}.zsh
+
+# --- `code` from any terminal ---
+# Vs the stock VSCode CLI, this function changes one thing: bare `code`
+# (no args) opens a *.code-workspace in cwd if one exists, else opens
+# cwd. Any explicit args pass through unchanged.
+#
+# In an SSH session ($SSH_CONNECTION set):
+#   • Inside VSCode's *integrated* terminal — the env is already wired,
+#     so dispatch to the real `code` shim and we're done.
+#   • From any other terminal (iTerm2, tmux pane) — emit a
+#     `vscode://vscode-remote/ssh-remote+<host>/<path>` URL. The iTerm2
+#     Trigger turns it into `open <url>`, macOS routes it to VSCode, and
+#     VSCode reuses an existing Remote-SSH window (or opens a new one).
+#
+# We deliberately do NOT try to find and forward to a Remote-SSH IPC
+# socket ourselves: VSCode Server's `vscode-ipc-*.sock` files outlive
+# the windows that created them (upstream bug — microsoft/vscode#153311
+# and friends), and a live `connect()` is not the same as "the listener
+# is actually still reachable on the Mac side". Half-dead sockets
+# accept connections silently, give back rc=0, and lose the message.
+# Letting VSCode resolve the URL itself avoids that whole class of
+# zombie-socket guesswork.
+#
+# Housekeeping: while we're here, sweep VSCode's stale leftover sockets
+# (cheap via zsh's built-in zsocket).
+#
+# Override host with `export VSCODE_REMOTE_HOST=<alias>` when the short
+# hostname doesn't match your local ~/.ssh/config Host entry.
+# Glob qualifiers: (N) null on no-match, (om) order by mtime newest-first,
+# (.) regular files only.
+code() {
+    if (( $# == 0 )); then
+        local -a ws=( *.code-workspace(N) )
+        (( ${#ws} )) && set -- ${ws[1]} || set -- .
+    fi
+
+    # Local Mac: pass through to the real `code` binary verbatim.
+    if [[ -z $SSH_CONNECTION ]]; then
+        command code "$@"
+        return
+    fi
+
+    # VSCode integrated Remote-SSH terminal: env is wired, dispatch directly.
+    if [[ -n $VSCODE_IPC_HOOK_CLI ]] && command -v code >/dev/null 2>&1; then
+        command code "$@"
+        return
+    fi
+
+    # Housekeeping: sweep stale `vscode-ipc-*.sock` files VSCode Server
+    # leaves behind on disconnect/crash. zsocket connect()s; ECONNREFUSED
+    # on a dead UNIX socket is instant, so this costs ~one syscall per file.
+    zmodload zsh/net/socket 2>/dev/null
+    local s
+    for s in /run/user/$UID/vscode-ipc-*.sock(Nom) ${TMPDIR:-/tmp}/vscode-ipc-*.sock(Nom); do
+        if zsocket "$s" 2>/dev/null; then
+            exec {REPLY}<&-                       # close probe fd
+        else
+            rm -f -- "$s"                          # dead socket — sweep
+        fi
+    done
+
+    # Hand off to the local Mac's VSCode via vscode-remote URL. The iTerm2
+    # Trigger fires `open <url>` and VSCode reuses an existing Remote-SSH
+    # window (or opens a new one) — predictable, no socket guesswork.
+    local path=${1:A}
+    printf 'vscode://vscode-remote/ssh-remote+%s%s\n' \
+        "${VSCODE_REMOTE_HOST:-${HOST%%.*}}" "${path// /%20}"
+}
+
+# --- VSCode `code` CLI on PATH (macOS) ---
+# `brew install --cask visual-studio-code` doesn't add `code` to PATH.
+[[ -x "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code" ]] \
+    && export PATH="$PATH:/Applications/Visual Studio Code.app/Contents/Resources/app/bin"
+
+# --- Aliases ---
+alias zshconfig="vim ~/.zshrc"
+
+# --- Locale ---
+export LANG=en_US.UTF-8
+
+# --- Default editor ---
+# Used by chezmoi edit, git commit (without -m), crontab -e, sudoedit, etc.
+# Honour an existing $EDITOR (e.g. preset to nvim/code in a per-machine layer).
+export EDITOR="${EDITOR:-vim}"
+export VISUAL="$EDITOR"
+
+# --- Runtime + dev-tool manager (mise) ---
+# mise is the primary installer for ~28 dev tools (Go/Python/Node/Rust +
+# kubectl/helm/k9s/jq/gh/fzf/yq/delta/... via aqua backend). Activate enables
+# auto-version-switch on cd when .mise.toml / .tool-versions / .nvmrc /
+# .python-version / .go-version is present.
+command -v mise > /dev/null && eval "$(mise activate zsh)"
+
+# --- fzf shell integration (key-bindings + completion) ---
+# fzf is mise-installed (aqua:junegunn/fzf). Source its shell scripts from
+# mise's install dir. `mise where fzf` returns the active install path,
+# stable across versions (preferred over glob+tail-1 lexical sort).
+if command -v mise > /dev/null && _fzf_root="$(mise where fzf 2>/dev/null)" && [[ -n "$_fzf_root" ]]; then
+    [[ -r "$_fzf_root/shell/key-bindings.zsh" ]] && source "$_fzf_root/shell/key-bindings.zsh"
+    [[ -r "$_fzf_root/shell/completion.zsh" ]] && source "$_fzf_root/shell/completion.zsh"
+fi
+unset _fzf_root
+
+# --- Smart cd (zoxide) ---
+command -v zoxide > /dev/null && eval "$(zoxide init zsh)"
+
+# --- PATH ---
+export PATH="$PATH:$HOME/.local/bin"
+export PATH="$PATH:$HOME/go/bin"
+
+# --- Powerlevel10k theme ---
+# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
+[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+
+# --- OSC 133 semantic prompt sequences ---
+# Emit OSC 133 marks (A=prompt-start, B=input-start, C=output-start,
+# D;<exit>=output-end) so shell-integration-aware terminals can:
+#   • iTerm2: ⌘↑/⌘↓ jump between previous prompts, exit-code marks in gutter
+#   • VS Code integrated terminal: command decorations + sticky scroll
+#   • WezTerm: ScrollToPrompt / status colorization
+#   • Windows Terminal / Ghostty: command marks + navigation
+# Skip if iTerm2's own shell-integration script is already sourced (would
+# double-emit and overlap with iTerm2's CurrentDir/RemoteHost extensions).
+# Skip if p10k Pro is doing it (POWERLEVEL9K_TERM_SHELL_INTEGRATION=true).
+if [[ -z "${ITERM_SHELL_INTEGRATION_INSTALLED:-}" \
+   && "${POWERLEVEL9K_TERM_SHELL_INTEGRATION:-false}" != "true" ]]; then
+    autoload -Uz add-zsh-hook
+    _osc133_preexec() { print -Pn '\e]133;C\a' }
+    _osc133_precmd()  { print -Pn '\e]133;D;'"$?"'\a\e]133;A\a' }
+    add-zsh-hook preexec _osc133_preexec
+    add-zsh-hook precmd  _osc133_precmd
+fi
+
+# --- SSH visual tints (orange ❯ + amber tmux bar) ---
+# Defensive nudge so I can't type into the wrong machine by accident:
+#   • p10k `❯` turns orange (208). Not red — that's already taken by
+#     PROMPT_CHAR_ERROR_* (last command failed); colliding would erase
+#     the success/failure signal.
+#   • tmux paints both the bar and the window-list background dark
+#     amber on the next `tmux` start. Targets `status_bg` +
+#     `window_status_bg` directly instead of `colour_1`: colour_1 is
+#     reused by gpakosz as `window_status_current_fg`, `message_fg`,
+#     `mode_fg`, etc., so overriding it would also recolour the
+#     active-window text and tmux messages — unintended side effects.
+#     Setting these here (not in .tmux.conf.local) is required:
+#     gpakosz's `_apply_theme` reads tmux_conf_* via `printenv`, so the
+#     value must be in the env before the tmux server starts. tmux's
+#     own config parser stores `name=value` as a literal — no shell
+#     expansion — so a ${SSH_CONNECTION:+…} branch inside
+#     .tmux.conf.local would reach the helper as a literal string and
+#     get rejected as a malformed colour.
+if [[ -n $SSH_CONNECTION ]]; then
+    typeset -g POWERLEVEL9K_PROMPT_CHAR_OK_{VIINS,VICMD,VIVIS,VIOWR}_FOREGROUND=208
+    # Three coordinated overrides paint every "default-bar" surface
+    # dark amber. The hex (#5f2f00) shares ~30° hue with the orange `❯`
+    # above (208 = #ff8700) and with p10k's own peach REMOTE context
+    # segment (180 = #d7af87) — three SSH cues, one hue family, just
+    # different intensities. Dark enough to keep gpakosz's grey
+    # right-side icons (#8a8a8a) at WCAG AA-Large (3.21:1).
+    #   status_bg        — the bar fill (status-style bg)
+    #   window_status_bg — between window-list items
+    #   colour_15        — bar-default sub-segments on the right
+    #                      (battery/prefix/mouse/time/date) — they sit
+    #                      on this slot and would otherwise stay as
+    #                      #080808 islands inside the amber bar.
+    export tmux_conf_theme_status_bg='#5f2f00'
+    export tmux_conf_theme_window_status_bg='#5f2f00'
+    export tmux_conf_theme_colour_15='#5f2f00'
+fi
+
+# --- Per-machine overrides ---
+# Sourced LAST so machine-local edits win over EVERYTHING tracked here
+# (aliases, env vars, even POWERLEVEL9K_* tweaks if user re-sources
+# ~/.p10k.zsh after their override block, or SSH tmux_conf_theme_* if
+# the user wants different cues for their machine).
+#
+# File seeded as a commented stub by chezmoi (`create_dot_zshrc_local`),
+# then never overwritten — edits persist across `chezmoi apply` runs.
+# Override the p10k prompt itself via `p10k configure` editing
+# `~/.p10k.zsh` directly (Powerlevel10k convention).
+[[ ! -f ~/.zshrc_local ]] || source ~/.zshrc_local

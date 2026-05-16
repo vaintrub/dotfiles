@@ -1,0 +1,48 @@
+{{- /*
+  Tier-cascade package installer (3 profiles: core / dev / workstation).
+  This script is a thin wrapper that renders chezmoi facts (profile,
+  osid, package lists from .chezmoidata/packages.yaml) into env vars,
+  then sources lib/install-packages.sh and calls main.
+
+  All logic lives in lib/install-packages.sh — testable via bats unit
+  tests with mocked external commands.
+
+  Re-runs whenever rendered output changes — chezmoi hashes rendered
+  script. packages.yaml, mise.toml, profile, or lib edits all trigger
+  a re-render.
+*/ -}}
+#!/bin/sh
+set -eu
+
+# Force apt non-interactive (chezmoi child sh has no TTY — tzdata would prompt).
+export DEBIAN_FRONTEND=noninteractive
+export TZ=Etc/UTC
+
+# Make ~/.local/bin and mise shims discoverable for this script and post-
+# installs. Debian's ~/.profile adds ~/.local/bin only for LOGIN shells;
+# chezmoi exec()s without sourcing profile.
+export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
+
+# Render chezmoi facts → env. Lib reads only these, never .chezmoi.* directly.
+export DOTFILES_PROFILE={{ .profile | quote }}
+export DOTFILES_OS={{ .chezmoi.os | quote }}
+export DOTFILES_OSID={{ .osid | quote }}
+export DOTFILES_OSRELEASE_IDLIKE={{ if hasKey .chezmoi.osRelease "idLike" }}{{ .chezmoi.osRelease.idLike | quote }}{{ else }}""{{ end }}
+
+export DOTFILES_CORE_BREWS={{ (.packages.core.brews | default (list)) | sortAlpha | uniq | join " " | quote }}
+export DOTFILES_DEV_BREWS={{ (.packages.dev.brews | default (list)) | sortAlpha | uniq | join " " | quote }}
+
+export DOTFILES_CORE_APT={{ (.packages.core.apt | default (list)) | sortAlpha | uniq | join " " | quote }}
+export DOTFILES_DEV_APT={{ (.packages.dev.apt | default (list)) | sortAlpha | uniq | join " " | quote }}
+export DOTFILES_CORE_DNF={{ (.packages.core.dnf | default (list)) | sortAlpha | uniq | join " " | quote }}
+export DOTFILES_DEV_DNF={{ (.packages.dev.dnf | default (list)) | sortAlpha | uniq | join " " | quote }}
+
+# Workstation tier (GUI apps). Per-OS lists from packages.gui.
+export DOTFILES_GUI_MAC_CASKS={{ (.packages.gui.mac_casks | default (list)) | sortAlpha | uniq | join " " | quote }}
+export DOTFILES_GUI_LINUX_APT={{ (.packages.gui.linux_apt | default (list)) | sortAlpha | uniq | join " " | quote }}
+export DOTFILES_GUI_LINUX_DNF={{ (.packages.gui.linux_dnf | default (list)) | sortAlpha | uniq | join " " | quote }}
+
+export DOTFILES_DEV_NPM_GLOBAL={{ (.packages.dev.npm_global | default (list)) | sortAlpha | uniq | join " " | quote }}
+
+export INSTALL_PACKAGES_INVOKE=1
+. "{{ .chezmoi.sourceDir }}/lib/install-packages.sh"

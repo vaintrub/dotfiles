@@ -1,0 +1,37 @@
+{{ if eq .chezmoi.os "darwin" -}}
+#!/bin/sh
+# Point iTerm2 at the chezmoi source dir directly. iTerm2 reads + writes
+# preferences in this folder, so GUI edits flow straight to `git status`
+# in the source repo (use `chezmoi cd` to navigate there).
+#
+# Why directly at sourceDir/iterm/ instead of ~/.config/iterm/? Because
+# iTerm2 ALSO creates its own ~/.config/iterm2/ (for AppSupport + sockets) —
+# having both `iterm/` and `iterm2/` in ~/.config/ was confusing.
+#
+# Runs once per machine (after first apply).
+set -eu
+
+iterm_dir="{{ .chezmoi.sourceDir }}/iterm"
+
+# Sanity check: chezmoi sourceDir should contain the iterm/ plist directory.
+# Fail loudly if it's missing — typically only happens during a manual
+# misconfig of sourceDir.
+if [ ! -d "$iterm_dir" ]; then
+    echo "ERROR: $iterm_dir does not exist" >&2
+    echo "Verify chezmoi sourceDir resolves to this repo (try 'chezmoi cd')." >&2
+    exit 1
+fi
+
+current=$(defaults read com.googlecode.iterm2 PrefsCustomFolder 2>/dev/null || true)
+load=$(defaults read com.googlecode.iterm2 LoadPrefsFromCustomFolder 2>/dev/null || true)
+
+if [ "$current" = "$iterm_dir" ] && [ "$load" = "1" ]; then
+    echo "iTerm2 already loading prefs from $iterm_dir"
+    exit 0
+fi
+
+defaults write com.googlecode.iterm2 PrefsCustomFolder -string "$iterm_dir"
+defaults write com.googlecode.iterm2 LoadPrefsFromCustomFolder -bool true
+echo "iTerm2 configured to read prefs from $iterm_dir."
+echo "Quit and relaunch iTerm2 (Don't Save if prompted) for changes to apply."
+{{- end }}

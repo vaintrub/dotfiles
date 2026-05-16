@@ -1,0 +1,14 @@
+model = "gpt-5.5"
+model_reasoning_effort = "xhigh"
+personality = "pragmatic"
+
+{{ range .plugins.codex -}}
+[plugins."{{ . }}"]
+enabled = true
+
+{{ end -}}
+# Runtime-mutated sections ([projects.*], [notice], [tui.*],
+# [tool_suggest], windows_wsl_setup_acknowledged) are stripped on every
+# `chezmoi apply` by dot_codex/modify_config.toml's `unset` chain.
+# When Codex's `ConfigEdit` enum (codex-rs/core/src/config/edit.rs)
+# gains a new runtime-section variant, add it there too.

@@ -1,0 +1,87 @@
+{{- /*
+  Global git config. Rendered at every chezmoi apply.
+  - name/email come from prompts in .chezmoi.toml.tmpl (cached in [data]
+    section of ~/.config/chezmoi/chezmoi.toml after first init).
+  - delta sections gated on `lookPath "delta"` — first apply on a fresh
+    box may not have delta yet (it installs in run_onchange_after_50-
+    install-packages, which runs AFTER chezmoi materializes files).
+    Second apply re-renders this file with delta pager wired.
+  - credential.helper INTENTIONALLY omitted — using SSH keys + gh auth,
+    no HTTPS credential caching needed.
+*/ -}}
+{{- /*
+  Skip [user] block when identity values are still chezmoi placeholders
+  ("Your Name" / "you@example.com" set in .chezmoi.toml.tmpl on a
+  non-interactive run without --data). Without this guard, every `git
+  commit` from such a machine would be silently mis-attributed to the
+  placeholder — caught much later in `git log`. With the guard, git
+  falls back to system config or errors clearly ("Please tell me who
+  you are") when a real commit is attempted.
+*/ -}}
+{{ if and (ne .name "Your Name") (ne .email "you@example.com") -}}
+[user]
+    name = {{ .name | quote }}
+    email = {{ .email | quote }}
+{{ end }}
+[core]
+    editor = vim
+    excludesFile = ~/.gitignore_global
+    autocrlf = input
+    # Global hooks dir (chezmoi-managed). Hooks here fire from ALL repos;
+    # per-repo override: `git config --local core.hooksPath ''`.
+    hooksPath = ~/.config/git/hooks
+{{ if lookPath "delta" -}}
+    pager = delta
+{{- end }}
+
+[init]
+    defaultBranch = master
+
+[pull]
+    rebase = true
+
+[push]
+    default = current
+    autoSetupRemote = true
+
+[merge]
+    conflictStyle = zdiff3
+
+[rebase]
+    autoSquash = true
+    autoStash = true
+
+[diff]
+    algorithm = histogram
+    colorMoved = default
+    submodule = log
+
+[fetch]
+    prune = true
+    pruneTags = true
+
+[rerere]
+    enabled = true
+
+[alias]
+    co = checkout
+    br = branch
+    ci = commit
+    st = status -sb
+    last = log -1 HEAD --stat
+    unstage = reset HEAD --
+    amend = commit --amend --no-edit
+    wip = !git add -A && git commit -m \"WIP\"
+    undo = reset --soft HEAD^
+    lg = log --graph --decorate --abbrev-commit --date=short --pretty=format:'%C(yellow)%h%C(reset) %C(blue)%ad%C(reset) %C(green)%an%C(reset) %s%C(red)%d%C(reset)'
+
+{{ if lookPath "delta" -}}
+[delta]
+    navigate = true
+    line-numbers = true
+    side-by-side = false
+    syntax-theme = Dracula
+
+[interactive]
+    diffFilter = delta --color-only
+{{- end }}

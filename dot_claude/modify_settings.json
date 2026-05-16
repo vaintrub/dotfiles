@@ -1,0 +1,41 @@
+#chezmoi:modify-template
+{{- /*
+  chezmoi modify-template for ~/.claude/settings.json. The annotation line
+  above tells chezmoi to render this as a Go template (replacing the .tmpl
+  suffix); .chezmoi.stdin = current target file contents (empty on first
+  apply). Template output IS new file content.
+
+  Replaces a prior shell+jq pipeline whose `base='{{ includeTemplate ... }}'`
+  single-quoted shell literal would have broken on any apostrophe character
+  in claude-settings-base.json. Now everything stays in Go-template land.
+
+  Strategy: deep-merge curated base with existing target.
+  - mergeOverwrite $base $existing → existing wins at scalar conflicts
+    (preserves rtk init's PreToolUse hook entry + claude plugin install's
+    enabledPlugins additions written since the previous apply).
+  - mergeOverwrite is recursive on maps: nested keys (hooks.PreToolUse,
+    enabledPlugins) merge automatically — the jq version needed explicit
+    per-key logic that's subsumed here.
+  - Lists OVERWRITE wholesale (no concat). Currently no list-valued keys
+    in base; the `hasKey` guard below catches the hooks case. If base
+    grows a new list-valued key whose values should union with existing,
+    add explicit `concat` logic for that key.
+
+  CONSTRAINT: claude-settings-base.json must NOT define `hooks` keys —
+  rtk owns hooks via `rtk init -g --auto-patch`. The fail below makes
+  any future regression of this invariant impossible to ignore.
+
+  Refs:
+  - chezmoi modify-template: https://www.chezmoi.io/reference/special-files-and-directories/source-state-attributes/
+  - sprig mergeOverwrite: http://masterminds.github.io/sprig/dicts.html
+*/ -}}
+{{- $existing := dict -}}
+{{- if .chezmoi.stdin -}}
+{{-   $existing = fromJson .chezmoi.stdin -}}
+{{- end -}}
+{{- $base := fromJson (includeTemplate "claude-settings-base.json" .) -}}
+{{- if hasKey $base "hooks" -}}
+{{-   fail "claude-settings-base.json must not define 'hooks' (rtk owns it)" -}}
+{{- end -}}
+{{- $merged := mergeOverwrite $base $existing -}}
+{{ $merged | toPrettyJson }}

@@ -1,0 +1,82 @@
+{{- /*
+  Install + update Claude Code and OpenAI Codex plugins from
+  .chezmoidata/packages.yaml (.plugins.{claude, claude_marketplaces,
+  codex_marketplaces}). Re-runs when the list changes (chezmoi hashes
+  rendered script content).
+
+  Claude:
+    - `claude plugin marketplace add` for each non-default marketplace.
+      Defensively adds `anthropics/claude-plugins-official` first — that
+      marketplace is normally auto-registered on first interactive
+      `claude` launch, but a fresh box where claude was npm-installed
+      but never run won't have it.
+    - `claude plugin install <plugin>@<mkt> --scope user` for each
+      .plugins.claude entry. `claude plugin update` bumps to latest.
+      Both idempotent.
+    - Caveman is just a row in .plugins.claude + .plugins.claude_marketplaces
+      (canonical install per its INSTALL.md per-agent table). The plugin
+      manages its own hooks via plugin.json — no settings.json mutation.
+
+  Codex:
+    - `openai-curated` marketplace is reserved (built into the codex
+      binary); enable flags via [plugins."x@y"] in config.toml are
+      sufficient. Those flags come from
+      .chezmoitemplates/codex-config-base.toml (rendered through
+      modify_config.toml).
+    - Non-reserved marketplaces need `codex plugin marketplace add`.
+    - Skill-based plugins (e.g. caveman for Codex) install via `npx
+      skills add ... -a codex` — but the skills CLI doesn't currently
+      wire the per-agent symlinks Codex needs for discovery, so they're
+      a manual step, not part of this script.
+*/ -}}
+#!/bin/sh
+set -eu
+
+{{ if eq .chezmoi.os "darwin" -}}
+# Same as script 60: ensure /opt/homebrew/bin is on PATH so command -v claude
+# / codex find the freshly-installed binaries from script 50, even on first
+# apply where the parent shell didn't have brew on PATH yet.
+if [ -x /opt/homebrew/bin/brew ]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+elif [ -x /usr/local/bin/brew ]; then
+    eval "$(/usr/local/bin/brew shellenv)"
+fi
+{{- end }}
+
+if command -v claude >/dev/null 2>&1; then
+    if ! out=$(claude plugin marketplace add anthropics/claude-plugins-official 2>&1); then
+        echo "WARNING: claude plugin marketplace add (official) failed:" >&2
+        echo "$out" >&2
+    fi
+{{ range .plugins.claude_marketplaces -}}
+{{- $parts := splitn ":" 2 . -}}
+{{- $name := $parts._0 -}}
+{{- $repo := $parts._1 }}
+    if ! out=$(claude plugin marketplace add {{ $repo | quote }} 2>&1); then
+        echo "WARNING: claude plugin marketplace add {{ $name }} failed:" >&2
+        echo "$out" >&2
+    fi
+{{ end -}}
+{{ range .plugins.claude -}}
+    claude plugin install {{ . | quote }} --scope user >/dev/null 2>&1 \
+        || echo "claude plugin install {{ . }} failed" >&2
+    claude plugin update {{ . }} >/dev/null 2>&1 || true
+{{ end -}}
+    claude plugin marketplace update >/dev/null 2>&1 || true
+else
+    echo "claude CLI not found, skipping Claude plugin install" >&2
+fi
+
+if command -v codex >/dev/null 2>&1; then
+{{ range .plugins.codex_marketplaces -}}
+    repo={{ . | quote }}
+    mkt_name="${repo##*/}"
+    if ! grep -q "^\[marketplaces\.${mkt_name}\]" "$HOME/.codex/config.toml" 2>/dev/null; then
+        codex plugin marketplace add "$repo" >/dev/null 2>&1 \
+            || echo "codex plugin marketplace add $repo failed" >&2
+    fi
+{{ end -}}
+    codex plugin marketplace upgrade >/dev/null 2>&1 || true
+else
+    echo "codex CLI not found, skipping Codex plugin install" >&2
+fi

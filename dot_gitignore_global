@@ -1,0 +1,52 @@
+# Global gitignore — patterns ignored across every repo on this machine.
+# Wired via `core.excludesFile = ~/.gitignore_global` in dot_gitconfig.tmpl.
+# Keep this list to TRULY universal junk (OS detritus, editor backups).
+# Language-specific or project-specific ignores belong in the repo's
+# own .gitignore.
+
+# --- macOS ---
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# --- Linux / general POSIX ---
+*~
+.nfs*
+
+# --- Windows ---
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# --- Vim / Neovim ---
+*.swp
+*.swo
+*.swn
+.netrwhist
+Session.vim
+
+# --- Emacs ---
+\#*\#
+.\#*
+
+# --- VS Code / JetBrains (per-repo prefs that don't belong in shared history) ---
+.vscode/
+.idea/
+*.iml
+
+# --- direnv / per-machine env overrides ---
+.envrc.local
+.env.local
+
+# --- Generic local-override convention ---
+*.local

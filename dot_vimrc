@@ -1,0 +1,109 @@
+set nocompatible
+
+" --- vim-plug bootstrap ---
+" :PlugInstall / :PlugUpdate / :PlugClean
+let s:plug_path = expand('~/.vim/autoload/plug.vim')
+if empty(glob(s:plug_path))
+  silent execute '!curl -fLo ' . s:plug_path . ' --create-dirs '
+        \ . 'https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim'
+  autocmd VimEnter * PlugInstall --sync | source $MYVIMRC
+endif
+
+call plug#begin('~/.vim/plugged')
+
+" Syntax + filetype detection for chezmoi-managed source files
+" (dot_*, *.tmpl, modify_*, .chezmoitemplates/*). Must load before
+" plug#end() calls `filetype plugin indent on` so the autocmd registers
+" before vim's stock detection runs.
+Plug 'alker0/chezmoi.vim'
+
+Plug 'tpope/vim-fugitive'
+Plug 'tpope/vim-surround'
+Plug 'dracula/vim', { 'as': 'dracula' }
+Plug 'mattn/emmet-vim'
+
+call plug#end()
+
+" Python tab settings (PEP 8 recommendations)
+set tabstop=4
+set shiftwidth=4
+set smarttab
+set expandtab " Use spaces, not tabs
+set softtabstop=4 " 4 spaces per tab
+set colorcolumn=80
+" Auto-indent
+set autoindent
+" Highlight everything that can be highlighted
+let python_highlight_all = 1
+let perl_sub_signatures = 1
+" 256 colours in the terminal (needed by many terminals, e.g. gnome-terminal)
+set t_co=256
+
+" Strip trailing whitespace on save (Python files only)
+autocmd bufwritepre *.py normal m`:%s/\s\+$//e ``
+" Smart indent after keywords (Python files)
+autocmd bufread *.py set smartindent cinwords=if,elif,else,for,while,try,except,finally,def,class
+
+syntax on " Enable syntax highlighting
+
+set nu " Show line numbers
+set mousehide " Hide mouse cursor while typing
+set mouse=a " Enable mouse support
+set termencoding=utf-8 " Terminal encoding
+set novisualbell " No screen flash
+set t_vb= " No beep either
+" Convenient backspace behaviour
+set backspace=indent,eol,start whichwrap+=<,>,[,]
+" No dashes between tabs
+set showtabline=1
+
+" Wrap long lines on word boundaries
+set wrap
+set linebreak
+
+" Disable .swp and ~ (backup) files
+set nobackup
+set noswapfile
+set encoding=utf-8 " Default file encoding
+set fileencodings=utf8,cp1251
+
+" Yank goes to system clipboard. macOS: both registers map to NSPasteboard.
+" Linux X11: `+` is CLIPBOARD (Ctrl-V), `*` is PRIMARY (middle-click) — set both.
+if has('clipboard')
+  set clipboard^=unnamed,unnamedplus
+endif
+set ruler
+
+set hidden
+nnoremap <c-n> :bnext<cr>
+nnoremap <c-p> :bprev<cr>
+
+" Disable sound in vim
+set visualbell t_vb=
+
+" Switch tabs via cmd+number (macvim)
+if has("gui_macvim")
+  " Press ctrl-tab to switch between open tabs (like browser tabs) to
+  " The right side. ctrl-shift-tab goes the other way.
+  noremap <c-tab> :tabnext<cr>
+  noremap <c-s-tab> :tabprev<cr>
+
+  " Switch to specific tab numbers with command-number
+  noremap <d-1> :tabn 1<cr>
+  noremap <d-2> :tabn 2<cr>
+  noremap <d-3> :tabn 3<cr>
+  noremap <d-4> :tabn 4<cr>
+  noremap <d-5> :tabn 5<cr>
+  noremap <d-6> :tabn 6<cr>
+  noremap <d-7> :tabn 7<cr>
+  noremap <d-8> :tabn 8<cr>
+  noremap <d-9> :tabn 9<cr>
+  " Command-0 goes to the last tab
+  noremap <d-0> :tablast<cr>
+endif
+
+set termguicolors
+let g:dracula_italic = 0
+let g:dracula_colorterm = 0
+let g:dracula_bold = 1
+silent! colorscheme dracula

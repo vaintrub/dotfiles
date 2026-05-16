@@ -1,0 +1,20 @@
+# Per-machine zsh overrides — sourced from ~/.zshrc near the end.
+#
+# Seeded ONCE by chezmoi at first apply via the `create_` source-state
+# attribute. After that chezmoi never touches this file again — your
+# edits here are durable.
+#
+# Use for things that aren't portable:
+#   - per-machine secrets / tokens (prefer 1Password or env vars set
+#     by direnv, but for now this works too)
+#   - hostname-specific aliases / functions
+#   - PATH additions for tools installed outside mise / brew
+#   - SSH_AUTH_SOCK overrides
+#   - work-only env vars (HTTP_PROXY, CORP_VPN_HOST)
+#
+# Examples (uncomment + edit):
+#
+# export GITHUB_TOKEN="ghp_..."
+# alias k=kubectl
+# export PATH="/opt/local-tool/bin:$PATH"
+# eval "$(direnv hook zsh)"

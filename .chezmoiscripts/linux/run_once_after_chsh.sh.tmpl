@@ -1,0 +1,56 @@
+{{- if eq .chezmoi.os "linux" -}}
+#!/bin/sh
+# Set zsh as the login shell on Linux if not already. Three paths:
+#   1. Already zsh → idempotent no-op.
+#   2. Passwordless sudo available (jetson, cloud-init machines) → use
+#      `sudo -n chsh -s ... $(id -un)` which doesn't prompt and works
+#      even without a TTY. Auto-adds zsh to /etc/shells if missing.
+#   3. Interactive (TTY) but no passwordless sudo → bare `chsh -s` will
+#      prompt for password — fine for human users at a real terminal.
+#   4. No TTY and no passwordless sudo → print warning, skip.
+set -eu
+
+zsh_path=$(command -v zsh || true)
+if [ -z "$zsh_path" ]; then
+    echo "WARNING: zsh not found — install-packages should have provided it; check apt/dnf output." >&2
+    exit 0
+fi
+
+current_shell=$(getent passwd "$(id -un)" 2>/dev/null | cut -d: -f7 || echo "")
+if [ "$current_shell" = "$zsh_path" ]; then
+    exit 0
+fi
+
+# Prefer passwordless sudo path — works in both TTY and non-TTY contexts.
+if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
+    # Ensure zsh is in /etc/shells (Debian's chsh requires this).
+    if ! grep -qxF "$zsh_path" /etc/shells 2>/dev/null; then
+        echo "$zsh_path" | sudo -n tee -a /etc/shells >/dev/null
+    fi
+    if sudo -n chsh -s "$zsh_path" "$(id -un)"; then
+        echo "default shell set to $zsh_path (re-login to take effect)"
+        exit 0
+    fi
+    echo "WARNING: sudo chsh failed — manual fix: sudo chsh -s $zsh_path $(id -un)" >&2
+    exit 0
+fi
+
+# No passwordless sudo. Bare chsh prompts the user's password — only
+# usable when there's a TTY for them to type into.
+if ! tty -s; then
+    echo "WARNING: default shell is $current_shell, not $zsh_path." >&2
+    echo "  Switch manually: chsh -s $zsh_path  (will prompt for password)" >&2
+    exit 0
+fi
+
+if ! grep -qxF "$zsh_path" /etc/shells 2>/dev/null; then
+    echo "WARNING: $zsh_path is not in /etc/shells; chsh may fail." >&2
+    echo "  Run: echo $zsh_path | sudo tee -a /etc/shells" >&2
+fi
+
+chsh -s "$zsh_path" || {
+    echo "WARNING: chsh failed — switch manually with: chsh -s $zsh_path" >&2
+    exit 0
+}
+echo "default shell set to $zsh_path (re-login to take effect)"
+{{- end -}}

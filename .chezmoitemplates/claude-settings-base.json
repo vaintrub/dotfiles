@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "defaultMode": "auto"
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bash $HOME/.claude/statusline-command.sh"
+  },
+  "enabledPlugins": {
+{{- range $i, $p := .plugins.claude }}
+{{- if $i }},{{ end }}
+    "{{ $p }}": true
+{{- end }}
+  },
+  "alwaysThinkingEnabled": true,
+  "skipAutoPermissionPrompt": true,
+  "voiceEnabled": true
+}

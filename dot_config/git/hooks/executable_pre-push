@@ -1,0 +1,47 @@
+#!/bin/sh
+# Pre-push hook: scan outbound commits for leaked secrets via gitleaks.
+# Fires from every repo because `git config --global core.hooksPath`
+# in dot_gitconfig.tmpl points here. Per-repo opt-out:
+#     git config --local core.hooksPath ''
+# Emergency bypass for a single push:
+#     git push --no-verify
+#
+# Fail-open by design: if gitleaks is not on PATH (core profile machines
+# without the dev toolchain) the hook exits 0 and the push proceeds.
+set -eu
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+    exit 0
+fi
+
+ZERO=0000000000000000000000000000000000000000
+fail=0
+
+# stdin: <local-ref> <local-sha> <remote-ref> <remote-sha>, one line per ref.
+while read -r local_ref local_sha remote_ref remote_sha; do
+    # Branch deletion — nothing to scan.
+    [ "$local_sha" = "$ZERO" ] && continue
+
+    if [ "$remote_sha" = "$ZERO" ]; then
+        # New branch — scan from root.
+        range="$local_sha"
+    else
+        range="${remote_sha}..${local_sha}"
+    fi
+
+    if ! gitleaks git --log-opts="$range" --no-banner --redact; then
+        fail=1
+    fi
+done
+
+if [ "$fail" -ne 0 ]; then
+    cat >&2 <<'MSG'
+
+gitleaks found potential secrets in outbound commits. Push blocked.
+
+If false positive: add a `.gitleaksignore` entry (commit-sha:file:rule)
+                   or edit the rule in .gitleaks.toml.
+Emergency bypass: git push --no-verify   (use sparingly)
+MSG
+fi
+exit "$fail"

@@ -1,0 +1,86 @@
+# Customizations on top of gpakosz/.tmux ("oh-my-tmux").
+# Edit this file only — the upstream .tmux.conf is vendored as a chezmoi
+# external (pinned in .chezmoiexternal.toml, extracted to ~/.config/tmux/).
+
+# --- prefix: C-a only (screen-style) ------------------------------------------
+# gpakosz binds C-a as prefix2; make it primary and drop C-b entirely.
+# Verbatim from the commented-out template snippet in gpakosz's .tmux.conf.local.
+set -gu prefix2
+unbind C-a
+unbind C-b
+set -g prefix C-a
+bind C-a send-prefix
+
+# --- transparency with iTerm2 (gpakosz does NOT set these) --------------------
+# Mouse: wheel scrolls tmux scrollback / drag-resizes panes / click-selects.
+set -g mouse on
+
+# Vi keys in copy mode (gpakosz already ships v/y/H/L/C-v vi-bindings but they
+# only activate when mode-keys is vi).
+setw -g mode-keys vi
+
+# OSC 52 passthrough: lets vim/nvim "+y inside tmux write to the macOS pasteboard.
+# (gpakosz's tmux_conf_copy_to_os_clipboard only covers explicit tmux copy-mode `y`.)
+set -s set-clipboard on
+
+# COLORTERM is set by iTerm2 outside tmux; tmux doesn't propagate it by default.
+# Force it on for inner shells so any tool that probes it sees truecolor.
+set-environment -g COLORTERM truecolor
+
+# Bigger scrollback (gpakosz default 5000 is small vs. iTerm2's 10k+).
+set -g history-limit 50000
+
+# --- gpakosz native flags -----------------------------------------------------
+# Force 24-bit colour on (gpakosz default `auto` depends on $COLORTERM probing,
+# which can drop over SSH).
+tmux_conf_24b_colour=true
+
+# Yank in copy-mode (selection with `v`, then `y`) writes to the OS
+# clipboard via gpakosz's auto-detected tool (pbcopy / xsel / xclip /
+# wl-copy / clip.exe).
+tmux_conf_copy_to_os_clipboard=true
+
+# Powerline arrow separators. Verbatim from the commented suggestion in
+# upstream .tmux.conf.local. Glyphs are U+E0B0–E0B3 (Powerline Symbols,
+# PUA) — present in MesloLGS NF and any Nerd Font.
+tmux_conf_theme_left_separator_main=''
+tmux_conf_theme_left_separator_sub=''
+tmux_conf_theme_right_separator_main=''
+tmux_conf_theme_right_separator_sub=''
+
+# Palette aligned with p10k pure-style accents in p10k.zsh. Hex values
+# are 256-color codes p10k itself uses, converted via the ANSI 6x6x6
+# cube formula (16 + 36r + 6g + b). Uses gpakosz's canonical colour_N
+# slots — that way the SSH-tint branch in zshrc can point-override
+# colour_15 (right-side bar-default bg) so it follows the amber tint
+# instead of leaving #080808 islands inside the amber bar.
+#
+# Slots not listed here keep their gpakosz defaults, which already match
+# what we want:
+#   colour_6=#080808 / colour_7=#e4e4e4  → status_left_fg slots match
+#   colour_12=#8a8a8a / colour_14=#080808 → status_right_fg slots 0/2 match
+#   colour_15=#080808 (bar default bg)    → SSH branch overrides to #5f2f00
+
+tmux_conf_theme_colour_9='#5fafd7'    # session bg            — p10k light DIR-anchor (74)
+tmux_conf_theme_colour_10='#005f87'   # uptime bg             — p10k deep DIR (24)
+tmux_conf_theme_colour_13='#080808'   # user fg               — black (override default #e4e4e4)
+tmux_conf_theme_colour_16='#5faf5f'   # user bg               — p10k muted OK green (71)
+tmux_conf_theme_colour_17='#bcbcbc'   # host bg               — p10k light grey (250)
+
+# colour_4 / colour_5 don't live in any trio — they feed several derived
+# theme variables each, so override them directly.
+#
+# colour_4 → active-window bg, active pane border, pane indicators,
+#   last-window fg, clock-mode colour. All "live / focused" UI.
+tmux_conf_theme_colour_4='#5fd700'   # active highlights      — p10k OK green (76)
+# colour_5 → message_*_bg, message_command_fg, mode_bg,
+#   window_status_bell_fg. Transient attention cues
+#   (config-reload messages, copy-mode highlight, window bell).
+tmux_conf_theme_colour_5='#d7af00'   # messages/mode/bell     — p10k DIRENV mustard (178)
+
+# Smoother wheel scroll: 2 lines per tick (gpakosz default is 5 — feels
+# jumpy). With macOS' high event rate on trackpad swipes, 2 lines per
+# event gives fast gestures plenty of throw while slow swipes stay
+# precise enough to scan line-by-line.
+bind -T copy-mode-vi WheelUpPane   select-pane \; send-keys -X -N 2 scroll-up
+bind -T copy-mode-vi WheelDownPane select-pane \; send-keys -X -N 2 scroll-down

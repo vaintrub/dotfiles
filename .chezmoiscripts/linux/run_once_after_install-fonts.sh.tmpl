@@ -1,0 +1,23 @@
+{{- /* Only renders on Linux: file lives in .chezmoiscripts/linux/ but chezmoi
+       still processes every script regardless of subdir, so the OS guard
+       below stays as belt-and-suspenders. Headless guard skips the script
+       on SSH sessions without a graphical session — fontconfig may not be
+       installed, no point caching fonts no one will see. */ -}}
+{{- $headless := false -}}
+{{- if and (ne (env "SSH_CONNECTION") "") (eq (env "DISPLAY") "") (eq (env "WAYLAND_DISPLAY") "") -}}
+{{- $headless = true -}}
+{{- end -}}
+{{- if and (eq .chezmoi.os "linux") (not $headless) -}}
+#!/bin/sh
+# Refresh fontconfig cache after MesloLGS NF fonts land in ~/.local/share/fonts
+# (downloaded via .chezmoiexternal.toml.tmpl). macOS auto-discovers fonts in
+# ~/Library/Fonts so no equivalent step needed there.
+set -eu
+
+if command -v fc-cache >/dev/null 2>&1; then
+    fc-cache -f "$HOME/.local/share/fonts" >/dev/null 2>&1
+    echo "fontconfig cache refreshed"
+else
+    echo "fc-cache not found — install fontconfig (e.g. 'apt install fontconfig')" >&2
+fi
+{{- end -}}
