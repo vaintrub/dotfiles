@@ -61,12 +61,18 @@ packages:
       - libpq                      # psql/pg_dump (keg-only, force-linked)
       - wireguard-tools            # VPN CLI
       - rtk                        # token-saving Claude/Codex proxy
-    # Linux apt: OS-native dev tools (symmetric to brews above + docker engine).
+    # Linux apt: OS-native dev tools (symmetric to brews above).
+    # Docker engine intentionally NOT here — too distro-specific and
+    # conflict-prone: `docker.io` (Ubuntu repo) and `docker-ce` (Docker's
+    # official apt repo) cannot coexist. Install whichever fits your
+    # machine — typically:
+    #   `sudo apt install docker.io`            (simple, older version)
+    #   Docker's official apt repo for docker-ce (production, newer)
+    #   `workstation` profile on Mac           (Docker Desktop cask)
     apt:
       - build-essential            # compilers (Xcode CLT equivalent — Mac gets via brew side-effect)
       - xsel                       # tmux yank → clipboard (X11; Mac uses pbcopy built-in)
       - wl-clipboard               # tmux yank → clipboard (Wayland; Mac uses pbcopy built-in)
-      - docker.io                  # Docker engine (Mac dev tier gets nothing here — pick `workstation` for Docker Desktop)
       - htop
       - tree
       - wget
@@ -74,11 +80,10 @@ packages:
       - inetutils-telnet           # telnet (Debian/Ubuntu package name)
       - wireguard-tools
       - postgresql-client          # psql
-    # Linux dnf (Fedora-family).
+    # Linux dnf (Fedora-family). Docker omitted per same reasoning.
     dnf:
       - xsel
       - wl-clipboard
-      - docker
       - htop
       - tree
       - wget

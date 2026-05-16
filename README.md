@@ -127,13 +127,31 @@ Tools NOT in mise's aqua registry — C apps with libpcap/curses/PAM deps, syste
 | core | Linux apt/dnf | `zsh`, `vim`, `tmux`, `git`, `curl`, `ca-certificates`, `ufw`, `tcpdump` |
 | core | Mac brew | (none — Apple bundles zsh/vim/tmux/git/curl + system `/usr/sbin/tcpdump`; no Mac equivalent for ufw — use `pfctl`) |
 | dev | Mac brew | `htop`, `tree`, `wget`, `nmap`, `telnet`, `libpq` (psql, force-linked), `wireguard-tools`, `rtk` |
-| dev | Linux apt | `build-essential`, `xsel`, `wl-clipboard`, `docker.io`, `htop`, `tree`, `wget`, `nmap`, `inetutils-telnet`, `wireguard-tools`, `postgresql-client` |
+| dev | Linux apt | `build-essential`, `xsel`, `wl-clipboard`, `htop`, `tree`, `wget`, `nmap`, `inetutils-telnet`, `wireguard-tools`, `postgresql-client` |
 | dev | Linux dnf | (same as apt, modulo Fedora naming) |
 | mac | Mac casks | `iterm2`, `docker-desktop`, `visual-studio-code`, `ngrok`, `font-meslo-lg-nerd-font`, `font-monaspace` |
+
+**Docker is intentionally NOT in the `dev` tier**: `docker.io` (Ubuntu repo) and `docker-ce` (Docker's official apt repo) can't coexist, and a pre-existing install would break `apt-get install`. Pick the flavour that fits the machine: `sudo apt install docker.io` (simple), Docker's official repo for `docker-ce` (production), or `workstation` profile on Mac (Docker Desktop cask).
 
 **Ad-hoc installs**: brew/apt/dnf still primary on each platform. Want `mongosh`? `brew install mongosh` (Mac) or follow MongoDB's apt repo (Linux). Want `kubectl` debug version? `mise use kubectl@1.34.2` (per-project) or edit the global config.
 
 **First-apply latency** at `dev` or `workstation`: cold install downloads ~1.9 GB (4 language toolchains × ~300 MB + 25 aqua tools). Realistic ranges: 5-10 min on fast link, 15-30 min on residential, 30-60+ min on slow links / jetson. `core` profile only pulls fzf+zoxide (~5 MB).
+
+**GitHub API rate limit on fresh bootstrap**: mise's aqua backend hits `api.github.com` once per tool (25 tools × 1-2 calls = 30-50 requests). Anonymous limit is 60/hr — easy to exhaust on a slow link or shared IP. Two ways to lift it:
+
+```sh
+# Option 1 — set token directly before apply (one-off)
+export GITHUB_TOKEN=ghp_yourPersonalAccessToken
+chezmoi apply
+
+# Option 2 — `gh auth login` once, install-packages auto-picks it up on
+# subsequent applies via `gh auth token` (works after first apply when
+# gh is installed by mise).
+gh auth login                 # interactive, browser flow
+chezmoi apply                 # token auto-detected, ~5000/hr limit
+```
+
+Anonymous bootstrap on a fast link usually fits inside 60/hr — the auto-detect is a safety net for jetson / VPS / re-runs.
 
 **Troubleshooting slow zsh prompt**: `MISE_TIMINGS=1 exec zsh` — total < 50ms per prompt is healthy. If consistently above, switch to mise shim mode in `dot_zshrc`:
 ```zsh

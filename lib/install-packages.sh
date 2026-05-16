@@ -192,8 +192,12 @@ npm_install_ai_globals() {
     if [ "$DOTFILES_OS" = "linux" ]; then
         "$npm_bin" config set prefix "$HOME/.local"
     fi
+    # --force: overwrites any pre-existing binaries at the target prefix
+    # (e.g. ~/.local/bin/claude carried over from a prior dotbot install
+    # or manual one-shot npm install). npm 7+ accepts the flag; mise's
+    # bundled Node ≥18 ships npm 9+.
     for pkg in $DOTFILES_DEV_NPM_GLOBAL; do
-        "$npm_bin" install -g "$pkg" || echo "npm -g $pkg failed" >&2
+        "$npm_bin" install -g --force "$pkg" || echo "npm -g $pkg failed" >&2
     done
 }
 

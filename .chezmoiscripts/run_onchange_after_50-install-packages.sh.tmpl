@@ -44,5 +44,15 @@ export DOTFILES_GUI_LINUX_DNF={{ (.packages.gui.linux_dnf | default (list)) | so
 
 export DOTFILES_DEV_NPM_GLOBAL={{ (.packages.dev.npm_global | default (list)) | sortAlpha | uniq | join " " | quote }}
 
+# Auto-detect GitHub API token to lift mise's 60/hr anonymous rate limit
+# (matters on fresh bootstrap of the dev/workstation tier — 25 aqua tools
+# = 25-50 GH API calls). First apply: gh not yet installed → no-op.
+# Subsequent applies: gh on PATH via mise shims → reads cached token from
+# `gh auth login`. User can also set GITHUB_TOKEN manually before apply.
+if [ -z "${GITHUB_TOKEN:-}" ] && command -v gh >/dev/null 2>&1; then
+    GITHUB_TOKEN="$(gh auth token 2>/dev/null || true)"
+    [ -n "$GITHUB_TOKEN" ] && export GITHUB_TOKEN
+fi
+
 export INSTALL_PACKAGES_INVOKE=1
 . "{{ .chezmoi.sourceDir }}/lib/install-packages.sh"
