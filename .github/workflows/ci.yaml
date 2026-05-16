@@ -119,18 +119,27 @@ jobs:
 
       - name: chezmoi init + apply (twice — second converges modify_ + lookPath drift)
         run: |
-          # Symlink workspace to chezmoi's default source dir so every
-          # subsequent `chezmoi *` invocation finds source without --source.
-          mkdir -p "$HOME/.local/share"
+          mkdir -p "$HOME/.config/chezmoi" "$HOME/.local/share"
           ln -s "$GITHUB_WORKSPACE" "$HOME/.local/share/chezmoi"
-          # `chezmoi init` renders ~/.config/chezmoi/chezmoi.toml from
-          # .chezmoi.toml.tmpl AND caches the template hash in chezmoi
-          # state. Without init (pre-seeding chezmoi.toml manually), the
-          # configState hash never lands → every apply emits "config file
-          # template has changed" warning, which bats captures as drift.
-          # --promptDefaults: on this Linux runner with no CODESPACES env
-          # set, .chezmoi.toml.tmpl's $defaultProfile resolves to "dev"
-          # (auto-detect by env), so promptChoiceOnce picks dev silently.
+          # Seed chezmoi.toml with profile=dev BEFORE init.
+          # promptChoiceOnce takes a default arg ("core"); --promptDefaults
+          # makes it return that LITERAL default, NOT the computed
+          # $defaultProfile that the template's auto-detect would resolve to.
+          # So to test dev tier on CI we need hasKey .profile == true at
+          # init time → promptChoiceOnce short-circuits to the cached
+          # value (no prompt, no default fallthrough).
+          # `chezmoi init` then re-renders chezmoi.toml (writes same content
+          # back, since hasKey passes for every prompted field) AND caches
+          # the template hash in configState. Without that hash cache,
+          # subsequent applies emit "config file template has changed"
+          # warning, which bats captures as drift.
+          cat > "$HOME/.config/chezmoi/chezmoi.toml" <<EOF
+          [data]
+              name    = "CI Tester"
+              email   = "ci@example.com"
+              profile = "dev"
+              osid    = "linux-ubuntu"
+          EOF
           chezmoi init --apply --promptDefaults
           echo "--- chezmoi data ---"
           chezmoi data
