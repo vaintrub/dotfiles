@@ -21,7 +21,7 @@ Supported: Intel + Apple Silicon, macOS recent versions.
 One command:
 
 ```sh
-sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply vaintrub
+sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply vaintrub
 ```
 
 That's it. `chezmoi init` prompts you for profile (`core` / `dev` / `workstation` — default `core` for safety; pick `workstation` for full Mac install with casks). `hooks/ensure-prereqs.sh` (registered via `hooks.read-source-state.pre`) installs Xcode CLT + Homebrew + mise on first run. Then `run_onchange_after_50-install-packages.sh.tmpl` reads `.chezmoidata/packages.yaml`, `brew bundle`s `packages.dev.brews` (htop, tree, nmap, libpq, wireguard-tools — OS-native C-deps only, no formula in mise registry) + `packages.gui.mac_casks` if `workstation` (iterm2, docker-desktop, vscode, ngrok, 1password desktop, fonts), then runs `mise install` for the full dev toolchain — including `op`, `rtk`, `claude-code`, and `codex` as cross-platform native binaries. Post-installs (`goimports`, `ssh-audit`, `rtk init` for Claude+Codex hooks) run from the same lib. Plugins + caveman install automatically afterward.
@@ -45,7 +45,7 @@ sudo dnf install -y git curl sudo                    # Fedora
 Then the canonical one-liner:
 
 ```sh
-sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply vaintrub
+sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply vaintrub
 ```
 
 The repo lands at `~/.local/share/chezmoi/` (chezmoi's default source location). `chezmoi init` ALWAYS prompts for profile (Codespaces / non-interactive runs fall back to `core` via `--promptDefaults`). From there chezmoi takes over:
@@ -82,7 +82,7 @@ For a fresh machine (Mac or Linux), step-by-step:
 
 ```sh
 # 1. Bootstrap one-liner — installs chezmoi, clones source, runs apply.
-sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply vaintrub
+sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply vaintrub
 
 # 2. At the prompt, pick your profile (default core; pick workstation on
 #    Mac laptop, dev on jetson / Linux server, core elsewhere).

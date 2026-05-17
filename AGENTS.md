@@ -14,7 +14,7 @@ Personal cross-platform (macOS + Linux) dotfiles managed with
 
 Bootstrap on a new machine:
 ```sh
-sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply vaintrub
+sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply vaintrub
 ```
 
 ## 2. Map of the repo
