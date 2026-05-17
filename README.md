@@ -72,21 +72,6 @@ The repo lands at `~/.local/share/chezmoi/` (chezmoi's default source location).
 
 **To force re-prompt**: `chezmoi init --prompt`.
 
-**Migrating from older data shapes** (machines initialised before the use-case
-refactor have stale `personal` / `headless` keys, or `profile = "mac"` from the
-older `core/dev/mac` triplet):
-
-```sh
-chezmoi init --promptDefaults  # rewrites chezmoi.toml from new template:
-                               # translates "mac" → "workstation",
-                               # derives .osid, drops stale personal/headless keys
-chezmoi apply                  # re-runs install scripts under new profile
-```
-
-`mac` is silently translated to `workstation` by the template, so existing Mac
-users keep their GUI install across the upgrade. After the single re-init,
-`chezmoi.toml` is in the new shape; no leftover keys.
-
 **Mac firewall (ufw equivalent)**: not managed by dotfiles. Enable manually via
 System Settings → Network → Firewall. Linux core tier installs `ufw` (disabled
 by default — `sudo ufw enable` to activate).

@@ -81,13 +81,7 @@
 {{- /* ────── profile prompt (ALWAYS fires on first init via promptChoiceOnce;
                  default = "core" so CI / non-TTY get safe fallback) ────── */ -}}
 {{- $hint := printf "Install profile [detected env: %s (GUI=%t, SSH=%t, ephemeral=%t)] — you pick" $detected $hasGUI $isSSH $ephemeral -}}
-{{- $rawProfile := promptChoiceOnce . "profile" $hint (list "core" "dev" "workstation") "core" -}}
-
-{{- /* ────── legacy translation: previous design used profile="mac" for
-              workstation Mac. Map silently on next init so existing machines
-              don't need manual cleanup. ────── */ -}}
-{{- $profile := $rawProfile -}}
-{{- if eq $rawProfile "mac" -}}{{- $profile = "workstation" -}}{{- end -}}
+{{- $profile := promptChoiceOnce . "profile" $hint (list "core" "dev" "workstation") "core" -}}
 
 {{- /* ────── .osid composite key: "darwin" / "linux-<id>". Single derived
               value used by .chezmoiscripts/* — replaces nested if-elif on
