@@ -35,11 +35,11 @@ export DOTFILES_GUI_LINUX_DNF={{ (.packages.gui.linux_dnf | default (list)) | so
 # (cached after `gh auth login`). Empty fallthrough = anonymous (60/hr GH limit
 # — usually enough on a fast link). If exhausted, partial-install warning in
 # lib/install-packages.sh::mise_install_tools() surfaces recovery hint.
-if [ -z "${GITHUB_TOKEN:-}" ]; then
-{{- if lookPath "gh" }}
+# Runtime `command -v` (not template `lookPath`) so first-apply works when gh
+# hasn't been mise-installed yet — empty body fine, gh path picks up later.
+if [ -z "${GITHUB_TOKEN:-}" ] && command -v gh >/dev/null 2>&1; then
     GITHUB_TOKEN="$(gh auth token 2>/dev/null || true)"
     [ -n "$GITHUB_TOKEN" ] && export GITHUB_TOKEN
-{{- end }}
 fi
 
 export INSTALL_PACKAGES_INVOKE=1
