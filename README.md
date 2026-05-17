@@ -81,44 +81,37 @@ by default — `sudo ufw enable` to activate).
 For a fresh machine (Mac or Linux), step-by-step:
 
 ```sh
-# 1. (Optional but recommended) Pre-auth GitHub for mise tool downloads.
-#    Lifts mise's 60/hr anonymous limit to 1000/hr — important on slow
-#    links or shared IPs.
-gh auth login                  # gh CLI's interactive auth
-# OR if you use 1Password: create the item once
-op item create --vault Personal --title 'GitHub API Token' \
-    credential=ghp_yourToken   # install-packages auto-reads via `op read`
-
-# 2. Bootstrap one-liner — installs chezmoi, clones source, runs apply.
+# 1. Bootstrap one-liner — installs chezmoi, clones source, runs apply.
 sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply vaintrub
 
-# 3. At the prompt, pick your profile (default core; pick workstation on
+# 2. At the prompt, pick your profile (default core; pick workstation on
 #    Mac laptop, dev on jetson / Linux server, core elsewhere).
 
-# 4. After apply finishes, reload your shell so mise shims land on PATH:
+# 3. After apply finishes, reload your shell so mise shims land on PATH:
 exec zsh
 
-# 5. Verify the install:
+# 4. Verify the install:
 mise ls                         # all rows should be without "(missing)"
 chezmoi diff                    # should be empty
 ```
 
-If step 5 shows any `(missing)` rows OR command-not-found errors, jump to
+If step 4 shows any `(missing)` rows OR command-not-found errors, the
+anonymous GitHub API rate limit was likely exhausted mid-install. Jump to
 the Recovery section below.
 
 ## Recovery (broken / partial first apply)
 
 ```sh
-# Anonymous GitHub rate-limit ran out → some mise tools missing:
-gh auth login                   # cache token (next apply auto-detects)
-chezmoi apply                   # picks up token, retries missing tools
-# OR seed token in 1Password (item: op://Personal/GitHub API Token/credential)
+# Anonymous GitHub rate-limit ran out → some mise tools missing.
+# Pick one (see §"1Password integration → Install-time" for full options):
+gh auth login                   # cache token (subsequent applies auto-pick via `gh auth token`)
+chezmoi apply                   # picks up token, retries missing tools idempotently
 
 # mise shims out of date / new tools not yet symlinked:
 mise reshim
 exec zsh
 
-# `chezmoi.toml` cache has stale keys (old `personal`/`headless`, or `mac`):
+# `chezmoi.toml` cache has stale keys (old `personal`/`headless`):
 chezmoi init --promptDefaults   # rewrites from current template
 chezmoi apply
 
