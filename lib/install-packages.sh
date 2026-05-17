@@ -24,6 +24,12 @@
 #   DOTFILES_GUI_LINUX_APT    space-separated package list (Linux workstation only)
 #   DOTFILES_GUI_LINUX_DNF    space-separated package list (Linux workstation only)
 #   DOTFILES_DEV_NPM_GLOBAL   space-separated npm package list
+#
+# Post-install funcs (called from main() at dev tier+):
+#   post_install_goimports   go install goimports
+#   post_install_ssh_audit   uv tool install ssh-audit
+#   npm_install_ai_globals   npm -g claude-code, codex (force overwrites)
+#   post_install_rtk_init    rtk init -g for Claude + Codex (rtk binary from mise)
 
 # Cascade: dev⊂workstation. workstation gets dev tools too.
 is_dev() {
@@ -215,14 +221,42 @@ npm_install_ai_globals() {
     done
 }
 
-linux_fd_symlink_fallback() {
-    # Distro fd-find → fd symlink. Relevant when mise's fd hasn't installed
-    # yet (first apply mid-download) or at core profile (no fd in mise.toml).
-    [ "$DOTFILES_OS" = "linux" ] || return 0
-    if command -v fdfind >/dev/null 2>&1 && ! command -v fd >/dev/null 2>&1; then
-        mkdir -p "$HOME/.local/bin"
-        ln -sf "$(command -v fdfind)" "$HOME/.local/bin/fd"
+post_install_rtk_init() {
+    # rtk binary itself is installed by mise (see dot_config/mise/config.toml.tmpl
+    # dev block: `github:rtk-ai/rtk = latest`). Here we run the init step that
+    # wires rtk into Claude Code (PreToolUse hook) + Codex (AGENTS.md).
+    if ! command -v rtk >/dev/null 2>&1; then
+        echo "rtk not on PATH after install-packages." >&2
+        echo "Possible causes:" >&2
+        echo "  - mise install failed (rate-limit / no network). Check 'mise ls'." >&2
+        echo "  - Shims dir not on PATH. Try 'exec zsh' then re-run 'chezmoi apply'." >&2
+        return 0
     fi
+    # rtk's Linux arm64 build is dynamically linked against glibc >=2.39
+    # (Ubuntu 24.04+); on Ubuntu 22.04 jammy (glibc 2.35) it fails with
+    # "version `GLIBC_2.39' not found". No musl/static alternative is shipped
+    # upstream as of 2026-05. Skip rtk init gracefully on too-old glibc rather
+    # than fail the whole apply — claude/codex still work without the rtk hook.
+    if ! rtk --version >/dev/null 2>&1; then
+        echo "rtk binary fails to execute on this system (likely glibc too old)." >&2
+        echo "Upstream ships glibc-2.39 build only for linux-arm64; needs Ubuntu 24.04+." >&2
+        echo "Skipping rtk init. claude/codex still usable without rtk hook." >&2
+        return 0
+    fi
+    # --auto-patch is Claude-specific: writes the PreToolUse hook into
+    # ~/.claude/settings.json non-interactively. Codex has no settings-hook
+    # analogue (rtk wires Codex via @RTK.md in AGENTS.md), so the codex path
+    # doesn't take that flag.
+    if command -v claude >/dev/null 2>&1; then
+        rtk init -g --auto-patch
+    fi
+    # `-g --codex` resolves to ~/.codex/{AGENTS.md,RTK.md} via resolve_codex_dir().
+    # Without `-g`, rtk init --codex writes to cwd (which is $HOME under chezmoi
+    # apply), polluting $HOME with stray AGENTS.md and RTK.md.
+    if command -v codex >/dev/null 2>&1; then
+        rtk init -g --codex
+    fi
+    echo "rtk: $(rtk --version) — initialized"
 }
 
 main() {
@@ -239,9 +273,8 @@ main() {
         post_install_goimports
         post_install_ssh_audit
         npm_install_ai_globals
+        post_install_rtk_init
     fi
-
-    linux_fd_symlink_fallback
 }
 
 # Auto-run when sourced by the chezmoi wrapper (which sets the flag).

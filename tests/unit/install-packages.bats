@@ -286,15 +286,16 @@ setup() {
     brew_bundle_install() { :; }
     linux_pkg_install() { :; }
     mise_install_tools() { :; }
-    linux_fd_symlink_fallback() { :; }
     post_install_goimports() { echo "GO_CALLED"; }
     post_install_ssh_audit() { echo "AUDIT_CALLED"; }
     npm_install_ai_globals() { echo "NPM_CALLED"; }
+    post_install_rtk_init() { echo "RTK_CALLED"; }
 
     run main
     [[ ! "$output" =~ "GO_CALLED" ]]
     [[ ! "$output" =~ "AUDIT_CALLED" ]]
     [[ ! "$output" =~ "NPM_CALLED" ]]
+    [[ ! "$output" =~ "RTK_CALLED" ]]
 }
 
 @test "main: dev profile → all post-installs run" {
@@ -304,15 +305,16 @@ setup() {
     brew_bundle_install() { :; }
     linux_pkg_install() { :; }
     mise_install_tools() { :; }
-    linux_fd_symlink_fallback() { :; }
     post_install_goimports() { echo "GO_CALLED"; }
     post_install_ssh_audit() { echo "AUDIT_CALLED"; }
     npm_install_ai_globals() { echo "NPM_CALLED"; }
+    post_install_rtk_init() { echo "RTK_CALLED"; }
 
     run main
     [[ "$output" =~ "GO_CALLED" ]]
     [[ "$output" =~ "AUDIT_CALLED" ]]
     [[ "$output" =~ "NPM_CALLED" ]]
+    [[ "$output" =~ "RTK_CALLED" ]]
 }
 
 @test "main: darwin OS → brew path, not linux" {
@@ -320,7 +322,6 @@ setup() {
     brew_bundle_install() { echo "BREW_CALLED"; }
     linux_pkg_install() { echo "LINUX_CALLED"; }
     mise_install_tools() { :; }
-    linux_fd_symlink_fallback() { :; }
 
     run main
     [[ "$output" =~ "BREW_CALLED" ]]
@@ -333,11 +334,87 @@ setup() {
     brew_bundle_install() { echo "BREW_CALLED"; }
     linux_pkg_install() { echo "LINUX_CALLED"; }
     mise_install_tools() { :; }
-    linux_fd_symlink_fallback() { :; }
 
     run main
     [[ "$output" =~ "LINUX_CALLED" ]]
     [[ ! "$output" =~ "BREW_CALLED" ]]
+}
+
+# --- post_install_rtk_init -------------------------------------------------
+
+@test "post_install_rtk_init: rtk not on PATH → skip + warning" {
+    command() {
+        case "$2" in rtk) return 1 ;; *) builtin command "$@" ;; esac
+    }
+
+    run post_install_rtk_init
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "rtk not on PATH" ]]
+}
+
+@test "post_install_rtk_init: rtk --version fails (glibc too old) → graceful skip" {
+    command() {
+        case "$2" in rtk) return 0 ;; *) builtin command "$@" ;; esac
+    }
+    rtk() {
+        case "$1" in --version) return 1 ;; *) return 0 ;; esac
+    }
+
+    run post_install_rtk_init
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "glibc too old" ]]
+    [[ ! "$output" =~ "initialized" ]]
+}
+
+@test "post_install_rtk_init: claude present → calls --auto-patch" {
+    rtk_log="$BATS_TEST_TMPDIR/rtk.log"
+    command() {
+        case "$2" in rtk|claude) return 0 ;; codex) return 1 ;; *) builtin command "$@" ;; esac
+    }
+    rtk() {
+        echo "rtk $*" >>"$rtk_log"
+        case "$1" in --version) echo "rtk 0.40.0" ;; esac
+        return 0
+    }
+
+    run post_install_rtk_init
+    [ "$status" -eq 0 ]
+    grep -q 'rtk init -g --auto-patch' "$rtk_log"
+    [[ "$output" =~ "initialized" ]]
+}
+
+@test "post_install_rtk_init: codex present → calls --codex" {
+    rtk_log="$BATS_TEST_TMPDIR/rtk.log"
+    command() {
+        case "$2" in rtk|codex) return 0 ;; claude) return 1 ;; *) builtin command "$@" ;; esac
+    }
+    rtk() {
+        echo "rtk $*" >>"$rtk_log"
+        case "$1" in --version) echo "rtk 0.40.0" ;; esac
+        return 0
+    }
+
+    run post_install_rtk_init
+    [ "$status" -eq 0 ]
+    grep -q 'rtk init -g --codex' "$rtk_log"
+    ! grep -q 'rtk init -g --auto-patch' "$rtk_log"
+}
+
+@test "post_install_rtk_init: neither claude nor codex → still prints initialized banner (idempotent no-op-ish)" {
+    rtk_log="$BATS_TEST_TMPDIR/rtk.log"
+    command() {
+        case "$2" in rtk) return 0 ;; claude|codex) return 1 ;; *) builtin command "$@" ;; esac
+    }
+    rtk() {
+        echo "rtk $*" >>"$rtk_log"
+        case "$1" in --version) echo "rtk 0.40.0" ;; esac
+        return 0
+    }
+
+    run post_install_rtk_init
+    [ "$status" -eq 0 ]
+    ! grep -q 'rtk init' "$rtk_log"
+    [[ "$output" =~ "initialized" ]]
 }
 
 # --- guard sanity ----------------------------------------------------------
