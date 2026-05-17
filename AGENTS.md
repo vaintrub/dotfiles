@@ -218,15 +218,23 @@ match the canonical `id` list (Pop!_OS, Mint, Raspbian).
 ### Bootstrap script split — thin wrapper + `lib/`
 
 The install script (`run_onchange_after_50-install-packages.sh.tmpl`) is
-intentionally a thin wrapper (~55 LOC including the 1Password→gh token
-cascade) that:
+intentionally a thin wrapper (~40 LOC) that:
 
 1. Renders chezmoi facts (profile, osid, osRelease.idLike, every package
    list from `.chezmoidata/packages.yaml`) into `DOTFILES_*` env vars.
-2. Runs the GITHUB_TOKEN cascade (template-time `lookPath` guards omit
-   unavailable backends).
+2. Picks `GITHUB_TOKEN` from `gh auth token` if `gh` is authed (cheap
+   shell call, no disk persistence). Pre-exported env wins; empty
+   fallthrough is fine — anonymous 60/hr usually fits.
 3. Sets `INSTALL_PACKAGES_INVOKE=1` and sources
    `{{ .chezmoi.sourceDir }}/lib/install-packages.sh`.
+
+Secret-handling architecture (three layers, three mechanisms):
+
+| Concern | Mechanism | Where |
+|---|---|---|
+| Install-time | `gh auth token` auto-pickup (above) + recovery warning if rate-limited | wrapper + `mise_install_tools()` |
+| Render-time | chezmoi-native `onepasswordRead` via `.chezmoidata/secrets.yaml` `op_refs:` catalog | per-file `private_dot_<X>.tmpl` |
+| Runtime CLI | 1Password Shell Plugins (`op plugin init <cli>`) | user-managed, per-CLI |
 
 The library is pure POSIX `sh` with no template syntax — bats unit tests
 under `tests/unit/install-packages.bats` `source` it (with the invoke
