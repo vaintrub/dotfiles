@@ -1,44 +1,26 @@
-# Single source of truth for OS-package installation.
-# Consumed by .chezmoiscripts/run_onchange_after_50-install-packages.sh.tmpl
-# (renders into env vars) + lib/install-packages.sh (consumes env, installs).
+# OS-package source of truth. Consumed by run_onchange_after_50-install-
+# packages.sh.tmpl (renders into env) + lib/install-packages.sh (installs).
 #
-# Install profile tiers (set in chezmoi.toml [data].profile):
-#   core         minimum to make dotfiles functional. Installs zsh+vim+tmux+
-#                git+curl+ca-certs via apt/dnf (on Mac these come from Apple
-#                base). Network safety baseline: ufw+tcpdump (Linux); Mac
-#                tcpdump system-provided, ufw has no equivalent (use App
-#                Firewall via System Settings → Privacy & Security).
-#   dev          core + dev toolchain: htop/tree/wget/nmap/telnet/wireguard/
-#                psql/build-essential (Linux+Mac symmetric), docker engine
-#                (Linux only — Mac users wanting Docker pick `workstation`
-#                which installs Docker Desktop), AI CLIs (claude-code, codex).
-#   workstation  dev + GUI apps. Installs differ by OS:
-#                  - Mac: casks (iterm2, docker-desktop, vscode, ngrok, fonts)
-#                  - Linux: placeholder (empty for now — populated when I run
-#                           Linux desktop machine)
+# Tier cascade: core ⊂ dev ⊂ workstation.
+#   core         dotfile baseline + Linux network safety (ufw, tcpdump).
+#   dev          + CLI dev toolchain. Docker NOT here (distro-conflict-prone).
+#   workstation  + GUI casks (Mac); Linux placeholder.
 #
-# Cascade: dev includes core. workstation includes dev (+ core).
-#
-# Note: mise tools (kubectl, helm, k9s, jq, gh, fd, fzf, ...) live in
-# dot_config/mise/config.toml.tmpl (cross-platform aqua backend), gated
-# inside that file by `$isDev` (cascades dev+workstation). Not in this YAML.
+# Cross-platform dev binaries (kubectl, helm, op, rtk, claude-code, codex, …)
+# live in dot_config/mise/config.toml.tmpl, gated by $isDev.
 
 packages:
-  # === core tier — always installed ===
   core:
-    # Mac: zsh/vim/tmux/git/curl ship with macOS. No brew install at this
-    # tier. Fonts handled by .chezmoiexternal.toml.tmpl externals.
-    brews: []
-    # Linux: bootstrap + safety baseline.
+    brews: []                       # Mac ships zsh/vim/tmux/git/curl from base
     apt:
-      - zsh                       # shell (chsh switches login shell)
-      - vim                       # $EDITOR default
-      - tmux                      # dot_tmux.conf.local
-      - git                       # antidote clone + chezmoi update
-      - curl                      # curl-pipes (mise install, etc.)
-      - ca-certificates           # HTTPS verification
-      - ufw                       # firewall (disabled by default; Mac uses App Firewall)
-      - tcpdump                   # packet capture (Mac tcpdump = /usr/sbin/tcpdump system)
+      - zsh
+      - vim
+      - tmux
+      - git
+      - curl
+      - ca-certificates
+      - ufw                         # disabled by default; Mac uses App Firewall
+      - tcpdump
     dnf:
       - zsh
       - vim
@@ -49,42 +31,30 @@ packages:
       - ufw
       - tcpdump
 
-  # === dev tier — adds CLI dev toolchain ===
   dev:
-    # Mac brew formulae (tools not in mise's aqua registry).
-    # Note: `op` (1Password CLI) and `rtk` previously lived here / in
-    # the install-rtk script; both are now installed cross-platform via
-    # mise — see dot_config/mise/config.toml.tmpl dev block (`op` via
-    # mise's direct-URL backend under the unqualified shortname,
-    # `rtk` via `github:rtk-ai/rtk`).
+    # Tools without a mise registry entry (C-deps, system integration).
     brews:
-      - htop                       # process monitor
-      - tree                       # directory tree
-      - wget                       # alt to curl
-      - nmap                       # network scanner
-      - telnet                     # legacy net tool
-      - libpq                      # psql/pg_dump (keg-only, force-linked)
-      - wireguard-tools            # VPN CLI
-    # Linux apt: OS-native dev tools (symmetric to brews above).
-    # Docker engine intentionally NOT here — too distro-specific and
-    # conflict-prone: `docker.io` (Ubuntu repo) and `docker-ce` (Docker's
-    # official apt repo) cannot coexist. Install whichever fits your
-    # machine — typically:
-    #   `sudo apt install docker.io`            (simple, older version)
-    #   Docker's official apt repo for docker-ce (production, newer)
-    #   `workstation` profile on Mac           (Docker Desktop cask)
-    apt:
-      - build-essential            # compilers (Xcode CLT equivalent — Mac gets via brew side-effect)
-      - xsel                       # tmux yank → clipboard (X11; Mac uses pbcopy built-in)
-      - wl-clipboard               # tmux yank → clipboard (Wayland; Mac uses pbcopy built-in)
       - htop
       - tree
       - wget
       - nmap
-      - inetutils-telnet           # telnet (Debian/Ubuntu package name)
+      - telnet
+      - libpq                       # keg-only; lib force-links it
       - wireguard-tools
-      - postgresql-client          # psql
-    # Linux dnf (Fedora-family). Docker omitted per same reasoning.
+    # Docker NOT here: docker.io (Ubuntu repo) + docker-ce (Docker repo)
+    # cannot coexist. Pick the right one per machine, or use workstation
+    # profile on Mac for Docker Desktop.
+    apt:
+      - build-essential
+      - xsel                        # tmux yank → X11 clipboard
+      - wl-clipboard                # tmux yank → Wayland clipboard
+      - htop
+      - tree
+      - wget
+      - nmap
+      - inetutils-telnet            # Debian/Ubuntu telnet package name
+      - wireguard-tools
+      - postgresql-client
     dnf:
       - xsel
       - wl-clipboard
@@ -95,30 +65,22 @@ packages:
       - telnet
       - wireguard-tools
       - postgresql
-  # AI CLIs (claude-code, codex) now installed cross-platform via mise's
-  # aqua backend — see dot_config/mise/config.toml.tmpl dev block. Anthropic
-  # ships native binary since v2.1.x; OpenAI codex is native rust. No Node
-  # middleman needed. Replaces the previous `dev.npm_global` list.
 
-  # === workstation tier — adds GUI apps (per-OS lists) ===
   gui:
-    # Mac casks. Installed when profile=workstation AND OS=darwin.
+    # Installed when profile=workstation AND OS=darwin.
     mac_casks:
-      - iterm2                     # terminal
-      - docker-desktop             # Docker engine + UI (Mac equivalent of Linux docker.io)
+      - iterm2
+      - docker-desktop
       - visual-studio-code
-      - ngrok                      # tunnel UI
-      - 1password                  # desktop app — enables Touch ID biometric unlock for `op` CLI (CLI itself via mise — see mise dev block)
-      - font-meslo-lg-nerd-font    # MesloLGS — backstop alongside .chezmoiexternal font drop
-      - font-monaspace             # GitHub Monaspace family
-    # Linux GUI packages. Installed when profile=workstation AND OS=linux.
-    # Placeholder — populate when I actually run a Linux desktop (Ubuntu/Pop/
-    # Fedora workstation). Candidates: code, firefox, vlc, gimp, ...
+      - ngrok
+      - 1password                   # desktop app — Touch ID unlock for `op` CLI
+      - font-meslo-lg-nerd-font
+      - font-monaspace
+    # Linux desktop placeholder.
     linux_apt: []
     linux_dnf: []
 
-# Claude Code + Codex plugins — unchanged by tier system. Installed when
-# claude/codex CLI is on PATH (dev tier and above).
+# Plugins (Claude + Codex) — installed when respective CLI on PATH.
 plugins:
   claude:
     - gopls-lsp@claude-plugins-official

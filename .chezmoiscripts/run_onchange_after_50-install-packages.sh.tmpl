@@ -1,29 +1,19 @@
 {{- /*
-  Tier-cascade package installer (3 profiles: core / dev / workstation).
-  This script is a thin wrapper that renders chezmoi facts (profile,
-  osid, package lists from .chezmoidata/packages.yaml) into env vars,
-  then sources lib/install-packages.sh and calls main.
-
-  All logic lives in lib/install-packages.sh — testable via bats unit
-  tests with mocked external commands.
-
-  Re-runs whenever rendered output changes — chezmoi hashes rendered
-  script. packages.yaml, mise.toml, profile, or lib edits all trigger
-  a re-render.
+  Thin wrapper: renders chezmoi facts (profile, osid, package lists) into
+  DOTFILES_* env vars, then sources lib/install-packages.sh::main. All
+  install logic lives in the lib — bats-testable.
 */ -}}
 #!/bin/sh
 set -eu
 
-# Force apt non-interactive (chezmoi child sh has no TTY — tzdata would prompt).
+# Non-interactive apt (chezmoi child sh has no TTY).
 export DEBIAN_FRONTEND=noninteractive
 export TZ=Etc/UTC
 
-# Make ~/.local/bin and mise shims discoverable for this script and post-
-# installs. Debian's ~/.profile adds ~/.local/bin only for LOGIN shells;
-# chezmoi exec()s without sourcing profile.
+# Debian's ~/.profile adds ~/.local/bin only for LOGIN shells; chezmoi exec()s
+# without sourcing profile. Ensure mise shims are reachable too.
 export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
 
-# Render chezmoi facts → env. Lib reads only these, never .chezmoi.* directly.
 export DOTFILES_PROFILE={{ .profile | quote }}
 export DOTFILES_OS={{ .chezmoi.os | quote }}
 export DOTFILES_OSID={{ .osid | quote }}
@@ -37,42 +27,28 @@ export DOTFILES_DEV_APT={{ (.packages.dev.apt | default (list)) | sortAlpha | un
 export DOTFILES_CORE_DNF={{ (.packages.core.dnf | default (list)) | sortAlpha | uniq | join " " | quote }}
 export DOTFILES_DEV_DNF={{ (.packages.dev.dnf | default (list)) | sortAlpha | uniq | join " " | quote }}
 
-# Workstation tier (GUI apps). Per-OS lists from packages.gui.
 export DOTFILES_GUI_MAC_CASKS={{ (.packages.gui.mac_casks | default (list)) | sortAlpha | uniq | join " " | quote }}
 export DOTFILES_GUI_LINUX_APT={{ (.packages.gui.linux_apt | default (list)) | sortAlpha | uniq | join " " | quote }}
 export DOTFILES_GUI_LINUX_DNF={{ (.packages.gui.linux_dnf | default (list)) | sortAlpha | uniq | join " " | quote }}
 
-# Auto-detect GitHub API token to lift mise's 60/hr anonymous rate limit
-# (matters on fresh bootstrap of the dev/workstation tier — 25 aqua tools
-# = 25-50 GH API calls). Cascade: 1Password → gh CLI cached token → anon.
-#
-# Template-time lookPath guards keep the rendered .sh lean — machines
-# without `op` get only the gh path; machines without either get just
-# the empty-token fall-through.
-#
-# `op read` is preferred over chezmoi's native `onepasswordRead` template
-# func: native bakes the secret as a literal string into the rendered .sh
-# under $TMPDIR, leaving a disk-window between render and exec. Shell
-# runtime `op read` keeps the token in process env only. The rendered .sh
-# contains the REFERENCE PATH (op://Personal/GitHub API Token/credential),
-# not the credential itself.
+# GITHUB_TOKEN cascade: 1Password → gh → anon. Lifts mise's 60/hr anonymous
+# GH API limit on fresh bootstrap. `op read` keeps token in process env only
+# (chezmoi's native onepasswordRead would bake it into the rendered .sh under
+# $TMPDIR). Template lookPath guards omit cascade steps for machines without
+# the corresponding CLI.
 if [ -z "${GITHUB_TOKEN:-}" ]; then
 {{- if lookPath "op" }}
-    # 1Password (most secure — Touch ID per call on Mac, token only in process env).
-    # Item path overridable via $DOTFILES_OP_GITHUB_REF for non-default vault layouts.
-    # --no-newline avoids trailing \n that would corrupt Authorization: Bearer headers.
+    # --no-newline: trailing \n would corrupt Authorization: Bearer headers.
+    # $DOTFILES_OP_GITHUB_REF overrides the default item path.
     GITHUB_TOKEN="$(op read --no-newline \
         "${DOTFILES_OP_GITHUB_REF:-op://Personal/GitHub API Token/credential}" \
         2>/dev/null || true)"
 {{- end }}
 {{- if lookPath "gh" }}
     if [ -z "${GITHUB_TOKEN:-}" ]; then
-        # gh CLI cached token (works after `gh auth login`).
         GITHUB_TOKEN="$(gh auth token 2>/dev/null || true)"
     fi
 {{- end }}
-    # Else fall through anonymously — mise hits 60/hr limit; partial-install
-    # warning in lib/install-packages.sh::mise_install_tools() surfaces it.
     [ -n "$GITHUB_TOKEN" ] && export GITHUB_TOKEN
 fi
 

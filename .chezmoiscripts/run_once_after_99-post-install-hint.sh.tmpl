@@ -1,12 +1,6 @@
 {{- /*
-  One-time post-install hint surfaced after every other run_once_after_*
-  (numerical prefix 99 = runs last in lexical order). Fires ONCE per
-  machine — chezmoi state bucket tracks single execution. To re-trigger
-  on a machine already past first apply:
-      chezmoi state delete-bucket --bucket=scriptState
-
-  Tells the user how to load mise shims into their current shell and how
-  to recover from a partial install (rate-limit / token / reshim).
+  First-apply hint. Fires once per machine (run_once_after_, chezmoi state
+  bucket tracks). Re-trigger: `chezmoi state delete-bucket --bucket=scriptState`.
 */ -}}
 #!/bin/sh
 set -eu
