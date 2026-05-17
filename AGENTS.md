@@ -195,8 +195,9 @@ of `chezmoi apply`:
 - **`run_once_before_*`** — run ONCE per machine, BEFORE file ops. Used for
   hard prereq checks (zsh/vim/tmux), brew install (Mac).
 - **`run_onchange_after_*`** — run AFTER all file ops, only when script
-  contents change (chezmoi tracks hash). Used for brew bundle, rtk install,
-  caveman install.
+  contents change (chezmoi tracks hash). Used for the package installer
+  (`50-install-packages`, which also handles mise install + post-install
+  funcs like `rtk init` from the lib) and plugin install (`70-install-plugins`).
 - **`run_once_after_*`** — run ONCE per machine, AFTER file ops. Used for
   iTerm2 `defaults write PrefsCustomFolder`.
 
