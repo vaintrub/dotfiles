@@ -23,7 +23,6 @@ setup() {
     export DOTFILES_DEV_APT=""
     export DOTFILES_CORE_DNF="curl git zsh"
     export DOTFILES_DEV_DNF=""
-    export DOTFILES_DEV_NPM_GLOBAL=""
 
     # Wipe INSTALL_PACKAGES_INVOKE so sourcing the lib doesn't auto-run main.
     unset INSTALL_PACKAGES_INVOKE
@@ -288,13 +287,11 @@ setup() {
     mise_install_tools() { :; }
     post_install_goimports() { echo "GO_CALLED"; }
     post_install_ssh_audit() { echo "AUDIT_CALLED"; }
-    npm_install_ai_globals() { echo "NPM_CALLED"; }
     post_install_rtk_init() { echo "RTK_CALLED"; }
 
     run main
     [[ ! "$output" =~ "GO_CALLED" ]]
     [[ ! "$output" =~ "AUDIT_CALLED" ]]
-    [[ ! "$output" =~ "NPM_CALLED" ]]
     [[ ! "$output" =~ "RTK_CALLED" ]]
 }
 
@@ -307,13 +304,11 @@ setup() {
     mise_install_tools() { :; }
     post_install_goimports() { echo "GO_CALLED"; }
     post_install_ssh_audit() { echo "AUDIT_CALLED"; }
-    npm_install_ai_globals() { echo "NPM_CALLED"; }
     post_install_rtk_init() { echo "RTK_CALLED"; }
 
     run main
     [[ "$output" =~ "GO_CALLED" ]]
     [[ "$output" =~ "AUDIT_CALLED" ]]
-    [[ "$output" =~ "NPM_CALLED" ]]
     [[ "$output" =~ "RTK_CALLED" ]]
 }
 

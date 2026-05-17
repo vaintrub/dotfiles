@@ -23,13 +23,14 @@
 #   DOTFILES_GUI_MAC_CASKS    space-separated cask list (Mac workstation only)
 #   DOTFILES_GUI_LINUX_APT    space-separated package list (Linux workstation only)
 #   DOTFILES_GUI_LINUX_DNF    space-separated package list (Linux workstation only)
-#   DOTFILES_DEV_NPM_GLOBAL   space-separated npm package list
 #
 # Post-install funcs (called from main() at dev tier+):
 #   post_install_goimports   go install goimports
 #   post_install_ssh_audit   uv tool install ssh-audit
-#   npm_install_ai_globals   npm -g claude-code, codex (force overwrites)
 #   post_install_rtk_init    rtk init -g for Claude + Codex (rtk binary from mise)
+#
+# AI CLIs (claude-code, codex) install via mise's aqua backend — no
+# npm/Node coupling. See dot_config/mise/config.toml.tmpl dev block.
 
 # Cascade: dev⊂workstation. workstation gets dev tools too.
 is_dev() {
@@ -189,38 +190,6 @@ post_install_ssh_audit() {
     fi
 }
 
-_resolve_npm() {
-    # Prefer mise's npm — avoids stale fnm/nvm shims.
-    if command -v mise >/dev/null 2>&1; then
-        mise_node_root="$(mise where node 2>/dev/null || true)"
-        if [ -n "$mise_node_root" ] && [ -x "$mise_node_root/bin/npm" ]; then
-            echo "$mise_node_root/bin/npm"
-            return 0
-        fi
-    fi
-    command -v npm 2>/dev/null && return 0
-    return 1
-}
-
-npm_install_ai_globals() {
-    npm_bin=$(_resolve_npm) || return 0
-
-    # Defang any stale prefix from a decommissioned version manager.
-    "$npm_bin" config delete prefix --global 2>/dev/null || true
-    "$npm_bin" config delete prefix 2>/dev/null || true
-
-    if [ "$DOTFILES_OS" = "linux" ]; then
-        "$npm_bin" config set prefix "$HOME/.local"
-    fi
-    # --force: overwrites any pre-existing binaries at the target prefix
-    # (e.g. ~/.local/bin/claude carried over from a prior dotbot install
-    # or manual one-shot npm install). npm 7+ accepts the flag; mise's
-    # bundled Node ≥18 ships npm 9+.
-    for pkg in $DOTFILES_DEV_NPM_GLOBAL; do
-        "$npm_bin" install -g --force "$pkg" || echo "npm -g $pkg failed" >&2
-    done
-}
-
 post_install_rtk_init() {
     # rtk binary itself is installed by mise (see dot_config/mise/config.toml.tmpl
     # dev block: `github:rtk-ai/rtk = latest`). Here we run the init step that
@@ -272,7 +241,6 @@ main() {
     if is_dev; then
         post_install_goimports
         post_install_ssh_audit
-        npm_install_ai_globals
         post_install_rtk_init
     fi
 }

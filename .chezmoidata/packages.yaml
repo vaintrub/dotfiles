@@ -95,11 +95,10 @@ packages:
       - telnet
       - wireguard-tools
       - postgresql
-    # AI CLI globals — installed via mise's npm after mise install. Available
-    # at dev tier and above (cascades into workstation). Cross-platform.
-    npm_global:
-      - "@anthropic-ai/claude-code"
-      - "@openai/codex"
+  # AI CLIs (claude-code, codex) now installed cross-platform via mise's
+  # aqua backend — see dot_config/mise/config.toml.tmpl dev block. Anthropic
+  # ships native binary since v2.1.x; OpenAI codex is native rust. No Node
+  # middleman needed. Replaces the previous `dev.npm_global` list.
 
   # === workstation tier — adds GUI apps (per-OS lists) ===
   gui:

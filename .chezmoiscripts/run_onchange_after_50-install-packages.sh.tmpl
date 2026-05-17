@@ -42,8 +42,6 @@ export DOTFILES_GUI_MAC_CASKS={{ (.packages.gui.mac_casks | default (list)) | so
 export DOTFILES_GUI_LINUX_APT={{ (.packages.gui.linux_apt | default (list)) | sortAlpha | uniq | join " " | quote }}
 export DOTFILES_GUI_LINUX_DNF={{ (.packages.gui.linux_dnf | default (list)) | sortAlpha | uniq | join " " | quote }}
 
-export DOTFILES_DEV_NPM_GLOBAL={{ (.packages.dev.npm_global | default (list)) | sortAlpha | uniq | join " " | quote }}
-
 # Auto-detect GitHub API token to lift mise's 60/hr anonymous rate limit
 # (matters on fresh bootstrap of the dev/workstation tier — 25 aqua tools
 # = 25-50 GH API calls). Cascade: 1Password → gh CLI cached token → anon.

@@ -66,6 +66,21 @@ rust   = "stable"
 "aqua:pnpm/pnpm"                            = "latest"
 "aqua:astral-sh/uv"                         = "latest"
 
+# --- AI CLIs ------------------------------------------------------------
+# Native binaries (no Node middleman). Anthropic ships claude-code as a
+# standalone bun-bundled binary since v2.1.x via GCS bucket; aqua-registry
+# proxies the URL. OpenAI codex is native rust, filtered to `rust-` tags
+# (the legacy JS variant is no longer released in parallel).
+#
+# Auto-update concern: `claude doctor` shows install method. Package-mgr
+# installs (this counts as one) do NOT auto-update per Anthropic docs
+# (https://code.claude.com/docs/en/setup), so mise pin stays in sync.
+#
+# Fallback if aqua-registry entry breaks: swap to `npm:@anthropic-ai/claude-code`
+# / `npm:@openai/codex` shortname — mise's npm backend works identically.
+"aqua:anthropics/claude-code"               = "latest"
+"aqua:openai/codex"                         = "latest"
+
 # --- Auth + secrets -----------------------------------------------------
 # `op` (1Password CLI) — 1Password publishes binaries to their CDN (not
 # GitHub releases); mise registry has direct-URL mapping under the
