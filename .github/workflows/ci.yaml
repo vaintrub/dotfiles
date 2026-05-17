@@ -41,23 +41,117 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends bats jq
 
-      - name: Install chezmoi
+      - name: Install chezmoi + put mise shims on PATH ahead of time
         run: |
           sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          # mise shims aren't installed yet, but adding the path to
+          # $GITHUB_PATH now ensures every subsequent step sees the dir
+          # once mise install populates it. Without this, the 2nd
+          # `chezmoi apply` re-renders dot_gitconfig.tmpl with
+          # `{{ lookPath "delta" }}` still false (delta exists at
+          # ~/.local/share/mise/installs/... but its shim at
+          # ~/.local/share/mise/shims/delta isn't reachable).
+          echo "$HOME/.local/share/mise/shims" >> "$GITHUB_PATH"
 
-      - name: chezmoi init + apply
+      - name: chezmoi init + apply (twice — second converges modify_ + lookPath drift)
         run: |
           # Symlink workspace to chezmoi's default source dir so every
           # subsequent `chezmoi *` invocation (e.g. `chezmoi diff` in bats)
-          # finds the source without needing --source flag. `chezmoi init
-          # --source=PATH` only takes effect for the current invocation;
-          # it does NOT persist sourceDir to ~/.config/chezmoi/chezmoi.toml.
+          # finds the source without needing --source flag.
           mkdir -p "$HOME/.local/share"
           ln -s "$GITHUB_WORKSPACE" "$HOME/.local/share/chezmoi"
           chezmoi init --apply --promptDefaults
           echo "--- chezmoi data ---"
           chezmoi data
+          # Second apply: re-rendering settles two convergence cases —
+          #   (a) modify_settings.json regenerates against the settings.json
+          #       the rtk init wrote in pass 1 (alphabetised vs insertion-order)
+          #   (b) dot_gitconfig.tmpl `{{ lookPath "delta" }}` block becomes
+          #       truthy now that mise installed delta in pass 1.
+          chezmoi apply
 
       - name: Verify post-apply state
-        run: bats tests/files/common.bats
+        run: |
+          bats tests/files/common.bats
+          bats tests/files/core.bats
+
+  apply-dev:
+    name: apply (profile=dev, Ubuntu)
+    runs-on: ubuntu-latest
+    needs: unit
+    env:
+      # Lifts mise's 60/hr anonymous GitHub API rate-limit to 1000/hr.
+      # Needed for the 25-tool aqua-backend fetch (~30-50 API calls).
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      DEBIAN_FRONTEND: noninteractive
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache mise installs
+        uses: actions/cache@v4
+        with:
+          # mise extracts every aqua / language toolchain into per-tool dirs
+          # under ~/.local/share/mise/installs/. Cache keyed by hash of the
+          # mise config so adding/removing a tool busts the cache cleanly.
+          path: ~/.local/share/mise/installs
+          key: mise-${{ runner.os }}-${{ hashFiles('dot_config/mise/config.toml.tmpl') }}
+          restore-keys: mise-${{ runner.os }}-
+
+      - name: Install bats + jq
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends bats jq
+
+      - name: Install chezmoi + put mise shims on PATH ahead of time
+        run: |
+          sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          # mise shims aren't installed yet, but adding the path to
+          # $GITHUB_PATH now ensures every subsequent step sees the dir
+          # once mise install populates it. Without this, the 2nd
+          # `chezmoi apply` re-renders dot_gitconfig.tmpl with
+          # `{{ lookPath "delta" }}` still false (delta exists at
+          # ~/.local/share/mise/installs/... but its shim at
+          # ~/.local/share/mise/shims/delta isn't reachable).
+          echo "$HOME/.local/share/mise/shims" >> "$GITHUB_PATH"
+
+      - name: chezmoi init + apply (twice — second converges modify_ + lookPath drift)
+        run: |
+          mkdir -p "$HOME/.config/chezmoi" "$HOME/.local/share"
+          ln -s "$GITHUB_WORKSPACE" "$HOME/.local/share/chezmoi"
+          # Seed chezmoi.toml with profile=dev BEFORE init.
+          # promptChoiceOnce takes a default arg ("core"); --promptDefaults
+          # makes it return that LITERAL default, NOT the computed
+          # $defaultProfile that the template's auto-detect would resolve to.
+          # So to test dev tier on CI we need hasKey .profile == true at
+          # init time → promptChoiceOnce short-circuits to the cached
+          # value (no prompt, no default fallthrough).
+          # `chezmoi init` then re-renders chezmoi.toml (writes same content
+          # back, since hasKey passes for every prompted field) AND caches
+          # the template hash in configState. Without that hash cache,
+          # subsequent applies emit "config file template has changed"
+          # warning, which bats captures as drift.
+          cat > "$HOME/.config/chezmoi/chezmoi.toml" <<EOF
+          [data]
+              name    = "CI Tester"
+              email   = "ci@example.com"
+              profile = "dev"
+              osid    = "linux-ubuntu"
+          EOF
+          chezmoi init --apply --promptDefaults
+          echo "--- chezmoi data ---"
+          chezmoi data
+          # Second apply: re-rendering settles two convergence cases —
+          #   (a) modify_settings.json regenerates against the settings.json
+          #       the rtk init wrote in pass 1 (alphabetised output vs
+          #       insertion-order writes by rtk).
+          #   (b) dot_gitconfig.tmpl `{{ lookPath "delta" }}` block becomes
+          #       truthy now that mise installed delta in pass 1.
+          chezmoi apply
+
+      - name: Verify post-apply state
+        run: |
+          bats tests/files/common.bats
+          bats tests/files/dev.bats

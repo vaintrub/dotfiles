@@ -1,0 +1,37 @@
+{{- /*
+  First-apply hint. Fires once per machine (run_once_after_, chezmoi state
+  bucket tracks). Re-trigger: `chezmoi state delete-bucket --bucket=scriptState`.
+*/ -}}
+#!/bin/sh
+set -eu
+
+cat <<'EOF'
+
+[install] Setup complete. Next steps:
+
+  exec zsh           # Reload current shell so mise shims are on PATH.
+                     # After this:  aws --version  kubectl version --client  etc.
+
+  mise ls            # Inspect installed tools. Any (missing) row → re-fetch needed.
+
+If any tools are missing (anonymous GitHub API rate-limit on slow links):
+
+  gh auth login                    # interactive auth — token auto-detected next apply
+  # OR — if you use 1Password, create the item once:
+  #   op item create --vault Personal --title 'GitHub API Token' \
+  #     credential=<your-PAT>
+  chezmoi apply                    # picks up the new token and retries missing tools
+  mise reshim                      # only if shim symlinks are stale (rare)
+
+Per-machine override (skip rust on a small VPS, pin a different python):
+
+  cat > ~/.config/mise/config.local.toml <<'OVERRIDE'
+  [tools]
+  rust = "skip"
+  python = "3.11"
+  OVERRIDE
+
+  # Re-apply to pick up the override:
+  chezmoi apply
+
+EOF

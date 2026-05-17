@@ -1,41 +1,16 @@
 {{- /*
-  Install + update Claude Code and OpenAI Codex plugins from
-  .chezmoidata/packages.yaml (.plugins.{claude, claude_marketplaces,
-  codex_marketplaces}). Re-runs when the list changes (chezmoi hashes
-  rendered script content).
-
-  Claude:
-    - `claude plugin marketplace add` for each non-default marketplace.
-      Defensively adds `anthropics/claude-plugins-official` first — that
-      marketplace is normally auto-registered on first interactive
-      `claude` launch, but a fresh box where claude was npm-installed
-      but never run won't have it.
-    - `claude plugin install <plugin>@<mkt> --scope user` for each
-      .plugins.claude entry. `claude plugin update` bumps to latest.
-      Both idempotent.
-    - Caveman is just a row in .plugins.claude + .plugins.claude_marketplaces
-      (canonical install per its INSTALL.md per-agent table). The plugin
-      manages its own hooks via plugin.json — no settings.json mutation.
-
-  Codex:
-    - `openai-curated` marketplace is reserved (built into the codex
-      binary); enable flags via [plugins."x@y"] in config.toml are
-      sufficient. Those flags come from
-      .chezmoitemplates/codex-config-base.toml (rendered through
-      modify_config.toml).
-    - Non-reserved marketplaces need `codex plugin marketplace add`.
-    - Skill-based plugins (e.g. caveman for Codex) install via `npx
-      skills add ... -a codex` — but the skills CLI doesn't currently
-      wire the per-agent symlinks Codex needs for discovery, so they're
-      a manual step, not part of this script.
+  Install Claude Code + Codex plugins from .chezmoidata/packages.yaml.
+  Claude: `plugin marketplace add` (defensively re-adds claude-plugins-official
+  in case claude was never launched interactively) + `plugin install`/`update`.
+  Codex: only non-reserved marketplaces need `plugin marketplace add`; enable
+  flags live in .chezmoitemplates/codex-config-base.toml.
+  Caveman-for-Codex is manual (skills CLI doesn't wire per-agent symlinks yet).
 */ -}}
 #!/bin/sh
 set -eu
 
 {{ if eq .chezmoi.os "darwin" -}}
-# Same as script 60: ensure /opt/homebrew/bin is on PATH so command -v claude
-# / codex find the freshly-installed binaries from script 50, even on first
-# apply where the parent shell didn't have brew on PATH yet.
+# Defensive PATH on first apply (mise activate may not have hit parent shell yet).
 if [ -x /opt/homebrew/bin/brew ]; then
     eval "$(/opt/homebrew/bin/brew shellenv)"
 elif [ -x /usr/local/bin/brew ]; then

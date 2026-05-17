@@ -1,41 +1,13 @@
 {{- /*
-  Rendered into ~/.config/chezmoi/chezmoi.toml on `chezmoi init`. Cached
-  [data] values short-circuit prompts on subsequent init runs.
-
-  Install profile (3 tiers, cascade):
-    core         minimum to make these dotfiles functional. Installs:
-                 - zsh, vim, tmux, git, curl, ca-certificates (Linux apt/dnf)
-                 - Linux: ufw + tcpdump (network safety baseline)
-                 - MesloLGS NF + Monaspace Neon fonts (chezmoi externals)
-                 - mise + zoxide + fzf (zshrc integrations depend on these)
-                 Use case: Hetzner VPS, DO droplet, jetson via SSH, Codespace,
-                 devcontainer, recovery. ~50 MB.
-    dev          core + CLI dev toolchain. Adds:
-                 - 25 mise aqua tools (kubectl, helm, jq, gh, k9s, ...)
-                 - Languages: Go, Python, Node, Rust (via mise core)
-                 - Linux: docker.io, htop, tree, wget, nmap, telnet, libpq,
-                   wireguard-tools, build-essential, xsel/wl-clipboard
-                 - Mac brews: htop, tree, wget, nmap, telnet, libpq,
-                   wireguard-tools, rtk (no docker on Mac dev — pick
-                   workstation for Docker Desktop)
-                 - goimports, ssh-audit (post-installs)
-                 - AI npm globals: claude-code, codex
-                 Use case: headless dev box (jetson, Ubuntu VM, Linux VPS for
-                 actual work, Mac SSH'd into headless). ~1.9 GB first apply.
-    workstation  dev + GUI apps. Adds:
-                 - Mac: casks (iterm2, docker-desktop, vscode, ngrok, fonts)
-                 - Linux: placeholder (empty for now)
-                 Use case: primary GUI machine (Mac laptop, Linux desktop).
-
-  Environment is auto-detected and shown as a HINT in the prompt — you
-  always pick explicitly. No silent auto-decision. Default = "core" (safe
-  fallback for CI / non-interactive / accidental enter).
-
-  To re-prompt later: `chezmoi init --prompt`.
-  Skip prompt non-interactively (CI): default kicks in via --promptDefaults.
+  Rendered to ~/.config/chezmoi/chezmoi.toml on `chezmoi init`. Cached
+  [data] values short-circuit prompts on subsequent runs.
+  Profile tiers (cascade core ⊂ dev ⊂ workstation) — see README for details.
+  Env hint is informational only; user always picks. Default "core" is the
+  safe fallback for CI / non-interactive / accidental enter.
+  Re-prompt: `chezmoi init --prompt`.
 */ -}}
 
-{{- /* ────── env detection (HINT ONLY — not a decision) ────── */ -}}
+{{- /* env detection (hint only) */ -}}
 {{- $isSSH    := or (ne (env "SSH_CONNECTION") "") (ne (env "SSH_CLIENT") "") (ne (env "SSH_TTY") "") -}}
 {{- $hasGUI   := false -}}
 {{- if eq .chezmoi.os "darwin" -}}
@@ -51,7 +23,7 @@
 {{- else if not $ephemeral -}}{{- $detected = "dev" -}}
 {{- end -}}
 
-{{- /* ────── identity prompts (cached after first init) ────── */ -}}
+{{- /* identity prompts (cached after first init) */ -}}
 {{- $interactive := stdinIsATTY -}}
 {{- if $ephemeral -}}{{- $interactive = false -}}{{- end -}}
 
@@ -69,20 +41,11 @@
 {{-   $email = promptString "Email" $email -}}
 {{- end -}}
 
-{{- /* ────── profile prompt (ALWAYS fires on first init via promptChoiceOnce;
-                 default = "core" so CI / non-TTY get safe fallback) ────── */ -}}
+{{- /* profile prompt — promptChoiceOnce caches after first run; default "core" */ -}}
 {{- $hint := printf "Install profile [detected env: %s (GUI=%t, SSH=%t, ephemeral=%t)] — you pick" $detected $hasGUI $isSSH $ephemeral -}}
-{{- $rawProfile := promptChoiceOnce . "profile" $hint (list "core" "dev" "workstation") "core" -}}
+{{- $profile := promptChoiceOnce . "profile" $hint (list "core" "dev" "workstation") "core" -}}
 
-{{- /* ────── legacy translation: previous design used profile="mac" for
-              workstation Mac. Map silently on next init so existing machines
-              don't need manual cleanup. ────── */ -}}
-{{- $profile := $rawProfile -}}
-{{- if eq $rawProfile "mac" -}}{{- $profile = "workstation" -}}{{- end -}}
-
-{{- /* ────── .osid composite key: "darwin" / "linux-<id>". Single derived
-              value used by .chezmoiscripts/* — replaces nested if-elif on
-              .chezmoi.osRelease.id. Pattern from twpayne/dotfiles. ────── */ -}}
+{{- /* .osid composite key (darwin / linux-<id>) — used by .chezmoiscripts/* */ -}}
 {{- $osid := .chezmoi.os -}}
 {{- if eq .chezmoi.os "linux" -}}
 {{-   if hasKey .chezmoi.osRelease "id" -}}

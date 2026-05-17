@@ -30,7 +30,7 @@ sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply vaintrub
 | `dot_claude/` | Claude Code: instructions, settings (modify_), statusline, agents, skills, rules |
 | `dot_codex/` | Codex CLI: AGENTS.md, config.toml (modify_), shared skills (symlink) |
 | `.chezmoidata/packages.yaml` | single source of truth for all packages (Mac brews/casks, Linux apt/dnf/npm) AND Claude/Codex plugin lists |
-| `.chezmoiscripts/` | install hooks (run_once_after_*, run_onchange_after_*). Per-OS subdirs: `darwin/`, `linux/`. Numerical prefix (50/60/70/80) controls ordering within `run_onchange_after_` group |
+| `.chezmoiscripts/` | install hooks (run_once_after_*, run_onchange_after_*). Per-OS subdirs: `darwin/`, `linux/`. Numerical prefix (50/70/99) controls ordering — 50 installs packages (+ mise tools + post-installs from lib), 70 installs Claude+Codex plugins, 99 prints first-apply hint |
 | `.chezmoihooks/` | hook scripts registered in `.chezmoi.toml.tmpl`. `ensure-prereqs.sh` runs BEFORE source-state read on every apply, installing minimum tools (git/zsh/vim/tmux/curl + brew on Mac) |
 | `.chezmoitemplates/` | shared template partials (base configs read by `modify_` scripts via `includeTemplate`, not applied to $HOME) |
 | `lib/` | shell libraries sourced by `.chezmoiscripts/*` wrappers via `{{ .chezmoi.sourceDir }}/lib/X.sh`. Pure POSIX `sh`, no template syntax. Chezmoi-ignored so it never deploys to $HOME — also makes the libraries `source`-able by bats unit tests with mocked externals. |
@@ -81,7 +81,7 @@ Live ↔ source mapping for our key paths:
 | `~/.gitignore_global` | `dot_gitignore_global` | plain (referenced by `core.excludesFile` in dot_gitconfig.tmpl; OS junk + editor backups) |
 | (no `~/.Brewfile`) | `.chezmoidata/packages.yaml` | rendered inline by install-packages script and piped to `brew bundle --file=/dev/stdin` |
 | `~/.claude/CLAUDE.md` | `dot_claude/CLAUDE.md` | plain |
-| `~/.claude/settings.json` | `dot_claude/modify_settings.json.tmpl` + `.chezmoitemplates/claude-settings-base.json` | modify_ jq merge |
+| `~/.claude/settings.json` | `dot_claude/modify_settings.json` + `.chezmoitemplates/claude-settings-base.json` | modify_ jq merge |
 | `~/.claude/statusline-command.sh` | `dot_claude/executable_statusline-command.sh` | plain +x |
 | `~/.claude/rules/*.md` | `dot_claude/rules/*.md` | plain |
 | `~/.claude/skills/save-to-dotfiles/SKILL.md` | `dot_claude/skills/save-to-dotfiles/SKILL.md` | plain |
@@ -163,7 +163,7 @@ Source-of-truth location is `~/.local/share/chezmoi/` — chezmoi's default (XDG
   are open.
 - `dot_claude/skills/*/SKILL.md` are discoverable skills, intent-matched via
   the frontmatter `description` field.
-- **`dot_claude/modify_settings.json.tmpl`** uses jq-additive merge to preserve
+- **`dot_claude/modify_settings.json`** uses jq-additive merge to preserve
   keys added by `rtk init`, `claude plugin install`, etc. See §9.
 - The curated base lives at `.chezmoitemplates/claude-settings-base.json`
   (canonical chezmoi location for files read by templates but not applied);
@@ -195,8 +195,9 @@ of `chezmoi apply`:
 - **`run_once_before_*`** — run ONCE per machine, BEFORE file ops. Used for
   hard prereq checks (zsh/vim/tmux), brew install (Mac).
 - **`run_onchange_after_*`** — run AFTER all file ops, only when script
-  contents change (chezmoi tracks hash). Used for brew bundle, rtk install,
-  caveman install.
+  contents change (chezmoi tracks hash). Used for the package installer
+  (`50-install-packages`, which also handles mise install + post-install
+  funcs like `rtk init` from the lib) and plugin install (`70-install-plugins`).
 - **`run_once_after_*`** — run ONCE per machine, AFTER file ops. Used for
   iTerm2 `defaults write PrefsCustomFolder`.
 
@@ -216,12 +217,15 @@ match the canonical `id` list (Pop!_OS, Mint, Raspbian).
 
 ### Bootstrap script split — thin wrapper + `lib/`
 
-The biggest install script (`run_onchange_after_50-install-packages.sh.tmpl`)
-is intentionally a 25-LOC wrapper that:
+The install script (`run_onchange_after_50-install-packages.sh.tmpl`) is
+intentionally a thin wrapper (~55 LOC including the 1Password→gh token
+cascade) that:
 
 1. Renders chezmoi facts (profile, osid, osRelease.idLike, every package
    list from `.chezmoidata/packages.yaml`) into `DOTFILES_*` env vars.
-2. Sets `INSTALL_PACKAGES_INVOKE=1` and sources
+2. Runs the GITHUB_TOKEN cascade (template-time `lookPath` guards omit
+   unavailable backends).
+3. Sets `INSTALL_PACKAGES_INVOKE=1` and sources
    `{{ .chezmoi.sourceDir }}/lib/install-packages.sh`.
 
 The library is pure POSIX `sh` with no template syntax — bats unit tests
@@ -329,7 +333,7 @@ Hook skips with a warning if non-interactive (sudo prompt would block).
 Each is guarded with `command -v` in scripts + zshrc — missing → feature skips,
 not a hard fail. `mise` then materializes the toolchain per
 `dot_config/mise/config.toml.tmpl` (profile-aware: `core` = fzf+zoxide only;
-`dev`/`workstation` = full set including Go/Python/Node/Rust + 25 aqua tools).
+`dev`/`workstation` = full set: Go/Python/Node/Rust + 29 aqua binaries + op (direct-URL) + rtk (github)).
 
 ### Headless SSH detection (for things like font install)
 ```sh
@@ -354,7 +358,7 @@ not a hard fail. `mise` then materializes the toolchain per
 | `dot_zshrc`, `dot_p10k.zsh` | **zsh 5+** | Full zsh syntax: `zsocket`, glob qualifiers `(Nom)`, `typeset`, `[[ ]]`, `${var:A}` |
 | `.chezmoiscripts/*.sh.tmpl` | **POSIX `sh`** | No bashisms — must work in `dash`. Templates render to `sh` scripts. |
 | `dot_claude/executable_statusline-command.sh` | **POSIX `sh`** | `#!/bin/sh`, `jq` allowed (standard here) |
-| `dot_claude/modify_settings.json` | **POSIX `sh`** | jq-based merge, runs on every apply |
+| `dot_claude/modify_settings.json` | **Go template** | `#chezmoi:modify-template` annotation → fromJson/mergeOverwrite/toPrettyJson. `private_` → target mode 0600 (matches rtk init's write mode + secret-ish content). |
 | `dot_codex/modify_config.toml` | **Go template** | `#chezmoi:modify-template` annotation, uses chezmoi `fromToml`/`toToml`/`mergeOverwrite` |
 
 ### Lint
@@ -391,7 +395,7 @@ When the **`ConfigEdit` enum** in
 gains a new runtime section variant, add it to the `unset` chain in
 `dot_codex/modify_config.toml`.
 
-`dot_claude/modify_settings.json.tmpl` does the analogous thing for Claude
+`dot_claude/modify_settings.json` does the analogous thing for Claude
 Code, but via shell + jq (instead of pure Go template) — Claude's
 `settings.json` is JSON, easier to merge with jq's `*` deep-merge operator.
 Both modify_ scripts pull their base from `.chezmoitemplates/` via

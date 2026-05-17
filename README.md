@@ -8,9 +8,9 @@ Includes:
 - **tmux** with [gpakosz/.tmux](https://github.com/gpakosz/.tmux) ("oh-my-tmux") vendored as a chezmoi external (pinned by commit SHA)
 - **iTerm2** preferences (macOS only, auto-configured to load from the repo)
 - **AI tooling** (Claude Code + OpenAI Codex CLI) — global instructions, settings, rules, AGENTS.md, with tool-mutation-safe merging via `modify_` scripts
-- **mise** (cross-platform) — declarative dev-tool list (Go/Python/Node/Rust + 25 aqua tools) via `dot_config/mise/config.toml.tmpl`, tier-aware so `core`-profile machines only pull what dotfiles need
+- **mise** (cross-platform) — declarative dev-tool list (4 language toolchains: Go/Python/Node/Rust, plus 29 aqua binaries + `op` (direct-URL) + `rtk` (github) — `claude-code` and `codex` install as native binaries via aqua) in `dot_config/mise/config.toml.tmpl`, tier-aware so `core`-profile machines only pull what dotfiles need
 - **3-tier install profiles** — `core` (dotfile baseline) / `dev` (+ CLI toolchain) / `workstation` (+ GUI apps per OS); always prompted on init with detected-env hint
-- **rtk** auto-installation + `rtk init` wiring for both Claude Code and Codex
+- **rtk** auto-installed via mise; `rtk init` runs as a post-install step wiring Claude Code + Codex hooks
 
 ## Install
 
@@ -24,7 +24,7 @@ One command:
 sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply vaintrub
 ```
 
-That's it. `chezmoi init` prompts you for profile (`core` / `dev` / `workstation` — default `core` for safety; pick `workstation` for full Mac install with casks). `hooks/ensure-prereqs.sh` (registered via `hooks.read-source-state.pre`) installs Xcode CLT + Homebrew + mise on first run. Then `run_onchange_after_50-install-packages.sh.tmpl` reads `.chezmoidata/packages.yaml`, `brew bundle`s `packages.dev.brews` (htop, tree, nmap, libpq, wireguard-tools, rtk) + `packages.gui.mac_casks` if `workstation` (iterm2, docker-desktop, vscode, ngrok, fonts), then runs `mise install` for the dev toolchain. Claude Code + Codex CLIs install via mise's npm (no sudo, lands under mise shims). Plugins, rtk init, caveman all install automatically afterward.
+That's it. `chezmoi init` prompts you for profile (`core` / `dev` / `workstation` — default `core` for safety; pick `workstation` for full Mac install with casks). `hooks/ensure-prereqs.sh` (registered via `hooks.read-source-state.pre`) installs Xcode CLT + Homebrew + mise on first run. Then `run_onchange_after_50-install-packages.sh.tmpl` reads `.chezmoidata/packages.yaml`, `brew bundle`s `packages.dev.brews` (htop, tree, nmap, libpq, wireguard-tools — OS-native C-deps only, no formula in mise registry) + `packages.gui.mac_casks` if `workstation` (iterm2, docker-desktop, vscode, ngrok, 1password desktop, fonts), then runs `mise install` for the full dev toolchain — including `op`, `rtk`, `claude-code`, and `codex` as cross-platform native binaries. Post-installs (`goimports`, `ssh-audit`, `rtk init` for Claude+Codex hooks) run from the same lib. Plugins + caveman install automatically afterward.
 
 The repo lands at chezmoi's default source location: `~/.local/share/chezmoi/`. No `--source` flag, no install.sh, no convention overrides — `chezmoi cd` and `chezmoi edit` work seamlessly without per-machine setup.
 
@@ -48,14 +48,13 @@ Then the canonical one-liner:
 sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply vaintrub
 ```
 
-The repo lands at `~/.local/share/chezmoi/` (chezmoi's default source location). Default Linux profile is `dev` (auto-picked); Codespaces / devcontainers auto-pick `core`. From there chezmoi takes over:
+The repo lands at `~/.local/share/chezmoi/` (chezmoi's default source location). `chezmoi init` ALWAYS prompts for profile (Codespaces / non-interactive runs fall back to `core` via `--promptDefaults`). From there chezmoi takes over:
 
 1. `hooks/ensure-prereqs.sh` apt/dnf installs `git zsh vim tmux curl ca-certificates` if not present + curl-pipes mise into `~/.local/bin/` (runs BEFORE chezmoi reads source state).
-2. `run_onchange_after_50-install-packages.sh.tmpl` runs tier-cascade: (a) `apt-get`/`dnf install` core packages always; if `dev`, also dev packages; (b) `mise install` from `~/.config/mise/config.toml` — at `core` just fzf+zoxide, at `dev` the full toolchain; (c) `dev`-only post-installs: `goimports` via `go install`, `ssh-audit` via `uv tool install`, AI CLIs (Claude Code + Codex) via mise's `npm install -g`.
-3. `60-install-rtk` curl-pipes the rtk installer into `~/.local/bin/rtk` (Linux; Mac brew handles it via `packages.dev.brews`).
-4. `70-install-plugins` registers Claude Code + Codex plugins listed in `packages.yaml` (caveman included — installed via canonical `claude plugin install caveman@caveman`, no bespoke installer).
-5. `linux/run_once_after_install-fonts.sh.tmpl` runs `fc-cache` after MesloLGS NF + Monaspace fonts are downloaded by `.chezmoiexternal.toml.tmpl`. Skipped on headless boxes (SSH with no `$DISPLAY`/`$WAYLAND_DISPLAY`).
-6. `linux/run_once_after_chsh.sh.tmpl` sets `zsh` as your login shell. Skipped if `chsh` would block on non-interactive password prompt.
+2. `run_onchange_after_50-install-packages.sh.tmpl` runs tier-cascade via `lib/install-packages.sh`: (a) `apt-get`/`dnf install` core packages always; if `dev`, also dev packages; (b) `mise install` from `~/.config/mise/config.toml` — at `core` just fzf+zoxide, at `dev` the full toolchain (which now includes `op`, `rtk`, `claude-code` and `codex` as native binaries via mise's aqua/github/direct-URL backends); (c) `dev`-only post-installs: `goimports` (`go install`), `ssh-audit` (`uv tool install`), `rtk init -g` for Claude+Codex hooks.
+3. `70-install-plugins` registers Claude Code + Codex plugins listed in `packages.yaml` (caveman included — installed via canonical `claude plugin install caveman@caveman`, no bespoke installer).
+4. `linux/run_once_after_install-fonts.sh.tmpl` runs `fc-cache` after MesloLGS NF + Monaspace fonts are downloaded by `.chezmoiexternal.toml.tmpl`. Skipped on headless boxes (SSH with no `$DISPLAY`/`$WAYLAND_DISPLAY`).
+5. `linux/run_once_after_chsh.sh.tmpl` sets `zsh` as your login shell. Skipped if `chsh` would block on non-interactive password prompt.
 
 ## Install profile
 
@@ -64,7 +63,7 @@ The repo lands at `~/.local/share/chezmoi/` (chezmoi's default source location).
 | Profile | What you get | Use case |
 |---|---|---|
 | `core` | OS-native baseline (`zsh`, `vim`, `tmux`, `git`, `curl`, `ca-certificates`; Linux only: `ufw`, `tcpdump`) + MesloLGS NF + Monaspace Neon fonts + `mise` + `fzf` + `zoxide`. ~50 MB total. | Hetzner VPS, DigitalOcean droplet, jetson over SSH first-touch, Codespace, recovery. |
-| `dev` | core + CLI dev toolchain: 25 mise dev tools (Go/Python/Node/Rust + kubectl/helm/k9s/kustomize/stern/argocd/opentofu/awscli/rclone/jq/gh/delta/fd/yq/shellcheck/buf/golangci-lint/goreleaser/gotestsum/protoc-gen-go/pnpm/uv/cloudflared/websocat). Linux: `docker.io`, `htop`, `tree`, `wget`, `nmap`, `telnet`, `libpq`, `wireguard-tools`, `build-essential`, `xsel`/`wl-clipboard`. Mac brews (no docker — use `workstation` for Docker Desktop): `htop`, `tree`, `wget`, `nmap`, `telnet`, `libpq`, `wireguard-tools`, `rtk`. Post-installs (`goimports`, `ssh-audit`). AI CLIs (`claude-code`, `codex`). ~1.9 GB first apply. | Headless dev box (jetson, Linux VM, VPS for real work, Mac SSH'd into headless). |
+| `dev` | core + CLI dev toolchain: 4 language toolchains (Go/Python/Node/Rust) + 27 dev-tier aqua binaries (kubectl/helm/k9s/kustomize/stern/argocd/opentofu/awscli/rclone/jq/gh/delta/fd/yq/shellcheck/buf/golangci-lint/goreleaser/gotestsum/protoc-gen-go/pnpm/uv/cloudflared/websocat/gitleaks/claude-code/codex) + `op` (direct-URL) + `rtk` (github). Linux apt: `htop`, `tree`, `wget`, `nmap`, `telnet`, `wireguard-tools`, `postgresql-client`, `build-essential`, `xsel`/`wl-clipboard` (docker not installed — pick distro repo or `workstation` Docker Desktop). Mac brews (only tools without mise registry entry): `htop`, `tree`, `wget`, `nmap`, `telnet`, `libpq`, `wireguard-tools`. Post-installs (`goimports`, `ssh-audit`, `rtk init`). ~1.9 GB first apply. | Headless dev box (jetson, Linux VM, VPS for real work, Mac SSH'd into headless). |
 | `workstation` | dev + GUI apps. Mac: casks (`iterm2`, `docker-desktop`, `visual-studio-code`, `ngrok`, `font-meslo-lg-nerd-font`, `font-monaspace`). Linux: placeholder (empty for now — populate when I run a Linux desktop). | Primary GUI machine (Mac laptop, Linux desktop). |
 
 **Hint format in prompt**: `Install profile [detected env: workstation (GUI=true, SSH=false, ephemeral=false)] — you pick (core/dev/workstation, default core)?`. Detected env helps you pick; doesn't pre-select.
@@ -73,26 +72,109 @@ The repo lands at `~/.local/share/chezmoi/` (chezmoi's default source location).
 
 **To force re-prompt**: `chezmoi init --prompt`.
 
-**Migrating from older data shapes** (machines initialised before the use-case
-refactor have stale `personal` / `headless` keys, or `profile = "mac"` from the
-older `core/dev/mac` triplet):
-
-```sh
-chezmoi init --promptDefaults  # rewrites chezmoi.toml from new template:
-                               # translates "mac" → "workstation",
-                               # derives .osid, drops stale personal/headless keys
-chezmoi apply                  # re-runs install scripts under new profile
-```
-
-`mac` is silently translated to `workstation` by the template, so existing Mac
-users keep their GUI install across the upgrade. After the single re-init,
-`chezmoi.toml` is in the new shape; no leftover keys.
-
 **Mac firewall (ufw equivalent)**: not managed by dotfiles. Enable manually via
 System Settings → Network → Firewall. Linux core tier installs `ufw` (disabled
 by default — `sudo ufw enable` to activate).
 
-## Tools managed by mise (cross-platform via aqua backend)
+## First-time bootstrap checklist
+
+For a fresh machine (Mac or Linux), step-by-step:
+
+```sh
+# 1. (Optional but recommended) Pre-auth GitHub for mise tool downloads.
+#    Lifts mise's 60/hr anonymous limit to 1000/hr — important on slow
+#    links or shared IPs.
+gh auth login                  # gh CLI's interactive auth
+# OR if you use 1Password: create the item once
+op item create --vault Personal --title 'GitHub API Token' \
+    credential=ghp_yourToken   # install-packages auto-reads via `op read`
+
+# 2. Bootstrap one-liner — installs chezmoi, clones source, runs apply.
+sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply vaintrub
+
+# 3. At the prompt, pick your profile (default core; pick workstation on
+#    Mac laptop, dev on jetson / Linux server, core elsewhere).
+
+# 4. After apply finishes, reload your shell so mise shims land on PATH:
+exec zsh
+
+# 5. Verify the install:
+mise ls                         # all rows should be without "(missing)"
+chezmoi diff                    # should be empty
+```
+
+If step 5 shows any `(missing)` rows OR command-not-found errors, jump to
+the Recovery section below.
+
+## Recovery (broken / partial first apply)
+
+```sh
+# Anonymous GitHub rate-limit ran out → some mise tools missing:
+gh auth login                   # cache token (next apply auto-detects)
+chezmoi apply                   # picks up token, retries missing tools
+# OR seed token in 1Password (item: op://Personal/GitHub API Token/credential)
+
+# mise shims out of date / new tools not yet symlinked:
+mise reshim
+exec zsh
+
+# `chezmoi.toml` cache has stale keys (old `personal`/`headless`, or `mac`):
+chezmoi init --promptDefaults   # rewrites from current template
+chezmoi apply
+
+# Touch ID for sudo accidentally rolled back by a macOS major update:
+chezmoi state delete-bucket --bucket=scriptState
+chezmoi apply                   # re-runs run_once_after_* scripts (incl. pam_tid)
+```
+
+## Per-machine override (skip heavy tools on a small VPS)
+
+Drop a `~/.config/mise/config.local.toml` (untracked, never overwritten) to
+override specific tools per machine:
+
+```toml
+[tools]
+# Skip Rust on a 2 GB VPS — no need for ~300 MB toolchain.
+rust = "skip"
+# Use older Python on this box (mise resolves to latest 3.11.x).
+python = "3.11"
+# Don't install gh on a box where you only need kubectl + jq.
+"aqua:cli/cli" = "skip"
+```
+
+`mise` merges `config.toml` (chezmoi-managed) and `config.local.toml` (user-
+owned) at runtime — local wins on key conflicts. After editing, `mise install`
+to apply.
+
+## 1Password integration
+
+If you have the 1Password CLI (`op`) installed and signed in, the install-
+packages wrapper auto-reads `GITHUB_TOKEN` from an item at the conventional
+path:
+
+    op://Personal/GitHub API Token/credential
+
+`op` itself is installed cross-platform by mise (Mac + Linux arm64/amd64) at
+`dev`/`workstation` profile — see `dot_config/mise/config.toml.tmpl` dev block
+(unqualified `op` shortname → mise direct-URL backend against 1Password's CDN).
+
+Mac `workstation` additionally installs the 1Password desktop app cask, which
+enables Touch ID biometric unlock so `op read` works without `op signin`.
+
+Linux headless boxes use `OP_SERVICE_ACCOUNT_TOKEN` instead of biometric.
+
+Custom vault layout? Override the item reference per machine:
+
+```sh
+# ~/.zshrc_local
+export DOTFILES_OP_GITHUB_REF='op://Private/My-GH-Token/value'
+```
+
+The wrapper's cascade is `op` → `gh auth token` → anonymous. If `op` isn't
+installed (Linux jetson, core profile) the `gh` path picks up; if neither, the
+anonymous path still works (60/hr) for small bootstraps.
+
+## Tools managed by mise (cross-platform via aqua + github + direct-URL backends)
 
 Defined declaratively in `dot_config/mise/config.toml.tmpl` (profile-aware — rendered to `~/.config/mise/config.toml`). Same tools install identically on Mac + Linux.
 
@@ -107,12 +189,15 @@ Defined declaratively in `dot_config/mise/config.toml.tmpl` (profile-aware — r
 | Category | Tools |
 |---|---|
 | Languages | `node` (LTS), `go` (latest), `python` (3.12), `rust` (stable) |
-| CLI utilities | `jq`, `gh`, `delta`, `shellcheck`, `fd`, `yq` |
+| CLI utilities | `jq`, `gh`, `delta`, `shellcheck`, `fd`, `yq`, `gitleaks` |
 | Cloud + K8s | `helm`, `kubectl`, `k9s`, `kustomize`, `stern`, `argocd`, `tofu` (opentofu), `aws` (awscli), `rclone`, `cloudflared` |
 | Networking | `websocat` |
 | Go ecosystem | `buf`, `golangci-lint`, `goreleaser`, `gotestsum`, `protoc-gen-go` |
 | Package managers | `pnpm`, `uv` |
-| Post-install | `goimports` (`go install`), `ssh-audit` (`uv tool install`), `claude-code` + `codex` (`npm install -g`) |
+| Auth + secrets | `op` (1Password CLI, direct-URL backend) |
+| Token-saving proxy | `rtk` (`github:rtk-ai/rtk`, native binary) |
+| AI CLIs | `claude-code` (`aqua:anthropics/claude-code`, native), `codex` (`aqua:openai/codex`, native rust) |
+| Post-install (after mise install) | `goimports` (`go install`), `ssh-audit` (`uv tool install`), `rtk init` (Claude+Codex hooks) |
 
 **Adding a tool**: `mise registry | grep -i <name>` → use the aqua slug → add line to `dot_config/mise/config.toml.tmpl` (inside the `$isDev` block unless every tier needs it) → `chezmoi apply` (or `mise install`).
 
@@ -120,20 +205,38 @@ Defined declaratively in `dot_config/mise/config.toml.tmpl` (profile-aware — r
 
 ## OS-native packages (via brew / apt / dnf)
 
-Tools NOT in mise's aqua registry — C apps with libpcap/curses/PAM deps, system services, or platform-specific. Defined in `.chezmoidata/packages.yaml` under `packages.{core,dev,mac}` sections, installed cascade-style by `run_onchange_after_50-install-packages.sh.tmpl`.
+Tools NOT in mise's aqua registry — C apps with libpcap/curses/PAM deps, system services, or platform-specific. Defined in `.chezmoidata/packages.yaml` under `packages.{core,dev,gui}` sections, installed cascade-style by `run_onchange_after_50-install-packages.sh.tmpl`.
 
 | Tier | OS | Packages |
 |---|---|---|
 | core | Linux apt/dnf | `zsh`, `vim`, `tmux`, `git`, `curl`, `ca-certificates`, `ufw`, `tcpdump` |
 | core | Mac brew | (none — Apple bundles zsh/vim/tmux/git/curl + system `/usr/sbin/tcpdump`; no Mac equivalent for ufw — use `pfctl`) |
-| dev | Mac brew | `htop`, `tree`, `wget`, `nmap`, `telnet`, `libpq` (psql, force-linked), `wireguard-tools`, `rtk` |
-| dev | Linux apt | `build-essential`, `xsel`, `wl-clipboard`, `docker.io`, `htop`, `tree`, `wget`, `nmap`, `inetutils-telnet`, `wireguard-tools`, `postgresql-client` |
+| dev | Mac brew | `htop`, `tree`, `wget`, `nmap`, `telnet`, `libpq` (psql, force-linked), `wireguard-tools` |
+| dev | Linux apt | `build-essential`, `xsel`, `wl-clipboard`, `htop`, `tree`, `wget`, `nmap`, `inetutils-telnet`, `wireguard-tools`, `postgresql-client` |
 | dev | Linux dnf | (same as apt, modulo Fedora naming) |
-| mac | Mac casks | `iterm2`, `docker-desktop`, `visual-studio-code`, `ngrok`, `font-meslo-lg-nerd-font`, `font-monaspace` |
+| workstation | Mac casks | `iterm2`, `docker-desktop`, `visual-studio-code`, `ngrok`, `1password` (desktop), `font-meslo-lg-nerd-font`, `font-monaspace` |
+
+**Docker is intentionally NOT in the `dev` tier**: `docker.io` (Ubuntu repo) and `docker-ce` (Docker's official apt repo) can't coexist, and a pre-existing install would break `apt-get install`. Pick the flavour that fits the machine: `sudo apt install docker.io` (simple), Docker's official repo for `docker-ce` (production), or `workstation` profile on Mac (Docker Desktop cask).
 
 **Ad-hoc installs**: brew/apt/dnf still primary on each platform. Want `mongosh`? `brew install mongosh` (Mac) or follow MongoDB's apt repo (Linux). Want `kubectl` debug version? `mise use kubectl@1.34.2` (per-project) or edit the global config.
 
-**First-apply latency** at `dev` or `workstation`: cold install downloads ~1.9 GB (4 language toolchains × ~300 MB + 25 aqua tools). Realistic ranges: 5-10 min on fast link, 15-30 min on residential, 30-60+ min on slow links / jetson. `core` profile only pulls fzf+zoxide (~5 MB).
+**First-apply latency** at `dev` or `workstation`: cold install downloads ~1.9 GB (4 language toolchains × ~300 MB + ~30 binaries via mise). Realistic ranges: 5-10 min on fast link, 15-30 min on residential, 30-60+ min on slow links / jetson. `core` profile only pulls fzf+zoxide (~5 MB).
+
+**GitHub API rate limit on fresh bootstrap**: mise's aqua + github backends hit `api.github.com` once per tool (~29 tools × 1-2 calls ≈ 30-50 requests). Anonymous limit is 60/hr — easy to exhaust on a slow link or shared IP. Two ways to lift it:
+
+```sh
+# Option 1 — set token directly before apply (one-off)
+export GITHUB_TOKEN=ghp_yourPersonalAccessToken
+chezmoi apply
+
+# Option 2 — `gh auth login` once, install-packages auto-picks it up on
+# subsequent applies via `gh auth token` (works after first apply when
+# gh is installed by mise).
+gh auth login                 # interactive, browser flow
+chezmoi apply                 # token auto-detected, ~5000/hr limit
+```
+
+Anonymous bootstrap on a fast link usually fits inside 60/hr — the auto-detect is a safety net for jetson / VPS / re-runs.
 
 **Troubleshooting slow zsh prompt**: `MISE_TIMINGS=1 exec zsh` — total < 50ms per prompt is healthy. If consistently above, switch to mise shim mode in `dot_zshrc`:
 ```zsh
@@ -156,7 +259,7 @@ Source files in this repo use chezmoi's naming convention. The mapping is mechan
 | `symlink_X.tmpl` | symbolic link (body = target) |
 | `modify_X` | script: stdin = existing file, stdout = new contents |
 | `modify_X` + `#chezmoi:modify-template` | template: `.chezmoi.stdin` = existing; output = new contents |
-| `.chezmoiscripts/run_*` | scripts that don't create `$HOME` files (per-OS subdirs `darwin/` + `linux/`; root scripts use `50/60/70/80-` numerical prefix for ordering) |
+| `.chezmoiscripts/run_*` | scripts that don't create `$HOME` files (per-OS subdirs `darwin/` + `linux/`; root scripts use `50/70/99-` numerical prefix for ordering — 50 installs packages, 70 installs plugins, 99 prints post-install hint) |
 | `.chezmoihooks/*` | hook scripts registered in `.chezmoi.toml.tmpl` (e.g. `read-source-state.pre`) |
 | `.chezmoiexternal.toml.tmpl` | vendored externals (archives, file downloads) |
 | `.chezmoiignore` | exclude target paths from apply |
@@ -236,7 +339,7 @@ Global, cross-machine config for both CLIs. **Only user-curated settings are tra
 | Source path | Becomes in `$HOME` | Pattern | Purpose |
 |---|---|---|---|
 | `dot_claude/CLAUDE.md` | `~/.claude/CLAUDE.md` | plain | global instructions (bootstrap + TL;DR rule index) |
-| `dot_claude/modify_settings.json.tmpl` | `~/.claude/settings.json` | `modify_` (jq merge) | global settings, preserves tool-added keys |
+| `dot_claude/modify_settings.json` | `~/.claude/settings.json` | `modify_` (jq merge) | global settings, preserves tool-added keys |
 | `.chezmoitemplates/claude-settings-base.json` | (not applied) | template partial | curated base, loaded via `includeTemplate` from `modify_` |
 | `dot_claude/executable_statusline-command.sh` | `~/.claude/statusline-command.sh` | plain +x | custom status-line renderer |
 | `dot_claude/agents/` | `~/.claude/agents/` | plain dir | custom subagents |
@@ -302,11 +405,11 @@ Mechanics:
 
 `caveman` is just another entry in `plugins.claude` (caveman@caveman) + `plugins.claude_marketplaces` (caveman:JuliusBrussee/caveman). Per its [INSTALL.md](https://github.com/JuliusBrussee/caveman/blob/main/INSTALL.md) per-agent table, that's the canonical Claude install path. The plugin self-registers its `SessionStart` + `UserPromptSubmit` hooks via `plugin.json` (no settings.json mutation). Caveman for Codex is a manual step (`npx -y skills add JuliusBrussee/caveman -a codex`) — the skills CLI doesn't currently create the per-agent symlinks Codex needs.
 
-#### rtk auto-refresh on version change
+#### rtk install + init
 
-`brew bundle` upgrades the rtk binary on each `chezmoi apply` (Homebrew's default). `RTK.md` awareness files (`~/.claude/RTK.md`, `~/.codex/RTK.md`) are bundled inside the binary and re-written by `rtk init`. The install script tracks `rtk --version` output in a trailing hash comment (`# {{ if lookPath "rtk" }}{{ output "rtk" "--version" | trim }}{{ else }}not-installed{{ end }}`), so a version bump changes the script's effective content and chezmoi re-runs it automatically — no manual `rtk init` needed.
+`rtk` is installed by mise as `github:rtk-ai/rtk = "latest"` — cross-platform, single source. On every `chezmoi apply`, mise refreshes its registry and pulls a newer rtk if upstream released one. The `post_install_rtk_init` function in `lib/install-packages.sh` runs `rtk init -g --auto-patch` (Claude PreToolUse hook) and `rtk init -g --codex` (Codex AGENTS.md reference) — both idempotent. `RTK.md` awareness files (`~/.claude/RTK.md`, `~/.codex/RTK.md`) are bundled inside the binary and rewritten on each init.
 
-On a fresh machine the script will run twice across the first two applies (install rtk → hash populates → next apply re-runs `rtk init`). Both runs are idempotent.
+Ubuntu 22.04 jammy (glibc 2.35) skips the init step gracefully — upstream ships glibc-2.39 builds only for linux-arm64 (Ubuntu 24.04+); claude/codex still work without the rtk hook.
 
 ### Open VSCode from any terminal
 
@@ -330,7 +433,7 @@ export VSCODE_REMOTE_HOST=my-ssh-alias
 Top-level dotfiles (`dot_zshrc`, `dot_vimrc`, etc.) are plain — they handle platform differences via runtime feature-detection (`command -v X`, `case "$(uname -s)"` in shell). Where chezmoi templates are used:
 
 - `.chezmoiexternal.toml.tmpl` is templated for headless detection (skip fonts) + per-OS font destination
-- `.chezmoiscripts/{darwin,linux}/` hold per-OS scripts; root holds cross-platform scripts with numerical prefix (`50-`, `60-`, `70-`, `80-`) for ordering within the `run_onchange_after_` group
+- `.chezmoiscripts/{darwin,linux}/` hold per-OS scripts; root holds cross-platform scripts with numerical prefix (`50-`, `70-`, `99-`) for ordering within the `run_onchange_after_` / `run_once_after_` groups
 - `.chezmoiscripts/run_onchange_after_50-install-packages.sh.tmpl` branches on `.chezmoi.os` (Mac brew bundle vs Linux apt/dnf) + `.chezmoi.osRelease.id` (Debian vs Fedora)
 - `.chezmoihooks/ensure-prereqs.sh` is NOT a template (chezmoi doesn't template hooks) — it detects OS inline via `case "$(uname -s)"`
 
@@ -384,8 +487,6 @@ Cache lives in `~/Library/Caches/chezmoi/` (Mac) — outside the source repo, so
 
 ### Soft hardening (review-flagged, not blocking)
 
-- Pin rtk install URL to a tagged release (currently `refs/heads/master` —
-  needs upstream tagging first).
 - Renovate config for `dot_config/mise/config.toml` — auto-PR bumps for
   pinned tool versions (replaces "track latest" with deterministic
   upgrades).

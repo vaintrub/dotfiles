@@ -93,7 +93,7 @@ Map intent → source file (in the chezmoi source dir; `chezmoi cd` to navigate)
 | p10k major theme change | run `p10k configure` (rewrites `dot_p10k.zsh`) | (done by p10k itself) |
 | Brew formula or cask (Mac) / apt/dnf package (Linux) | `.chezmoidata/packages.yaml` under `common.brews` / `darwin.casks` / `linux.{apt,dnf}` | `chezmoi apply` runs install-packages script |
 | Claude global rule | `dot_claude/rules/<name>.md` with frontmatter | next Claude session |
-| Claude setting / statusline / plugin enable | `.chezmoitemplates/claude-settings-base.json` (curated base; `dot_claude/modify_settings.json.tmpl` merges tool-added keys) | next Claude session |
+| Claude setting / statusline / plugin enable | `.chezmoitemplates/claude-settings-base.json` (curated base; `dot_claude/modify_settings.json` merges tool-added keys) | next Claude session |
 | Claude custom agent | `dot_claude/agents/<name>/...` | next Claude session |
 | Claude custom skill | `dot_claude/skills/<name>/SKILL.md` | next Claude session |
 | Codex behavioural rule | `dot_codex/AGENTS.md` (inline section) | next Codex session |
