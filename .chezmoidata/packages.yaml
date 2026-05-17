@@ -54,8 +54,9 @@ packages:
     # Mac brew formulae (tools not in mise's aqua registry).
     # Note: `op` (1Password CLI) and `rtk` previously lived here / in
     # the install-rtk script; both are now installed cross-platform via
-    # mise (aqua:1password/cli and github:rtk-ai/rtk). See
-    # dot_config/mise/config.toml.tmpl dev block.
+    # mise — see dot_config/mise/config.toml.tmpl dev block (`op` via
+    # mise's direct-URL backend under the unqualified shortname,
+    # `rtk` via `github:rtk-ai/rtk`).
     brews:
       - htop                       # process monitor
       - tree                       # directory tree
@@ -108,8 +109,7 @@ packages:
       - docker-desktop             # Docker engine + UI (Mac equivalent of Linux docker.io)
       - visual-studio-code
       - ngrok                      # tunnel UI
-      - 1password                  # desktop app — enables Touch ID biometric unlock for `op` CLI
-      - 1password-cli              # `op` CLI cask (signed .pkg, sudo at install). install-packages auto-reads GITHUB_TOKEN via `op read`
+      - 1password                  # desktop app — enables Touch ID biometric unlock for `op` CLI (CLI itself via mise — see mise dev block)
       - font-meslo-lg-nerd-font    # MesloLGS — backstop alongside .chezmoiexternal font drop
       - font-monaspace             # GitHub Monaspace family
     # Linux GUI packages. Installed when profile=workstation AND OS=linux.
