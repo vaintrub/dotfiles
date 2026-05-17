@@ -52,6 +52,10 @@ packages:
   # === dev tier — adds CLI dev toolchain ===
   dev:
     # Mac brew formulae (tools not in mise's aqua registry).
+    # Note: `op` (1Password CLI) and `rtk` previously lived here / in
+    # the install-rtk script; both are now installed cross-platform via
+    # mise (aqua:1password/cli and github:rtk-ai/rtk). See
+    # dot_config/mise/config.toml.tmpl dev block.
     brews:
       - htop                       # process monitor
       - tree                       # directory tree
@@ -60,8 +64,6 @@ packages:
       - telnet                     # legacy net tool
       - libpq                      # psql/pg_dump (keg-only, force-linked)
       - wireguard-tools            # VPN CLI
-      - rtk                        # token-saving Claude/Codex proxy
-      - 1password-cli              # `op` CLI — install-packages auto-reads GITHUB_TOKEN via `op read`
     # Linux apt: OS-native dev tools (symmetric to brews above).
     # Docker engine intentionally NOT here — too distro-specific and
     # conflict-prone: `docker.io` (Ubuntu repo) and `docker-ce` (Docker's
@@ -107,6 +109,7 @@ packages:
       - visual-studio-code
       - ngrok                      # tunnel UI
       - 1password                  # desktop app — enables Touch ID biometric unlock for `op` CLI
+      - 1password-cli              # `op` CLI cask (signed .pkg, sudo at install). install-packages auto-reads GITHUB_TOKEN via `op read`
       - font-meslo-lg-nerd-font    # MesloLGS — backstop alongside .chezmoiexternal font drop
       - font-monaspace             # GitHub Monaspace family
     # Linux GUI packages. Installed when profile=workstation AND OS=linux.

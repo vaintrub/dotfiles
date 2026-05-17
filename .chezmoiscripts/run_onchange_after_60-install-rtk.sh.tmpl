@@ -1,15 +1,19 @@
 {{- /*
-  rtk install + init — only at profile=dev or workstation (where claude/codex
-  are installed). At profile=core the script exits early since rtk has no
-  consumer (Claude Code + Codex CLIs ship via dev tier's npm globals).
+  rtk init — wires the rtk binary into Claude Code + Codex globally.
+  rtk binary itself is installed by mise (see dot_config/mise/config.toml.tmpl
+  dev block: `github:rtk-ai/rtk = latest`). This script handles only the
+  initialisation step that has to run AFTER install-packages (which runs
+  mise install + npm install for claude/codex CLIs).
+
+  Only fires at profile=dev or workstation (where claude/codex CLIs are
+  installed). Skips at profile=core.
 */ -}}
 {{- $profile := .profile | default "core" -}}
 {{- $isDev   := or (eq $profile "dev") (eq $profile "workstation") -}}
 #!/bin/sh
-# Install rtk (token-saving CLI proxy) and wire it into Claude Code + Codex.
 # rtk init -g writes ~/.claude/RTK.md, adds @RTK.md reference to ~/.claude/CLAUDE.md,
-# adds hook entry to ~/.claude/settings.json. Our modify_settings.json preserves
-# that hook entry across applies.
+# adds hook entry to ~/.claude/settings.json. Our private_modify_settings.json
+# preserves that hook entry across applies (mergeOverwrite).
 #
 # Idempotent: rtk init detects already-wired state.
 set -eu
@@ -19,37 +23,16 @@ echo "[install-rtk] profile=core — skipping (no claude/codex consumer at this 
 exit 0
 {{- end }}
 
-{{ if eq .chezmoi.os "darwin" -}}
-# On fresh Mac (first-time `chezmoi init --apply` via the curl one-liner),
-# the parent shell may not yet have /opt/homebrew/bin on PATH — chezmoi
-# inherits that bare PATH and scripts can't find brew-installed binaries
-# (rtk, claude, codex) even though script 50 just installed them. Re-eval
-# brew shellenv per Mac script to set PATH deterministically.
-if [ -x /opt/homebrew/bin/brew ]; then
-    eval "$(/opt/homebrew/bin/brew shellenv)"
-elif [ -x /usr/local/bin/brew ]; then
-    eval "$(/usr/local/bin/brew shellenv)"
-fi
-{{- end }}
-
-# Ensure binary is on PATH.
-# On macOS rtk lives in packages.yaml under packages.dev.brews and the
-# install-packages script (50-install-packages) runs first because 50 < 60
-# alphabetically. Binary should be present here at dev/workstation profile.
-# On Linux the install-packages script doesn't bundle rtk (not in apt/dnf),
-# so the Linux fallback below is the install path.
+# rtk binary is installed by mise — see dot_config/mise/config.toml.tmpl
+# (`github:rtk-ai/rtk`). At this point install-packages's mise_install_tools()
+# has placed the shim at ~/.local/share/mise/shims/rtk. PATH should already
+# include the shims dir (install-packages wrapper exports it).
 if ! command -v rtk >/dev/null 2>&1; then
-{{ if ne .chezmoi.os "darwin" -}}
-    curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh
-    export PATH="$HOME/.local/bin:$PATH"
-{{- else -}}
-    echo "rtk not found on PATH after install-packages." >&2
-    echo "Common cause: brew bundle aborted (e.g. VSCode or Docker cask" >&2
-    echo "adoption needs sudo, blocking non-interactive apply)." >&2
-    echo "Fix: rerun 'chezmoi apply' from a TTY, or 'sudo -v' beforehand" >&2
-    echo "to cache credentials, then retry." >&2
-    exit 1
-{{- end }}
+    echo "rtk not on PATH after install-packages." >&2
+    echo "Possible causes:" >&2
+    echo "  - mise install failed (rate-limit / no network). Check 'mise ls'." >&2
+    echo "  - Shims dir not on PATH. Try 'exec zsh' then re-run 'chezmoi apply'." >&2
+    exit 0
 fi
 
 # rtk's Linux arm64 build is dynamically linked against glibc >=2.39
@@ -84,8 +67,3 @@ if command -v codex >/dev/null 2>&1; then
 fi
 
 echo "rtk: $(rtk --version) — initialized"
-
-# Script content hash already triggers re-run on changes. No need to embed
-# `output "rtk" "--version"` here — that would call rtk binary at chezmoi
-# template-render time, which aborts apply on systems where rtk can't
-# execute (e.g. jammy arm64 — rtk requires glibc 2.39 not in Ubuntu 22.04).

@@ -66,10 +66,28 @@ rust   = "stable"
 "aqua:pnpm/pnpm"                            = "latest"
 "aqua:astral-sh/uv"                         = "latest"
 
+# --- Auth + secrets -----------------------------------------------------
+# `op` (1Password CLI) — 1Password publishes binaries to their CDN (not
+# GitHub releases); mise registry has direct-URL mapping under the
+# unqualified `op` shortname. (NB: `aqua:1password/cli` ALSO resolves
+# in `mise registry op` but its aqua entry is missing repo_owner /
+# repo_name fields → `mise install` errors. Use the shortname instead.)
+# Used by install-packages wrapper's GITHUB_TOKEN auto-detect cascade
+# (op → gh → anon). Cross-platform: Mac + Linux arm64/amd64. Replaces
+# previous brew cask install (which prompted for sudo) AND Linux apt
+# repo bootstrap (which we never wrote — Linux had no op before this).
+op                                          = "latest"
+
+# `rtk` — token-saving Claude/Codex proxy. mise's GitHub backend pulls
+# from rtk-ai/rtk releases (same artefact as the previous curl-pipe
+# install on Linux + brew formula on Mac). Cross-platform single source.
+# Note: rtk's Linux arm64 build needs glibc ≥2.39 (Ubuntu 24.04+);
+# install-rtk.sh.tmpl still skips `rtk init` gracefully on older glibc.
+"github:rtk-ai/rtk"                         = "latest"
+
 # Not in mise:
 #   - goimports → `go install golang.org/x/tools/cmd/goimports@latest` after Go.
 #   - ssh-audit → `uv tool install ssh-audit` after uv.
-#   - rtk      → mise registry has wrong project; stays on its own curl-pipe.
 #   - mongosh  → heavy (~80MB) JS bundle; install ad-hoc when needed.
 #   - htop/tree/nmap/wireguard-tools/telnet/postgresql-client → OS-native
 #     (apt/dnf on Linux, brew on Mac) for C-library + system-integration reasons.
