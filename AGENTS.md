@@ -217,12 +217,15 @@ match the canonical `id` list (Pop!_OS, Mint, Raspbian).
 
 ### Bootstrap script split — thin wrapper + `lib/`
 
-The biggest install script (`run_onchange_after_50-install-packages.sh.tmpl`)
-is intentionally a 25-LOC wrapper that:
+The install script (`run_onchange_after_50-install-packages.sh.tmpl`) is
+intentionally a thin wrapper (~55 LOC including the 1Password→gh token
+cascade) that:
 
 1. Renders chezmoi facts (profile, osid, osRelease.idLike, every package
    list from `.chezmoidata/packages.yaml`) into `DOTFILES_*` env vars.
-2. Sets `INSTALL_PACKAGES_INVOKE=1` and sources
+2. Runs the GITHUB_TOKEN cascade (template-time `lookPath` guards omit
+   unavailable backends).
+3. Sets `INSTALL_PACKAGES_INVOKE=1` and sources
    `{{ .chezmoi.sourceDir }}/lib/install-packages.sh`.
 
 The library is pure POSIX `sh` with no template syntax — bats unit tests
@@ -330,7 +333,7 @@ Hook skips with a warning if non-interactive (sudo prompt would block).
 Each is guarded with `command -v` in scripts + zshrc — missing → feature skips,
 not a hard fail. `mise` then materializes the toolchain per
 `dot_config/mise/config.toml.tmpl` (profile-aware: `core` = fzf+zoxide only;
-`dev`/`workstation` = full set including Go/Python/Node/Rust + 25 aqua tools).
+`dev`/`workstation` = full set: Go/Python/Node/Rust + 29 aqua binaries + op (direct-URL) + rtk (github)).
 
 ### Headless SSH detection (for things like font install)
 ```sh

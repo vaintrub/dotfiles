@@ -8,7 +8,7 @@ Includes:
 - **tmux** with [gpakosz/.tmux](https://github.com/gpakosz/.tmux) ("oh-my-tmux") vendored as a chezmoi external (pinned by commit SHA)
 - **iTerm2** preferences (macOS only, auto-configured to load from the repo)
 - **AI tooling** (Claude Code + OpenAI Codex CLI) — global instructions, settings, rules, AGENTS.md, with tool-mutation-safe merging via `modify_` scripts
-- **mise** (cross-platform) — declarative dev-tool list (4 language toolchains: Go/Python/Node/Rust, plus 29 binaries via aqua/github/direct-URL backends — including `op`, `rtk`, `claude-code` and `codex` as native binaries) via `dot_config/mise/config.toml.tmpl`, tier-aware so `core`-profile machines only pull what dotfiles need
+- **mise** (cross-platform) — declarative dev-tool list (4 language toolchains: Go/Python/Node/Rust, plus 29 aqua binaries + `op` (direct-URL) + `rtk` (github) — `claude-code` and `codex` install as native binaries via aqua) in `dot_config/mise/config.toml.tmpl`, tier-aware so `core`-profile machines only pull what dotfiles need
 - **3-tier install profiles** — `core` (dotfile baseline) / `dev` (+ CLI toolchain) / `workstation` (+ GUI apps per OS); always prompted on init with detected-env hint
 - **rtk** auto-installed via mise; `rtk init` runs as a post-install step wiring Claude Code + Codex hooks
 
@@ -63,7 +63,7 @@ The repo lands at `~/.local/share/chezmoi/` (chezmoi's default source location).
 | Profile | What you get | Use case |
 |---|---|---|
 | `core` | OS-native baseline (`zsh`, `vim`, `tmux`, `git`, `curl`, `ca-certificates`; Linux only: `ufw`, `tcpdump`) + MesloLGS NF + Monaspace Neon fonts + `mise` + `fzf` + `zoxide`. ~50 MB total. | Hetzner VPS, DigitalOcean droplet, jetson over SSH first-touch, Codespace, recovery. |
-| `dev` | core + CLI dev toolchain: 4 language toolchains (Go/Python/Node/Rust) + 29 binaries via mise (kubectl/helm/k9s/kustomize/stern/argocd/opentofu/awscli/rclone/jq/gh/delta/fd/yq/shellcheck/buf/golangci-lint/goreleaser/gotestsum/protoc-gen-go/pnpm/uv/cloudflared/websocat/gitleaks/op/rtk/claude-code/codex). Linux apt: `htop`, `tree`, `wget`, `nmap`, `telnet`, `wireguard-tools`, `postgresql-client`, `build-essential`, `xsel`/`wl-clipboard` (docker not installed — pick distro repo or `workstation` Docker Desktop). Mac brews (only tools without mise registry entry): `htop`, `tree`, `wget`, `nmap`, `telnet`, `libpq`, `wireguard-tools`. Post-installs (`goimports`, `ssh-audit`, `rtk init`). ~1.9 GB first apply. | Headless dev box (jetson, Linux VM, VPS for real work, Mac SSH'd into headless). |
+| `dev` | core + CLI dev toolchain: 4 language toolchains (Go/Python/Node/Rust) + 27 dev-tier aqua binaries (kubectl/helm/k9s/kustomize/stern/argocd/opentofu/awscli/rclone/jq/gh/delta/fd/yq/shellcheck/buf/golangci-lint/goreleaser/gotestsum/protoc-gen-go/pnpm/uv/cloudflared/websocat/gitleaks/claude-code/codex) + `op` (direct-URL) + `rtk` (github). Linux apt: `htop`, `tree`, `wget`, `nmap`, `telnet`, `wireguard-tools`, `postgresql-client`, `build-essential`, `xsel`/`wl-clipboard` (docker not installed — pick distro repo or `workstation` Docker Desktop). Mac brews (only tools without mise registry entry): `htop`, `tree`, `wget`, `nmap`, `telnet`, `libpq`, `wireguard-tools`. Post-installs (`goimports`, `ssh-audit`, `rtk init`). ~1.9 GB first apply. | Headless dev box (jetson, Linux VM, VPS for real work, Mac SSH'd into headless). |
 | `workstation` | dev + GUI apps. Mac: casks (`iterm2`, `docker-desktop`, `visual-studio-code`, `ngrok`, `font-meslo-lg-nerd-font`, `font-monaspace`). Linux: placeholder (empty for now — populate when I run a Linux desktop). | Primary GUI machine (Mac laptop, Linux desktop). |
 
 **Hint format in prompt**: `Install profile [detected env: workstation (GUI=true, SSH=false, ephemeral=false)] — you pick (core/dev/workstation, default core)?`. Detected env helps you pick; doesn't pre-select.
@@ -205,7 +205,7 @@ Defined declaratively in `dot_config/mise/config.toml.tmpl` (profile-aware — r
 
 ## OS-native packages (via brew / apt / dnf)
 
-Tools NOT in mise's aqua registry — C apps with libpcap/curses/PAM deps, system services, or platform-specific. Defined in `.chezmoidata/packages.yaml` under `packages.{core,dev,mac}` sections, installed cascade-style by `run_onchange_after_50-install-packages.sh.tmpl`.
+Tools NOT in mise's aqua registry — C apps with libpcap/curses/PAM deps, system services, or platform-specific. Defined in `.chezmoidata/packages.yaml` under `packages.{core,dev,gui}` sections, installed cascade-style by `run_onchange_after_50-install-packages.sh.tmpl`.
 
 | Tier | OS | Packages |
 |---|---|---|
@@ -220,9 +220,9 @@ Tools NOT in mise's aqua registry — C apps with libpcap/curses/PAM deps, syste
 
 **Ad-hoc installs**: brew/apt/dnf still primary on each platform. Want `mongosh`? `brew install mongosh` (Mac) or follow MongoDB's apt repo (Linux). Want `kubectl` debug version? `mise use kubectl@1.34.2` (per-project) or edit the global config.
 
-**First-apply latency** at `dev` or `workstation`: cold install downloads ~1.9 GB (4 language toolchains × ~300 MB + 29 binaries via mise). Realistic ranges: 5-10 min on fast link, 15-30 min on residential, 30-60+ min on slow links / jetson. `core` profile only pulls fzf+zoxide (~5 MB).
+**First-apply latency** at `dev` or `workstation`: cold install downloads ~1.9 GB (4 language toolchains × ~300 MB + ~30 binaries via mise). Realistic ranges: 5-10 min on fast link, 15-30 min on residential, 30-60+ min on slow links / jetson. `core` profile only pulls fzf+zoxide (~5 MB).
 
-**GitHub API rate limit on fresh bootstrap**: mise's aqua backend hits `api.github.com` once per tool (25 tools × 1-2 calls = 30-50 requests). Anonymous limit is 60/hr — easy to exhaust on a slow link or shared IP. Two ways to lift it:
+**GitHub API rate limit on fresh bootstrap**: mise's aqua + github backends hit `api.github.com` once per tool (~29 tools × 1-2 calls ≈ 30-50 requests). Anonymous limit is 60/hr — easy to exhaust on a slow link or shared IP. Two ways to lift it:
 
 ```sh
 # Option 1 — set token directly before apply (one-off)
