@@ -148,31 +148,77 @@ to apply.
 
 ## 1Password integration
 
-If you have the 1Password CLI (`op`) installed and signed in, the install-
-packages wrapper auto-reads `GITHUB_TOKEN` from an item at the conventional
-path:
+Three distinct secret-handling concerns; each uses its own mechanism.
 
-    op://Personal/GitHub API Token/credential
+### Install-time (e.g. `GITHUB_TOKEN` for mise rate limit)
 
-`op` itself is installed cross-platform by mise (Mac + Linux arm64/amd64) at
-`dev`/`workstation` profile — see `dot_config/mise/config.toml.tmpl` dev block
-(unqualified `op` shortname → mise direct-URL backend against 1Password's CDN).
+No prereq normally required — anonymous 60/hr GH API limit usually fits a
+cold install on a fast link. The install-packages wrapper auto-picks
+`GITHUB_TOKEN` from `gh auth token` if `gh` is authed; otherwise it
+falls through to anonymous.
 
-Mac `workstation` additionally installs the 1Password desktop app cask, which
-enables Touch ID biometric unlock so `op read` works without `op signin`.
-
-Linux headless boxes use `OP_SERVICE_ACCOUNT_TOKEN` instead of biometric.
-
-Custom vault layout? Override the item reference per machine:
+If you hit the rate limit (slow link, shared IP, multiple rebuilds in
+one hour), `mise_install_tools()` surfaces a partial-install warning
+with three recovery options:
 
 ```sh
-# ~/.zshrc_local
-export DOTFILES_OP_GITHUB_REF='op://Private/My-GH-Token/value'
+gh auth login                                             # cached token, recommended
+export GITHUB_TOKEN=ghp_yourPAT                           # one-off env
+export GITHUB_TOKEN=$(op read 'op://Personal/GitHub API Token/credential')
 ```
 
-The wrapper's cascade is `op` → `gh auth token` → anonymous. If `op` isn't
-installed (Linux jetson, core profile) the `gh` path picks up; if neither, the
-anonymous path still works (60/hr) for small bootstraps.
+Then `chezmoi apply` — mise retries missing tools idempotently. After
+`gh auth login` no manual env-export is needed on subsequent applies.
+
+### Render-time (auth tokens that must live in target files)
+
+Tools that read credentials from on-disk files (npm, aws, rclone, docker,
+git HTTP creds) need the secret baked into the target. Use chezmoi-native
+render-time funcs against a single catalog at `.chezmoidata/secrets.yaml`.
+
+Workflow when a new render-time secret is needed:
+
+1. Add the 1Password reference to the catalog:
+
+   ```yaml
+   # .chezmoidata/secrets.yaml
+   op_refs:
+     npm_token: "op://Personal/NPM Registry/token"
+   ```
+
+2. Create a `private_dot_<file>.tmpl` referencing it:
+
+   ```
+   //registry.npmjs.org/:_authToken={{ onepasswordRead .op_refs.npm_token }}
+   ```
+
+3. `chezmoi apply` — file lands at `~/.npmrc` mode 0600 with the secret
+   baked in. Touch ID prompts once per apply (1Password CLI 10-minute
+   session covers subsequent reads).
+
+### Runtime CLI auth (gh, aws, npm CLIs themselves)
+
+Use [1Password Shell Plugins](https://developer.1password.com/docs/cli/shell-plugins/)
+per CLI — biometric-gated, lazy, no disk exposure:
+
+```sh
+op plugin init gh
+op plugin init aws
+op plugin init npm
+```
+
+Not in any catalog — `op` manages auth per CLI internally.
+
+### `op` install + auth
+
+`op` itself is installed cross-platform by mise (Mac + Linux arm64/amd64)
+at the `dev` / `workstation` profile — see `dot_config/mise/config.toml.tmpl`
+dev block (unqualified `op` shortname → mise direct-URL backend against
+1Password's CDN).
+
+Mac `workstation` additionally installs the 1Password desktop app cask,
+which enables Touch ID biometric unlock so `op read` works without `op signin`.
+Linux headless boxes use `OP_SERVICE_ACCOUNT_TOKEN` instead of biometric.
 
 ## Tools managed by mise (cross-platform via aqua + github + direct-URL backends)
 
@@ -222,21 +268,7 @@ Tools NOT in mise's aqua registry — C apps with libpcap/curses/PAM deps, syste
 
 **First-apply latency** at `dev` or `workstation`: cold install downloads ~1.9 GB (4 language toolchains × ~300 MB + ~30 binaries via mise). Realistic ranges: 5-10 min on fast link, 15-30 min on residential, 30-60+ min on slow links / jetson. `core` profile only pulls fzf+zoxide (~5 MB).
 
-**GitHub API rate limit on fresh bootstrap**: mise's aqua + github backends hit `api.github.com` once per tool (~29 tools × 1-2 calls ≈ 30-50 requests). Anonymous limit is 60/hr — easy to exhaust on a slow link or shared IP. Two ways to lift it:
-
-```sh
-# Option 1 — set token directly before apply (one-off)
-export GITHUB_TOKEN=ghp_yourPersonalAccessToken
-chezmoi apply
-
-# Option 2 — `gh auth login` once, install-packages auto-picks it up on
-# subsequent applies via `gh auth token` (works after first apply when
-# gh is installed by mise).
-gh auth login                 # interactive, browser flow
-chezmoi apply                 # token auto-detected, ~5000/hr limit
-```
-
-Anonymous bootstrap on a fast link usually fits inside 60/hr — the auto-detect is a safety net for jetson / VPS / re-runs.
+**GitHub API rate limit**: mise's aqua + github backends hit `api.github.com` ~30-50 times during a cold dev install. Anonymous limit is 60/hr — usually fits. If hit, the install-packages partial-install warning surfaces; see §"1Password integration → Install-time" above for recovery options.
 
 **Troubleshooting slow zsh prompt**: `MISE_TIMINGS=1 exec zsh` — total < 50ms per prompt is healthy. If consistently above, switch to mise shim mode in `dot_zshrc`:
 ```zsh

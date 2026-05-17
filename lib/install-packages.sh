@@ -138,7 +138,10 @@ mise_install_tools() {
         echo "" >&2
         echo "[install-packages] WARNING: $missing_count mise tool(s) missing." >&2
         echo "  Likely cause: GitHub API rate-limit (60/hr anonymous)." >&2
-        echo "  Fix: gh auth login   or   op item create 'op://Personal/GitHub API Token/credential'" >&2
+        echo "  Fix (pick one):" >&2
+        echo "    gh auth login                                              # cached token, recommended" >&2
+        echo "    export GITHUB_TOKEN=ghp_yourPAT                            # one-off env" >&2
+        echo "    export GITHUB_TOKEN=\$(op read 'op://Personal/GitHub API Token/credential')" >&2
         echo "  Then: chezmoi apply" >&2
         echo "" >&2
     fi
