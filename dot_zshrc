@@ -106,6 +106,13 @@ export LANG=en_US.UTF-8
 export EDITOR="${EDITOR:-vim}"
 export VISUAL="$EDITOR"
 
+# --- PATH ---
+# Set BEFORE mise activate so curl-pipe-installed mise (at ~/.local/bin/mise
+# on Linux) is discoverable. On Mac brew's .zprofile shellenv adds
+# /opt/homebrew/bin earlier — these lines are still safe (idempotent appends).
+export PATH="$PATH:$HOME/.local/bin"
+export PATH="$PATH:$HOME/go/bin"
+
 # --- Runtime + dev-tool manager (mise) ---
 # mise is the primary installer for ~28 dev tools (Go/Python/Node/Rust +
 # kubectl/helm/k9s/jq/gh/fzf/yq/delta/... via aqua backend). Activate enables
@@ -125,10 +132,6 @@ unset _fzf_root
 
 # --- Smart cd (zoxide) ---
 command -v zoxide > /dev/null && eval "$(zoxide init zsh)"
-
-# --- PATH ---
-export PATH="$PATH:$HOME/.local/bin"
-export PATH="$PATH:$HOME/go/bin"
 
 # --- Powerlevel10k theme ---
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
