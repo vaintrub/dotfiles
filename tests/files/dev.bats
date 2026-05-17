@@ -65,10 +65,25 @@ setup() {
 @test "goimports (go install)" { command -v goimports; }
 @test "ssh-audit (uv tool install)" { command -v ssh-audit; }
 
-# --- AI CLIs (npm globals via mise's npm + --force) -----------------------
+# --- AI CLIs (mise aqua: native binaries, no Node coupling) ----------------
 
-@test "claude (--force overwrote pre-existing)" { command -v claude; }
+@test "claude" { command -v claude; }
 @test "codex" { command -v codex; }
+
+# --- execute-checks: actually run --version on critical binaries ----------
+# command -v above resolves PATH but doesn't catch broken binary (corrupt
+# aqua download, glibc mismatch on Linux, version_prefix filter mismatch
+# after upstream naming change). These tests catch that.
+
+@test "claude --version executes" { run claude --version; [ "$status" -eq 0 ]; }
+@test "codex --version executes" { run codex --version; [ "$status" -eq 0 ]; }
+@test "op --version executes" { run op --version; [ "$status" -eq 0 ]; }
+@test "gh --version executes" { run gh --version; [ "$status" -eq 0 ]; }
+@test "delta --version executes" { run delta --version; [ "$status" -eq 0 ]; }
+@test "rtk --version executes (skip on glibc < 2.39)" {
+    run rtk --version
+    [ "$status" -eq 0 ] || skip "rtk fails (likely glibc < 2.39 on this runner)"
+}
 
 # --- no partial install ----------------------------------------------------
 

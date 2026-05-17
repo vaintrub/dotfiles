@@ -33,9 +33,9 @@
 set -eu
 
 {{ if eq .chezmoi.os "darwin" -}}
-# Same as script 60: ensure /opt/homebrew/bin is on PATH so command -v claude
-# / codex find the freshly-installed binaries from script 50, even on first
-# apply where the parent shell didn't have brew on PATH yet.
+# Defensive: ensure /opt/homebrew/bin is on PATH so command -v claude /
+# codex finds the freshly-installed binaries on first apply (mise activate
+# from parent shell may not have run yet on a brand-new machine).
 if [ -x /opt/homebrew/bin/brew ]; then
     eval "$(/opt/homebrew/bin/brew shellenv)"
 elif [ -x /usr/local/bin/brew ]; then

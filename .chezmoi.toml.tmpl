@@ -11,19 +11,28 @@
                  Use case: Hetzner VPS, DO droplet, jetson via SSH, Codespace,
                  devcontainer, recovery. ~50 MB.
     dev          core + CLI dev toolchain. Adds:
-                 - 25 mise aqua tools (kubectl, helm, jq, gh, k9s, ...)
+                 - mise aqua tools: kubectl/helm/k9s/kustomize/stern/argocd/
+                   opentofu/awscli/rclone/jq/gh/delta/fd/yq/shellcheck/buf/
+                   golangci-lint/goreleaser/gotestsum/protoc-gen-go/pnpm/uv/
+                   cloudflared/websocat/gitleaks
+                 - mise direct-URL: op (1Password CLI)
+                 - mise github: rtk (token-saving Claude/Codex proxy)
+                 - mise aqua AI CLIs: claude-code + codex (native binaries,
+                   no Node middleman)
                  - Languages: Go, Python, Node, Rust (via mise core)
-                 - Linux: docker.io, htop, tree, wget, nmap, telnet, libpq,
-                   wireguard-tools, build-essential, xsel/wl-clipboard
-                 - Mac brews: htop, tree, wget, nmap, telnet, libpq,
-                   wireguard-tools, rtk (no docker on Mac dev — pick
-                   workstation for Docker Desktop)
+                 - Linux apt: htop, tree, wget, nmap, telnet, libpq-equivalent
+                   (postgresql-client), wireguard-tools, build-essential,
+                   xsel/wl-clipboard (docker intentionally NOT here — pick
+                   own apt source or workstation for Docker Desktop)
+                 - Mac brews (only tools without mise registry entry): htop,
+                   tree, wget, nmap, telnet, libpq, wireguard-tools
                  - goimports, ssh-audit (post-installs)
-                 - AI npm globals: claude-code, codex
+                 - rtk init wiring for Claude + Codex (post-install)
                  Use case: headless dev box (jetson, Ubuntu VM, Linux VPS for
                  actual work, Mac SSH'd into headless). ~1.9 GB first apply.
     workstation  dev + GUI apps. Adds:
-                 - Mac: casks (iterm2, docker-desktop, vscode, ngrok, fonts)
+                 - Mac: casks (iterm2, docker-desktop, vscode, ngrok,
+                   1password desktop, fonts)
                  - Linux: placeholder (empty for now)
                  Use case: primary GUI machine (Mac laptop, Linux desktop).
 
