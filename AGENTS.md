@@ -31,7 +31,7 @@ sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply vaintrub
 | `dot_codex/` | Codex CLI: AGENTS.md, config.toml (modify_), shared skills (symlink) |
 | `.chezmoidata/packages.yaml` | single source of truth for all packages (Mac brews/casks, Linux apt/dnf/npm) AND Claude/Codex plugin lists |
 | `.chezmoiscripts/` | install hooks (run_once_after_*, run_onchange_after_*). Per-OS subdirs: `darwin/`, `linux/`. Numerical prefix (50/70/99) controls ordering — 50 installs packages (+ mise tools + post-installs from lib), 70 installs Claude+Codex plugins, 99 prints first-apply hint |
-| `.chezmoihooks/` | hook scripts registered in `.chezmoi.toml.tmpl`. `ensure-prereqs.sh` runs BEFORE source-state read on every apply, installing minimum tools (git/zsh/vim/tmux/curl + brew on Mac) |
+| `hooks/` | hook scripts registered in `.chezmoi.toml.tmpl`. `ensure-prereqs.sh` runs BEFORE source-state read on every apply, installing minimum tools (git/zsh/vim/tmux/curl + brew on Mac) |
 | `.chezmoitemplates/` | shared template partials (base configs read by `modify_` scripts via `includeTemplate`, not applied to $HOME) |
 | `lib/` | shell libraries sourced by `.chezmoiscripts/*` wrappers via `{{ .chezmoi.sourceDir }}/lib/X.sh`. Pure POSIX `sh`, no template syntax. Chezmoi-ignored so it never deploys to $HOME — also makes the libraries `source`-able by bats unit tests with mocked externals. |
 | `tests/files/*.bats` | post-apply asserts (CI: dotfile presence, tool functionality, content sanity). Profile-tagged (`common.bats` covers `core` tier today). |
@@ -330,7 +330,7 @@ chezmoi cd && git commit -am 'tmux: bump oh-my-tmux to <SHA>' && exit
 
 ### Hard prerequisites
 `git`, `zsh`, `vim`, `tmux`, `curl`. Installed automatically by
-`.chezmoihooks/ensure-prereqs.sh` (registered as `hooks.read-source-state.pre`
+`hooks/ensure-prereqs.sh` (registered as `hooks.read-source-state.pre`
 in `.chezmoi.toml.tmpl`) on every apply — runs apt/dnf on Linux, brew on Mac.
 Hook skips with a warning if non-interactive (sudo prompt would block).
 

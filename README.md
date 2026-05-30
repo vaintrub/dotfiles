@@ -285,7 +285,7 @@ Source files in this repo use chezmoi's naming convention. The mapping is mechan
 | `modify_X` | script: stdin = existing file, stdout = new contents |
 | `modify_X` + `#chezmoi:modify-template` | template: `.chezmoi.stdin` = existing; output = new contents |
 | `.chezmoiscripts/run_*` | scripts that don't create `$HOME` files (per-OS subdirs `darwin/` + `linux/`; root scripts use `50/70/99-` numerical prefix for ordering — 50 installs packages, 70 installs plugins, 99 prints post-install hint) |
-| `.chezmoihooks/*` | hook scripts registered in `.chezmoi.toml.tmpl` (e.g. `read-source-state.pre`) |
+| `hooks/*` | hook scripts registered in `.chezmoi.toml.tmpl` (e.g. `read-source-state.pre`) |
 | `.chezmoiexternal.toml.tmpl` | vendored externals (archives, file downloads) |
 | `.chezmoiignore` | exclude target paths from apply |
 | `.chezmoiversion`, `.chezmoiremove.tmpl` | minimum-version pin + deprecation-tracking list |
@@ -460,7 +460,7 @@ Top-level dotfiles (`dot_zshrc`, `dot_vimrc`, etc.) are plain — they handle pl
 - `.chezmoiexternal.toml.tmpl` is templated for headless detection (skip fonts) + per-OS font destination
 - `.chezmoiscripts/{darwin,linux}/` hold per-OS scripts; root holds cross-platform scripts with numerical prefix (`50-`, `70-`, `99-`) for ordering within the `run_onchange_after_` / `run_once_after_` groups
 - `.chezmoiscripts/run_onchange_after_50-install-packages.sh.tmpl` branches on `.chezmoi.os` (Mac brew bundle vs Linux apt/dnf) + `.chezmoi.osRelease.id` (Debian vs Fedora)
-- `.chezmoihooks/ensure-prereqs.sh` is NOT a template (chezmoi doesn't template hooks) — it detects OS inline via `case "$(uname -s)"`
+- `hooks/ensure-prereqs.sh` is NOT a template (chezmoi doesn't template hooks) — it detects OS inline via `case "$(uname -s)"`
 
 ### Headless SSH detection
 

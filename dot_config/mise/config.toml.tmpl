@@ -65,9 +65,9 @@ rust   = "stable"
 "aqua:openai/codex"                         = "latest"
 
 # --- Auth + secrets -----------------------------------------------------
-# Unqualified `op` shortname → mise direct-URL backend (1Password CDN).
-# Do NOT use `aqua:1password/cli` — that aqua entry is broken (missing
-# repo_owner/repo_name). Cross-platform: Mac + Linux arm64/amd64.
+# `op` is a registry alias for `1password`; backends resolve vfox first
+# (vfox:mise-plugins/vfox-1password), aqua fallback (aqua:1password/cli).
+# Installs via vfox here. Cross-platform: Mac + Linux arm64/amd64.
 op                                          = "latest"
 
 # rtk: Linux arm64 needs glibc ≥2.39 (Ubuntu 24.04+); init skips gracefully on older.
