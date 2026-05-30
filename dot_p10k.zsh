@@ -1702,6 +1702,12 @@
   #              seen the warning, or if you are unsure what this all means.
   typeset -g POWERLEVEL9K_INSTANT_PROMPT=verbose
 
+  # Terminal shell integration. Emits OSC 133 semantic marks (prompt-start,
+  # input-start, command/output-start, output-end + exit code) so terminals
+  # (iTerm2, VS Code, WezTerm, kitty) can navigate between prompts, show
+  # per-command exit status, etc. p10k emits the full set with tmux passthrough.
+  typeset -g POWERLEVEL9K_TERM_SHELL_INTEGRATION=true
+
   # Hot reload allows you to change POWERLEVEL9K options after Powerlevel10k has been initialized.
   # For example, you can type POWERLEVEL9K_BACKGROUND=red and see your prompt turn red. Hot reload
   # can slow down prompt by 1-2 milliseconds, so it's better to keep it turned off unless you
