@@ -8,7 +8,7 @@ Includes:
 - **tmux** with [gpakosz/.tmux](https://github.com/gpakosz/.tmux) ("oh-my-tmux") vendored as a chezmoi external (pinned by commit SHA)
 - **iTerm2** preferences (macOS only, auto-configured to load from the repo)
 - **AI tooling** (Claude Code + OpenAI Codex CLI) — global instructions, settings, rules, AGENTS.md, with tool-mutation-safe merging via `modify_` scripts
-- **mise** (cross-platform) — declarative dev-tool list (4 language toolchains: Go/Python/Node/Rust, plus 29 aqua binaries + `op` (vfox) + `rtk` (github) — `claude-code` and `codex` install as native binaries via aqua) in `dot_config/mise/config.toml.tmpl`, tier-aware so `core`-profile machines only pull what dotfiles need
+- **mise** (cross-platform) — declarative dev-tool list (4 language toolchains: Go/Python/Node/Rust, plus 29 aqua binaries + `op` (vfox) + `rtk` (github) + `goimports` (go) + `ssh-audit` (pipx) — `claude-code` and `codex` install as native binaries via aqua) in `dot_config/mise/config.toml.tmpl`, tier-aware so `core`-profile machines only pull what dotfiles need
 - **3-tier install profiles** — `core` (dotfile baseline) / `dev` (+ CLI toolchain) / `workstation` (+ GUI apps per OS); always prompted on init with detected-env hint
 - **rtk** auto-installed via mise; `rtk init` runs as a post-install step wiring Claude Code + Codex hooks
 
