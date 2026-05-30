@@ -147,19 +147,6 @@ mise_install_tools() {
     fi
 }
 
-post_install_goimports() {
-    if command -v go >/dev/null 2>&1 && ! command -v goimports >/dev/null 2>&1; then
-        GOBIN="$HOME/.local/bin" go install golang.org/x/tools/cmd/goimports@latest \
-            || echo "goimports install failed" >&2
-    fi
-}
-
-post_install_ssh_audit() {
-    if command -v uv >/dev/null 2>&1 && ! command -v ssh-audit >/dev/null 2>&1; then
-        uv tool install ssh-audit --quiet || echo "ssh-audit install failed" >&2
-    fi
-}
-
 post_install_rtk_init() {
     if ! command -v rtk >/dev/null 2>&1; then
         echo "rtk not on PATH — check 'mise ls'; if shims dir missing, 'exec zsh' then re-apply." >&2
@@ -190,9 +177,9 @@ main() {
 
     mise_install_tools
 
+    # goimports + ssh-audit are declared in dot_config/mise/config.toml.tmpl
+    # (go: / pipx: backends), installed by mise_install_tools above.
     if is_dev; then
-        post_install_goimports
-        post_install_ssh_audit
         post_install_rtk_init
     fi
 }

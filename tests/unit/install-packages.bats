@@ -285,30 +285,22 @@ setup() {
     brew_bundle_install() { :; }
     linux_pkg_install() { :; }
     mise_install_tools() { :; }
-    post_install_goimports() { echo "GO_CALLED"; }
-    post_install_ssh_audit() { echo "AUDIT_CALLED"; }
     post_install_rtk_init() { echo "RTK_CALLED"; }
 
     run main
-    [[ ! "$output" =~ "GO_CALLED" ]]
-    [[ ! "$output" =~ "AUDIT_CALLED" ]]
     [[ ! "$output" =~ "RTK_CALLED" ]]
 }
 
-@test "main: dev profile → all post-installs run" {
+@test "main: dev profile → rtk init runs" {
     DOTFILES_PROFILE=dev
     DOTFILES_OS=linux
 
     brew_bundle_install() { :; }
     linux_pkg_install() { :; }
     mise_install_tools() { :; }
-    post_install_goimports() { echo "GO_CALLED"; }
-    post_install_ssh_audit() { echo "AUDIT_CALLED"; }
     post_install_rtk_init() { echo "RTK_CALLED"; }
 
     run main
-    [[ "$output" =~ "GO_CALLED" ]]
-    [[ "$output" =~ "AUDIT_CALLED" ]]
     [[ "$output" =~ "RTK_CALLED" ]]
 }
 
