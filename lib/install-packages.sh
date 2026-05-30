@@ -138,25 +138,12 @@ mise_install_tools() {
         echo "" >&2
         echo "[install-packages] WARNING: $missing_count mise tool(s) missing." >&2
         echo "  Likely cause: GitHub API rate-limit (60/hr anonymous)." >&2
-        echo "  Fix (pick one):" >&2
-        echo "    gh auth login                                              # cached token, recommended" >&2
+        echo "  Fix — mise auto-uses gh's token via github.credential_command once authed:" >&2
+        echo "    gh auth login                                              # recommended; mise picks it up automatically" >&2
         echo "    export GITHUB_TOKEN=ghp_yourPAT                            # one-off env" >&2
         echo "    export GITHUB_TOKEN=\$(op read 'op://Personal/GitHub API Token/credential')" >&2
         echo "  Then: chezmoi apply" >&2
         echo "" >&2
-    fi
-}
-
-post_install_goimports() {
-    if command -v go >/dev/null 2>&1 && ! command -v goimports >/dev/null 2>&1; then
-        GOBIN="$HOME/.local/bin" go install golang.org/x/tools/cmd/goimports@latest \
-            || echo "goimports install failed" >&2
-    fi
-}
-
-post_install_ssh_audit() {
-    if command -v uv >/dev/null 2>&1 && ! command -v ssh-audit >/dev/null 2>&1; then
-        uv tool install ssh-audit --quiet || echo "ssh-audit install failed" >&2
     fi
 }
 
@@ -190,9 +177,9 @@ main() {
 
     mise_install_tools
 
+    # goimports + ssh-audit are declared in dot_config/mise/config.toml.tmpl
+    # (go: / pipx: backends), installed by mise_install_tools above.
     if is_dev; then
-        post_install_goimports
-        post_install_ssh_audit
         post_install_rtk_init
     fi
 }

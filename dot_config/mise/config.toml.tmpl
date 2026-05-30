@@ -52,6 +52,7 @@ rust   = "stable"
 
 # --- Networking ---------------------------------------------------------
 "aqua:vi/websocat"                          = "latest"
+"pipx:ssh-audit"                            = "latest"   # SSH config auditor (pipx backend → uv)
 
 # --- Go ecosystem -------------------------------------------------------
 "aqua:bufbuild/buf"                         = "latest"
@@ -59,6 +60,7 @@ rust   = "stable"
 "aqua:goreleaser/goreleaser"                = "latest"
 "aqua:gotestyourself/gotestsum"             = "latest"
 "aqua:protocolbuffers/protobuf-go/protoc-gen-go" = "latest"
+"go:golang.org/x/tools/cmd/goimports"       = "latest"   # go backend → go install
 
 # --- JS / Python pkg managers -------------------------------------------
 "aqua:pnpm/pnpm"                            = "latest"
@@ -80,7 +82,5 @@ op                                          = "latest"
 "github:rtk-ai/rtk"                         = "latest"
 
 # Not in mise (installed elsewhere):
-#   goimports — `go install` (lib post-install)
-#   ssh-audit — `uv tool install` (lib post-install)
 #   htop/tree/nmap/wireguard-tools/telnet/postgresql-client — OS-native (C deps)
 {{- end }}
