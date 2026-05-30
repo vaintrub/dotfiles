@@ -341,7 +341,7 @@ Hook skips with a warning if non-interactive (sudo prompt would block).
 Each is guarded with `command -v` in scripts + zshrc — missing → feature skips,
 not a hard fail. `mise` then materializes the toolchain per
 `dot_config/mise/config.toml.tmpl` (profile-aware: `core` = fzf+zoxide only;
-`dev`/`workstation` = full set: Go/Python/Node/Rust + 29 aqua binaries + op (direct-URL) + rtk (github)).
+`dev`/`workstation` = full set: Go/Python/Node/Rust + 29 aqua binaries + op (vfox) + rtk (github)).
 
 ### Headless SSH detection (for things like font install)
 ```sh

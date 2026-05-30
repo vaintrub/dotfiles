@@ -8,7 +8,7 @@ Includes:
 - **tmux** with [gpakosz/.tmux](https://github.com/gpakosz/.tmux) ("oh-my-tmux") vendored as a chezmoi external (pinned by commit SHA)
 - **iTerm2** preferences (macOS only, auto-configured to load from the repo)
 - **AI tooling** (Claude Code + OpenAI Codex CLI) — global instructions, settings, rules, AGENTS.md, with tool-mutation-safe merging via `modify_` scripts
-- **mise** (cross-platform) — declarative dev-tool list (4 language toolchains: Go/Python/Node/Rust, plus 29 aqua binaries + `op` (direct-URL) + `rtk` (github) — `claude-code` and `codex` install as native binaries via aqua) in `dot_config/mise/config.toml.tmpl`, tier-aware so `core`-profile machines only pull what dotfiles need
+- **mise** (cross-platform) — declarative dev-tool list (4 language toolchains: Go/Python/Node/Rust, plus 29 aqua binaries + `op` (vfox) + `rtk` (github) — `claude-code` and `codex` install as native binaries via aqua) in `dot_config/mise/config.toml.tmpl`, tier-aware so `core`-profile machines only pull what dotfiles need
 - **3-tier install profiles** — `core` (dotfile baseline) / `dev` (+ CLI toolchain) / `workstation` (+ GUI apps per OS); always prompted on init with detected-env hint
 - **rtk** auto-installed via mise; `rtk init` runs as a post-install step wiring Claude Code + Codex hooks
 
@@ -51,7 +51,7 @@ sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply vaintrub
 The repo lands at `~/.local/share/chezmoi/` (chezmoi's default source location). `chezmoi init` ALWAYS prompts for profile (Codespaces / non-interactive runs fall back to `core` via `--promptDefaults`). From there chezmoi takes over:
 
 1. `hooks/ensure-prereqs.sh` apt/dnf installs `git zsh vim tmux curl ca-certificates` if not present + curl-pipes mise into `~/.local/bin/` (runs BEFORE chezmoi reads source state).
-2. `run_onchange_after_50-install-packages.sh.tmpl` runs tier-cascade via `lib/install-packages.sh`: (a) `apt-get`/`dnf install` core packages always; if `dev`, also dev packages; (b) `mise install` from `~/.config/mise/config.toml` — at `core` just fzf+zoxide, at `dev` the full toolchain (which now includes `op`, `rtk`, `claude-code` and `codex` as native binaries via mise's aqua/github/direct-URL backends); (c) `dev`-only post-installs: `goimports` (`go install`), `ssh-audit` (`uv tool install`), `rtk init -g` for Claude+Codex hooks.
+2. `run_onchange_after_50-install-packages.sh.tmpl` runs tier-cascade via `lib/install-packages.sh`: (a) `apt-get`/`dnf install` core packages always; if `dev`, also dev packages; (b) `mise install` from `~/.config/mise/config.toml` — at `core` just fzf+zoxide, at `dev` the full toolchain (which now includes `op`, `rtk`, `claude-code` and `codex` as native binaries via mise's aqua/github/vfox backends); (c) `dev`-only post-installs: `goimports` (`go install`), `ssh-audit` (`uv tool install`), `rtk init -g` for Claude+Codex hooks.
 3. `70-install-plugins` registers Claude Code + Codex plugins listed in `packages.yaml` (caveman included — installed via canonical `claude plugin install caveman@caveman`, no bespoke installer).
 4. `linux/run_once_after_install-fonts.sh.tmpl` runs `fc-cache` after MesloLGS NF + Monaspace fonts are downloaded by `.chezmoiexternal.toml.tmpl`. Skipped on headless boxes (SSH with no `$DISPLAY`/`$WAYLAND_DISPLAY`).
 5. `linux/run_once_after_chsh.sh.tmpl` sets `zsh` as your login shell. Skipped if `chsh` would block on non-interactive password prompt.
@@ -63,7 +63,7 @@ The repo lands at `~/.local/share/chezmoi/` (chezmoi's default source location).
 | Profile | What you get | Use case |
 |---|---|---|
 | `core` | OS-native baseline (`zsh`, `vim`, `tmux`, `git`, `curl`, `ca-certificates`; Linux only: `ufw`, `tcpdump`) + MesloLGS NF + Monaspace Neon fonts + `mise` + `fzf` + `zoxide`. ~50 MB total. | Hetzner VPS, DigitalOcean droplet, jetson over SSH first-touch, Codespace, recovery. |
-| `dev` | core + CLI dev toolchain: 4 language toolchains (Go/Python/Node/Rust) + 27 dev-tier aqua binaries (kubectl/helm/k9s/kustomize/stern/argocd/opentofu/awscli/rclone/jq/gh/delta/fd/yq/shellcheck/buf/golangci-lint/goreleaser/gotestsum/protoc-gen-go/pnpm/uv/cloudflared/websocat/gitleaks/claude-code/codex) + `op` (direct-URL) + `rtk` (github). Linux apt: `htop`, `tree`, `wget`, `nmap`, `telnet`, `wireguard-tools`, `postgresql-client`, `build-essential`, `xsel`/`wl-clipboard` (docker not installed — pick distro repo or `workstation` Docker Desktop). Mac brews (only tools without mise registry entry): `htop`, `tree`, `wget`, `nmap`, `telnet`, `libpq`, `wireguard-tools`. Post-installs (`goimports`, `ssh-audit`, `rtk init`). ~1.9 GB first apply. | Headless dev box (jetson, Linux VM, VPS for real work, Mac SSH'd into headless). |
+| `dev` | core + CLI dev toolchain: 4 language toolchains (Go/Python/Node/Rust) + 27 dev-tier aqua binaries (kubectl/helm/k9s/kustomize/stern/argocd/opentofu/awscli/rclone/jq/gh/delta/fd/yq/shellcheck/buf/golangci-lint/goreleaser/gotestsum/protoc-gen-go/pnpm/uv/cloudflared/websocat/gitleaks/claude-code/codex) + `op` (vfox) + `rtk` (github). Linux apt: `htop`, `tree`, `wget`, `nmap`, `telnet`, `wireguard-tools`, `postgresql-client`, `build-essential`, `xsel`/`wl-clipboard` (docker not installed — pick distro repo or `workstation` Docker Desktop). Mac brews (only tools without mise registry entry): `htop`, `tree`, `wget`, `nmap`, `telnet`, `libpq`, `wireguard-tools`. Post-installs (`goimports`, `ssh-audit`, `rtk init`). ~1.9 GB first apply. | Headless dev box (jetson, Linux VM, VPS for real work, Mac SSH'd into headless). |
 | `workstation` | dev + GUI apps. Mac: casks (`iterm2`, `docker-desktop`, `visual-studio-code`, `ngrok`, `font-meslo-lg-nerd-font`, `font-monaspace`). Linux: placeholder (empty for now — populate when I run a Linux desktop). | Primary GUI machine (Mac laptop, Linux desktop). |
 
 **Hint format in prompt**: `Install profile [detected env: workstation (GUI=true, SSH=false, ephemeral=false)] — you pick (core/dev/workstation, default core)?`. Detected env helps you pick; doesn't pre-select.
@@ -206,14 +206,14 @@ Not in any catalog — `op` manages auth per CLI internally.
 
 `op` itself is installed cross-platform by mise (Mac + Linux arm64/amd64)
 at the `dev` / `workstation` profile — see `dot_config/mise/config.toml.tmpl`
-dev block (unqualified `op` shortname → mise direct-URL backend against
-1Password's CDN).
+dev block (unqualified `op` shortname → mise's vfox backend,
+`vfox:mise-plugins/vfox-1password`).
 
 Mac `workstation` additionally installs the 1Password desktop app cask,
 which enables Touch ID biometric unlock so `op read` works without `op signin`.
 Linux headless boxes use `OP_SERVICE_ACCOUNT_TOKEN` instead of biometric.
 
-## Tools managed by mise (cross-platform via aqua + github + direct-URL backends)
+## Tools managed by mise (cross-platform via aqua + github + vfox backends)
 
 Defined declaratively in `dot_config/mise/config.toml.tmpl` (profile-aware — rendered to `~/.config/mise/config.toml`). Same tools install identically on Mac + Linux.
 
@@ -233,7 +233,7 @@ Defined declaratively in `dot_config/mise/config.toml.tmpl` (profile-aware — r
 | Networking | `websocat` |
 | Go ecosystem | `buf`, `golangci-lint`, `goreleaser`, `gotestsum`, `protoc-gen-go` |
 | Package managers | `pnpm`, `uv` |
-| Auth + secrets | `op` (1Password CLI, direct-URL backend) |
+| Auth + secrets | `op` (1Password CLI, `vfox:mise-plugins/vfox-1password`) |
 | Token-saving proxy | `rtk` (`github:rtk-ai/rtk`, native binary) |
 | AI CLIs | `claude-code` (`aqua:anthropics/claude-code`, native), `codex` (`aqua:openai/codex`, native rust) |
 | Post-install (after mise install) | `goimports` (`go install`), `ssh-audit` (`uv tool install`), `rtk init` (Claude+Codex hooks) |
