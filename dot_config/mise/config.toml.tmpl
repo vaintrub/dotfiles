@@ -9,7 +9,13 @@
 # Idiomatic version files (.nvmrc, .python-version, .go-version) — disabled
 # upstream since 2025.10.0; re-enabled here for projects predating .mise.toml.
 idiomatic_version_file_enable_tools = ["node", "python", "go"]
-
+{{ if lookPath "gh" }}
+[settings.github]
+# mise reads gh's token from hosts.yml only; macOS keeps it in the Keychain,
+# so bridge via `gh auth token` (reads Keychain) → authed API (5000/hr vs 60
+# anon). Invoked once per run; falls through to anon if gh unauthed.
+credential_command = "gh auth token"
+{{ end }}
 [tools]
 # --- Core: required for zshrc bindings ----------------------------------
 "aqua:junegunn/fzf"                         = "latest"   # zshrc Ctrl-R, Ctrl-T

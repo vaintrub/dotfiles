@@ -218,21 +218,24 @@ match the canonical `id` list (Pop!_OS, Mint, Raspbian).
 ### Bootstrap script split — thin wrapper + `lib/`
 
 The install script (`run_onchange_after_50-install-packages.sh.tmpl`) is
-intentionally a thin wrapper (~40 LOC) that:
+intentionally a thin wrapper (~30 LOC) that:
 
 1. Renders chezmoi facts (profile, osid, osRelease.idLike, every package
    list from `.chezmoidata/packages.yaml`) into `DOTFILES_*` env vars.
-2. Picks `GITHUB_TOKEN` from `gh auth token` if `gh` is authed (cheap
-   shell call, no disk persistence). Pre-exported env wins; empty
-   fallthrough is fine — anonymous 60/hr usually fits.
-3. Sets `INSTALL_PACKAGES_INVOKE=1` and sources
+2. Sets `INSTALL_PACKAGES_INVOKE=1` and sources
    `{{ .chezmoi.sourceDir }}/lib/install-packages.sh`.
+
+GitHub auth for mise's backend installs is NOT handled here — mise
+authenticates itself via `github.credential_command = "gh auth token"`,
+rendered into `~/.config/mise/config.toml` when `gh` is on PATH (see
+`dot_config/mise/config.toml.tmpl`). Pre-exported `GITHUB_TOKEN` env still
+wins; this also covers interactive `mise upgrade`/`install`, not just apply.
 
 Secret-handling architecture (three layers, three mechanisms):
 
 | Concern | Mechanism | Where |
 |---|---|---|
-| Install-time | `gh auth token` auto-pickup (above) + recovery warning if rate-limited | wrapper + `mise_install_tools()` |
+| Install-time | mise `github.credential_command = "gh auth token"` + recovery warning if rate-limited | mise config + `mise_install_tools()` |
 | Render-time | chezmoi-native `onepasswordRead` via `.chezmoidata/secrets.yaml` `op_refs:` catalog | per-file `private_dot_<X>.tmpl` |
 | Runtime CLI | 1Password Shell Plugins (`op plugin init <cli>`) | user-managed, per-CLI |
 
