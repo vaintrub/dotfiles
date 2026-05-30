@@ -130,15 +130,9 @@ command -v zoxide > /dev/null && eval "$(zoxide init zsh)"
 
 # --- Powerlevel10k theme ---
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
+# (OSC 133 shell integration is enabled inside ~/.p10k.zsh via
+# POWERLEVEL9K_TERM_SHELL_INTEGRATION — its documented home.)
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
-
-# OSC 133 semantic marks (prompt-start A / input-start B / output-start C /
-# output-end+exit D) — p10k emits the full set natively, with tmux DCS
-# passthrough + transient-prompt support (more than a hand-rolled add-zsh-hook
-# could). MUST come after `source ~/.p10k.zsh`: that file unsets every
-# POWERLEVEL9K_* on load, so an earlier assignment is wiped before p10k reads
-# it at prompt init (same reason the SSH PROMPT_CHAR overrides below work).
-typeset -g POWERLEVEL9K_TERM_SHELL_INTEGRATION=true
 
 # --- SSH visual tints (orange ❯ + amber tmux bar) ---
 # Defensive nudge so I can't type into the wrong machine by accident:
