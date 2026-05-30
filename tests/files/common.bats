@@ -43,8 +43,8 @@ setup() {
     grep -q 'mise activate' "$HOME/.zshrc"
 }
 
-@test "~/.zshrc references mise where fzf" {
-    grep -q 'mise where fzf' "$HOME/.zshrc"
+@test "~/.zshrc sources fzf shell integration" {
+    grep -q 'fzf --zsh' "$HOME/.zshrc"
 }
 
 @test "~/.vimrc exists" {

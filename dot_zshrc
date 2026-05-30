@@ -121,40 +121,21 @@ export PATH="$PATH:$HOME/go/bin"
 command -v mise > /dev/null && eval "$(mise activate zsh)"
 
 # --- fzf shell integration (key-bindings + completion) ---
-# fzf is mise-installed (aqua:junegunn/fzf). Source its shell scripts from
-# mise's install dir. `mise where fzf` returns the active install path,
-# stable across versions (preferred over glob+tail-1 lexical sort).
-if command -v mise > /dev/null && _fzf_root="$(mise where fzf 2>/dev/null)" && [[ -n "$_fzf_root" ]]; then
-    [[ -r "$_fzf_root/shell/key-bindings.zsh" ]] && source "$_fzf_root/shell/key-bindings.zsh"
-    [[ -r "$_fzf_root/shell/completion.zsh" ]] && source "$_fzf_root/shell/completion.zsh"
-fi
-unset _fzf_root
+# fzf ≥0.48 emits both via `fzf --zsh` — installer-agnostic, version-stable
+# (replaces digging mise's install layout via `mise where fzf`).
+command -v fzf > /dev/null && source <(fzf --zsh)
 
 # --- Smart cd (zoxide) ---
 command -v zoxide > /dev/null && eval "$(zoxide init zsh)"
 
 # --- Powerlevel10k theme ---
+# OSC 133 semantic marks (prompt-start A / input-start B / output-start C /
+# output-end+exit D) — p10k emits the full set natively, with tmux DCS
+# passthrough + transient-prompt support (more than a hand-rolled add-zsh-hook
+# could). Read at p10k init; set before the prompt is first drawn.
+typeset -g POWERLEVEL9K_TERM_SHELL_INTEGRATION=true
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
-
-# --- OSC 133 semantic prompt sequences ---
-# Emit OSC 133 marks (A=prompt-start, B=input-start, C=output-start,
-# D;<exit>=output-end) so shell-integration-aware terminals can:
-#   • iTerm2: ⌘↑/⌘↓ jump between previous prompts, exit-code marks in gutter
-#   • VS Code integrated terminal: command decorations + sticky scroll
-#   • WezTerm: ScrollToPrompt / status colorization
-#   • Windows Terminal / Ghostty: command marks + navigation
-# Skip if iTerm2's own shell-integration script is already sourced (would
-# double-emit and overlap with iTerm2's CurrentDir/RemoteHost extensions).
-# Skip if p10k Pro is doing it (POWERLEVEL9K_TERM_SHELL_INTEGRATION=true).
-if [[ -z "${ITERM_SHELL_INTEGRATION_INSTALLED:-}" \
-   && "${POWERLEVEL9K_TERM_SHELL_INTEGRATION:-false}" != "true" ]]; then
-    autoload -Uz add-zsh-hook
-    _osc133_preexec() { print -Pn '\e]133;C\a' }
-    _osc133_precmd()  { print -Pn '\e]133;D;'"$?"'\a\e]133;A\a' }
-    add-zsh-hook preexec _osc133_preexec
-    add-zsh-hook precmd  _osc133_precmd
-fi
 
 # --- SSH visual tints (orange ❯ + amber tmux bar) ---
 # Defensive nudge so I can't type into the wrong machine by accident:
