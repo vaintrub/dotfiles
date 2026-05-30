@@ -31,16 +31,10 @@ export DOTFILES_GUI_MAC_CASKS={{ (.packages.gui.mac_casks | default (list)) | so
 export DOTFILES_GUI_LINUX_APT={{ (.packages.gui.linux_apt | default (list)) | sortAlpha | uniq | join " " | quote }}
 export DOTFILES_GUI_LINUX_DNF={{ (.packages.gui.linux_dnf | default (list)) | sortAlpha | uniq | join " " | quote }}
 
-# GITHUB_TOKEN: pre-exported env wins. Otherwise auto-pick from `gh auth token`
-# (cached after `gh auth login`). Empty fallthrough = anonymous (60/hr GH limit
-# — usually enough on a fast link). If exhausted, partial-install warning in
-# lib/install-packages.sh::mise_install_tools() surfaces recovery hint.
-# Runtime `command -v` (not template `lookPath`) so first-apply works when gh
-# hasn't been mise-installed yet — empty body fine, gh path picks up later.
-if [ -z "${GITHUB_TOKEN:-}" ] && command -v gh >/dev/null 2>&1; then
-    GITHUB_TOKEN="$(gh auth token 2>/dev/null || true)"
-    [ -n "$GITHUB_TOKEN" ] && export GITHUB_TOKEN
-fi
-
+# GITHUB_TOKEN for mise's GitHub-backed installs: pre-exported env wins.
+# Otherwise mise authenticates itself via `github.credential_command =
+# "gh auth token"` (rendered into ~/.config/mise/config.toml when gh is on
+# PATH — see dot_config/mise/config.toml.tmpl). Empty = anonymous (60/hr).
+# On rate-limit, lib/install-packages.sh::mise_install_tools() warns + hints.
 export INSTALL_PACKAGES_INVOKE=1
 . "{{ .chezmoi.sourceDir }}/lib/install-packages.sh"

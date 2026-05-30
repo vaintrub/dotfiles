@@ -104,7 +104,7 @@ the Recovery section below.
 ```sh
 # Anonymous GitHub rate-limit ran out → some mise tools missing.
 # Pick one (see §"1Password integration → Install-time" for full options):
-gh auth login                   # cache token (subsequent applies auto-pick via `gh auth token`)
+gh auth login                   # cache token (mise then auto-uses it via credential_command)
 chezmoi apply                   # picks up token, retries missing tools idempotently
 
 # mise shims out of date / new tools not yet symlinked:
@@ -146,9 +146,16 @@ Three distinct secret-handling concerns; each uses its own mechanism.
 ### Install-time (e.g. `GITHUB_TOKEN` for mise rate limit)
 
 No prereq normally required — anonymous 60/hr GH API limit usually fits a
-cold install on a fast link. The install-packages wrapper auto-picks
-`GITHUB_TOKEN` from `gh auth token` if `gh` is authed; otherwise it
-falls through to anonymous.
+cold install on a fast link. mise authenticates itself via
+`github.credential_command = "gh auth token"` (rendered into
+`~/.config/mise/config.toml` when `gh` is on PATH) — so once `gh auth
+login` is done, every mise install/upgrade is authed (5000/hr), both at
+`chezmoi apply` time and interactively. Pre-exported `GITHUB_TOKEN` env
+wins over it; gh unauthed falls through to anonymous.
+
+mise reads gh's token via this bridge because gh stores it in the OS
+keyring (macOS Keychain) on most machines, which mise can't read directly
+— but `gh auth token` can.
 
 If you hit the rate limit (slow link, shared IP, multiple rebuilds in
 one hour), `mise_install_tools()` surfaces a partial-install warning
