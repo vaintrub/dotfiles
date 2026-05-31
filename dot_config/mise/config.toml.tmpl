@@ -83,4 +83,8 @@ op                                          = "latest"
 
 # Not in mise (installed elsewhere):
 #   htop/tree/nmap/wireguard-tools/telnet/postgresql-client — OS-native (C deps)
+#
+# direnv intentionally NOT used — mise officially discourages running both
+# (PATH conflicts, "not bugs"). mise's [env] + `_.file = '.env'` in a project
+# mise.toml replaces .envrc, auto-applied on cd via `mise activate`.
 {{- end }}
