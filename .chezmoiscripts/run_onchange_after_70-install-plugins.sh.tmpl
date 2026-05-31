@@ -1,5 +1,5 @@
 {{- /*
-  Install Claude Code + Codex plugins from .chezmoidata/packages.yaml.
+  Install Claude Code + Codex plugins + MCP servers from .chezmoidata/packages.yaml.
   Claude: `plugin marketplace add` (defensively re-adds claude-plugins-official
   in case claude was never launched interactively) + `plugin install`/`update`.
   Codex: only non-reserved marketplaces need `plugin marketplace add`; enable
@@ -38,6 +38,16 @@ if command -v claude >/dev/null 2>&1; then
     claude plugin update {{ . }} >/dev/null 2>&1 || true
 {{ end -}}
     claude plugin marketplace update >/dev/null 2>&1 || true
+
+    # MCP servers (shared list, registered per-agent). User scope = all
+    # projects. Idempotent: `mcp get` succeeds if already registered.
+{{ range .mcp -}}
+    if ! claude mcp get {{ .name | quote }} >/dev/null 2>&1; then
+        claude mcp add -s user --transport http {{ .name | quote }} {{ .url | quote }} >/dev/null 2>&1 \
+            && echo "claude mcp add {{ .name }}" \
+            || echo "claude mcp add {{ .name }} failed" >&2
+    fi
+{{ end -}}
 else
     echo "claude CLI not found, skipping Claude plugin install" >&2
 fi
@@ -52,6 +62,16 @@ if command -v codex >/dev/null 2>&1; then
     fi
 {{ end -}}
     codex plugin marketplace upgrade >/dev/null 2>&1 || true
+
+    # Same MCP server list as Claude, via codex's own CLI (writes ~/.codex/
+    # config.toml [mcp_servers]; survives modify_config.toml's merge).
+{{ range .mcp -}}
+    if ! codex mcp get {{ .name | quote }} >/dev/null 2>&1; then
+        codex mcp add {{ .name | quote }} --url {{ .url | quote }} >/dev/null 2>&1 \
+            && echo "codex mcp add {{ .name }}" \
+            || echo "codex mcp add {{ .name }} failed" >&2
+    fi
+{{ end -}}
 else
     echo "codex CLI not found, skipping Codex plugin install" >&2
 fi
