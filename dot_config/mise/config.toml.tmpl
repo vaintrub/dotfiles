@@ -37,6 +37,7 @@ rust   = "stable"
 "aqua:sharkdp/fd"                           = "latest"
 "aqua:gitleaks/gitleaks"                    = "latest"
 "aqua:mikefarah/yq"                         = "latest"   # Go yq, NOT Python
+"aqua:direnv/direnv"                         = "latest"   # per-project env+secrets (see hook in dot_zshrc)
 
 # --- Cloud + Kubernetes -------------------------------------------------
 "aqua:helm/helm"                            = "latest"
@@ -84,7 +85,8 @@ op                                          = "latest"
 # Not in mise (installed elsewhere):
 #   htop/tree/nmap/wireguard-tools/telnet/postgresql-client — OS-native (C deps)
 #
-# direnv intentionally NOT used — mise officially discourages running both
-# (PATH conflicts, "not bugs"). mise's [env] + `_.file = '.env'` in a project
-# mise.toml replaces .envrc, auto-applied on cd via `mise activate`.
+# Division of labour with direnv (hooked in dot_zshrc): mise owns TOOL VERSIONS,
+# direnv owns per-project ENV + 1Password secrets (.envrc + from_op). Safe to
+# run both — mise only conflicts with direnv when BOTH manage a tool (e.g.
+# `layout python` vs python here). Never use direnv `layout`/PATH_add for tools.
 {{- end }}

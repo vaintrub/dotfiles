@@ -182,3 +182,10 @@ fi
 # Override the p10k prompt itself via `p10k configure` editing
 # `~/.p10k.zsh` directly (Powerlevel10k convention).
 [[ ! -f ~/.zshrc_local ]] || source ~/.zshrc_local
+
+# --- direnv (per-project env + 1Password secrets via .envrc) ---
+# Division of labour: mise owns tool versions, direnv owns per-project env +
+# secrets (e.g. `from_op` op:// refs in an .envrc). Safe alongside mise as long
+# as direnv never manages tools/PATH (no `layout`/`PATH_add` for toolchains).
+# Hook goes LAST (after prompt + ~/.zshrc_local) per direnv's own guidance.
+command -v direnv > /dev/null && eval "$(direnv hook zsh)"

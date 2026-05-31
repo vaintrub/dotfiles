@@ -1700,7 +1700,10 @@
   #   - verbose: Enable instant prompt and print a warning when detecting console output during
   #              zsh initialization. Choose this if you've never tried instant prompt, haven't
   #              seen the warning, or if you are unsure what this all means.
-  typeset -g POWERLEVEL9K_INSTANT_PROMPT=verbose
+  # 'quiet' not 'verbose': direnv prints "direnv: loading …/.envrc" on shell
+  # start inside an .envrc dir (common with tmux panes / SSH into a project) —
+  # 'verbose' flags that benign output as an instant-prompt warning every time.
+  typeset -g POWERLEVEL9K_INSTANT_PROMPT=quiet
 
   # Terminal shell integration. Emits OSC 133 semantic marks (prompt-start,
   # input-start, command/output-start, output-end + exit code) so terminals
