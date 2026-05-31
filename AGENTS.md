@@ -187,6 +187,19 @@ Source-of-truth location is `~/.local/share/chezmoi/` — chezmoi's default (XDG
   install for its Claude side; Codex side is manual (`npx skills add ...
   -a codex` doesn't currently wire per-agent symlinks).
 
+### Claude/Codex — NOT tracked (machine-local; some are secrets — never commit)
+
+Only user-curated config is tracked. These stay out of the repo:
+
+- `~/.claude/settings.local.json` — per-machine permissions allowlist (Anthropic's documented convention is to gitignore it).
+- `~/.claude/plugins/{installed_plugins,known_marketplaces}.json` — absolute install paths + per-user marketplace registrations.
+- **`~/.claude.json`** — lives at `$HOME`, not `~/.claude/`. Holds OAuth tokens, MCP server credentials, NUX `tipsHistory`. **Never commit.**
+- `~/.codex/auth.json`, `installation_id` — secrets + per-machine identifiers.
+- `~/.codex/{sessions,cache,log,tmp,history.jsonl,*.sqlite}`, `memories/`, `plugins/` — runtime state / cloned plugin repos.
+- `~/.claude/RTK.md`, `~/.codex/RTK.md` — written fresh by `rtk init` (bundled rtk version's content, not ours). `.chezmoiignore`d.
+
+We also deliberately don't manage `~/.claude/commands/` (deprecated by skills upstream) or `~/.claude/hooks/` (not a Claude dir convention — hooks live inline in `settings.json`).
+
 ### Bootstrap scripts — `.chezmoiscripts/`
 
 Scripts here don't create `$HOME` files (no `dot_*` sibling). They run as part
