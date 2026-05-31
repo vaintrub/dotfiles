@@ -45,7 +45,7 @@ Prompted on init (the detected env is shown as a hint; you pick). Cached in `~/.
 | `dev` | core + full CLI toolchain: 4 languages (Go/Python/Node/Rust) + ~30 mise binaries (kubectl/helm/jq/gh/delta/… + `op` + `rtk` + `claude-code` + `codex`) + a few OS-native brews/apts. ~1.9 GB first apply. | Headless dev box |
 | `workstation` | dev + GUI apps. macOS casks: iterm2, docker-desktop, visual-studio-code, ngrok, 1password, fonts. | Primary GUI machine |
 
-Exact tool lists are the source of truth in `dot_config/mise/config.toml.tmpl` (mise) and `.chezmoidata/packages.yaml` (brew/apt/dnf). Add a mise tool: `mise registry | grep -i <name>` → add the slug to the config (inside the `$isDev` block unless every tier needs it) → `chezmoi apply`.
+Exact tool lists are the source of truth in `dot_config/mise/config.toml.tmpl` (mise) and `.chezmoidata/packages.yaml` (brew/apt/dnf). Add a mise tool: `mise registry | grep -i <name>` → add the slug to the config (inside the `$isDev` block unless every tier needs it) → `chezmoi apply` (the install script embeds the mise-config hash, so apply auto-reruns `mise install` — no manual step).
 
 Docker is intentionally not in `dev` (the `docker.io` vs `docker-ce` apt conflict breaks installs) — install it per-machine, or use the macOS Docker Desktop cask in `workstation`.
 

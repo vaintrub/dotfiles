@@ -1,7 +1,8 @@
 {{- /*
   Profile-aware mise config. core: fzf+zoxide only. dev/workstation: full toolchain.
   Per-machine opt-out: ~/.config/mise/config.local.toml (auto-merged, untracked).
-  Adding a tool: `mise registry | grep -i <name>` → use the slug shown.
+  Adding a tool: `mise registry | grep -i <name>` → add the slug → `chezmoi apply`
+  (run_onchange_after_50 embeds this file's hash, so apply auto-runs `mise install`).
 */ -}}
 {{- $profile := .profile | default "core" -}}
 {{- $isDev   := or (eq $profile "dev") (eq $profile "workstation") -}}
