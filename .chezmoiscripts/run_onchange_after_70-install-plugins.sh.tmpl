@@ -39,12 +39,11 @@ if command -v claude >/dev/null 2>&1; then
 {{ end -}}
     claude plugin marketplace update >/dev/null 2>&1 || true
 
-    # MCP servers (data-driven). User scope = available in all projects.
-    # Idempotent: `mcp get` succeeds if already registered. Keyless remote
-    # servers only — no secrets here (~/.claude.json holds the config).
-{{ range .mcp.claude -}}
+    # MCP servers (shared list, registered per-agent). User scope = all
+    # projects. Idempotent: `mcp get` succeeds if already registered.
+{{ range .mcp -}}
     if ! claude mcp get {{ .name | quote }} >/dev/null 2>&1; then
-        claude mcp add -s user --transport {{ .transport }} {{ .name | quote }} {{ .url | quote }} >/dev/null 2>&1 \
+        claude mcp add -s user --transport http {{ .name | quote }} {{ .url | quote }} >/dev/null 2>&1 \
             && echo "claude mcp add {{ .name }}" \
             || echo "claude mcp add {{ .name }} failed" >&2
     fi
@@ -63,6 +62,16 @@ if command -v codex >/dev/null 2>&1; then
     fi
 {{ end -}}
     codex plugin marketplace upgrade >/dev/null 2>&1 || true
+
+    # Same MCP server list as Claude, via codex's own CLI (writes ~/.codex/
+    # config.toml [mcp_servers]; survives modify_config.toml's merge).
+{{ range .mcp -}}
+    if ! codex mcp get {{ .name | quote }} >/dev/null 2>&1; then
+        codex mcp add {{ .name | quote }} --url {{ .url | quote }} >/dev/null 2>&1 \
+            && echo "codex mcp add {{ .name }}" \
+            || echo "codex mcp add {{ .name }} failed" >&2
+    fi
+{{ end -}}
 else
     echo "codex CLI not found, skipping Codex plugin install" >&2
 fi

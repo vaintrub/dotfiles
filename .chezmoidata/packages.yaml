@@ -95,11 +95,10 @@ plugins:
   codex_marketplaces:
     []
 
-# MCP servers for Claude Code (registered via `claude mcp add -s user` by
-# run_onchange_after_70). Keyless remote (http) servers only — no secrets in
-# this repo. API-keyed servers stay per-machine (`claude mcp add` by hand).
+# MCP servers, registered into BOTH Claude Code + Codex by
+# run_onchange_after_70 (each via its own `mcp add` CLI, idempotent).
+# Agent-agnostic: keyless remote (streamable-http) servers only — no secrets
+# in this repo. API-keyed servers stay per-machine (`<agent> mcp add` by hand).
 mcp:
-  claude:
-    - name: context7        # up-to-date library/framework docs (Upstash)
-      transport: http
-      url: https://mcp.context7.com/mcp
+  - name: context7          # up-to-date library/framework docs (Upstash)
+    url: https://mcp.context7.com/mcp
