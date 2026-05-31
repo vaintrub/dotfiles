@@ -94,3 +94,12 @@ plugins:
     - google-drive@openai-curated
   codex_marketplaces:
     []
+
+# MCP servers for Claude Code (registered via `claude mcp add -s user` by
+# run_onchange_after_70). Keyless remote (http) servers only — no secrets in
+# this repo. API-keyed servers stay per-machine (`claude mcp add` by hand).
+mcp:
+  claude:
+    - name: context7        # up-to-date library/framework docs (Upstash)
+      transport: http
+      url: https://mcp.context7.com/mcp
