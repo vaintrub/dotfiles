@@ -31,6 +31,12 @@ export DOTFILES_GUI_MAC_CASKS={{ (.packages.gui.mac_casks | default (list)) | so
 export DOTFILES_GUI_LINUX_APT={{ (.packages.gui.linux_apt | default (list)) | sortAlpha | uniq | join " " | quote }}
 export DOTFILES_GUI_LINUX_DNF={{ (.packages.gui.linux_dnf | default (list)) | sortAlpha | uniq | join " " | quote }}
 
+# Re-fire when the mise tool list changes. packages.yaml is already rendered
+# into the DOTFILES_* vars above (edits there change this script); the mise
+# config is read by mise directly, so embed its hash to trigger `mise install`
+# on tool add/remove (chezmoi's documented run_onchange dependency idiom).
+# mise-config-hash: {{ include "dot_config/mise/config.toml.tmpl" | sha256sum }}
+
 # GITHUB_TOKEN for mise's GitHub-backed installs: pre-exported env wins.
 # Otherwise mise authenticates itself via `github.credential_command =
 # "gh auth token"` (rendered into ~/.config/mise/config.toml when gh is on
