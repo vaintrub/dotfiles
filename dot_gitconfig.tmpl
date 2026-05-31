@@ -45,7 +45,14 @@
     autoSetupRemote = true
 
 [merge]
+{{- $gitVersion := output "git" "--version" | regexFind "[0-9]+\\.[0-9]+\\.[0-9]+" }}
+    # zdiff3 (zealous diff3) needs git >= 2.35; older git (e.g. Ubuntu jammy
+    # 2.34) errors "unknown style 'zdiff3'" on checkout/merge. diff3 elsewhere.
+{{- if semverCompare ">=2.35.0" $gitVersion }}
     conflictStyle = zdiff3
+{{- else }}
+    conflictStyle = diff3
+{{- end }}
 
 [rebase]
     autoSquash = true
