@@ -1,0 +1,4 @@
+# 1Password SSH agent — which vaults serve SSH keys to the agent.
+# Docs: https://developer.1password.com/docs/ssh/agent/config
+[[ssh-keys]]
+vault = "Infrastructure"
