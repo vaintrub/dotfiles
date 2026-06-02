@@ -12,6 +12,10 @@
     "{{ $p }}": true
 {{- end }}
   },
+  "env": {
+    "DISABLE_INSTALLATION_CHECKS": "1",
+    "DISABLE_AUTOUPDATER": "1"
+  },
   "alwaysThinkingEnabled": true,
   "skipAutoPermissionPrompt": true,
   "voiceEnabled": true
