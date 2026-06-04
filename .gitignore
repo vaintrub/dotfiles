@@ -11,6 +11,7 @@ dist/
 dot_claude/skills/*
 !dot_claude/skills/save-to-dotfiles/
 !dot_claude/skills/advanced-go/
+!dot_claude/skills/advanced-typescript/
 
 # rtk init writes RTK.md into cwd when run from project root — don't track.
 # Per-machine RTK.md lives at ~/.claude/RTK.md and ~/.codex/RTK.md (auto-gen).
