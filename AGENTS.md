@@ -86,10 +86,12 @@ Live ↔ source mapping for our key paths:
 | `~/.claude/rules/*.md` | `dot_claude/rules/*.md` | plain |
 | `~/.claude/skills/save-to-dotfiles/SKILL.md` | `dot_claude/skills/save-to-dotfiles/SKILL.md` | plain |
 | `~/.claude/skills/advanced-go/SKILL.md` | `dot_claude/skills/advanced-go/SKILL.md` | plain (pedantic Go reviewer/writer skill; needs an `!` allowlist entry in `.gitignore`) |
+| `~/.claude/skills/advanced-typescript/SKILL.md` | `dot_claude/skills/advanced-typescript/SKILL.md` | plain (pedantic TS reviewer/writer skill; needs an `!` allowlist entry in `.gitignore`) |
 | `~/.codex/AGENTS.md` | `dot_codex/AGENTS.md.tmpl` | Go template (renders `@{{ .chezmoi.homeDir }}/.codex/RTK.md` to absolute path) |
 | `~/.codex/config.toml` | `dot_codex/modify_config.toml` + `.chezmoitemplates/codex-config-base.toml` | modify-template (fromToml / toToml) |
 | `~/.codex/skills/save-to-dotfiles/SKILL.md` | `dot_codex/skills/save-to-dotfiles/symlink_SKILL.md` (body: `../../../.claude/skills/save-to-dotfiles/SKILL.md`) | file-level symlink to Claude's copy (one of the chezmoi-managed shared skills) |
 | `~/.codex/skills/advanced-go/SKILL.md` | `dot_codex/skills/advanced-go/symlink_SKILL.md` (body: `../../../.claude/skills/advanced-go/SKILL.md`) | file-level symlink to Claude's copy |
+| `~/.codex/skills/advanced-typescript/SKILL.md` | `dot_codex/skills/advanced-typescript/symlink_SKILL.md` (body: `../../../.claude/skills/advanced-typescript/SKILL.md`) | file-level symlink to Claude's copy |
 | iTerm2 plist | `iterm/com.googlecode.iterm2.plist` (source root, chezmoi-ignored) | iTerm2 reads + writes directly via `PrefsCustomFolder` setting (no chezmoi-managed symlink) |
 | `~/.config/tmux/` | `.chezmoiexternal.toml.tmpl` | archive external |
 | `~/.config/mise/config.toml` | `dot_config/mise/config.toml.tmpl` | Go template (profile-aware: core tier = fzf+zoxide only; dev/workstation = full toolchain) |
