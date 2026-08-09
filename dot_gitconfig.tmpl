@@ -6,8 +6,8 @@
     box may not have delta yet (it installs in run_onchange_after_50-
     install-packages, which runs AFTER chezmoi materializes files).
     Second apply re-renders this file with delta pager wired.
-  - credential.helper INTENTIONALLY omitted — using SSH keys + gh auth,
-    no HTTPS credential caching needed.
+  - credential.helper gated on `lookPath "gh"`. Claimed from `gh auth
+    login`, which writes it with an absolute gh path that rots on upgrade.
 */ -}}
 {{- /*
   Skip [user] block when identity values are still chezmoi placeholders
@@ -43,6 +43,15 @@
 [push]
     default = current
     autoSetupRemote = true
+{{ if lookPath "gh" }}
+[credential "https://github.com"]
+    helper =
+    helper = !gh auth git-credential
+
+[credential "https://gist.github.com"]
+    helper =
+    helper = !gh auth git-credential
+{{- end }}
 
 [merge]
 {{- $gitVersion := output "git" "--version" | regexFind "[0-9]+\\.[0-9]+\\.[0-9]+" }}
