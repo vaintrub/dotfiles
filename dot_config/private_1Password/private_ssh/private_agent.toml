@@ -1,4 +1,6 @@
-# 1Password SSH agent — which vaults serve SSH keys to the agent.
-# Docs: https://developer.1password.com/docs/ssh/agent/config
+# 1Password SSH agent — which keys it serves.
+# Docs: https://www.1password.dev/ssh/agent/config
+# Matched by item, not vault: a vault that doesn't match is silently ignored,
+# so moving the key between vaults would empty the agent with no error.
 [[ssh-keys]]
-vault = "Infrastructure"
+item = "Main SSH key"
