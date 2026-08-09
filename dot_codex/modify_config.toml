@@ -18,6 +18,7 @@
 {{- $existing = unset $existing "notice" -}}
 {{- $existing = unset $existing "tui" -}}
 {{- $existing = unset $existing "tool_suggest" -}}
+{{- $existing = unset $existing "marketplaces" -}}
 {{- $existing = unset $existing "windows_wsl_setup_acknowledged" -}}
 {{- $merged := mergeOverwrite $existing $base -}}
 {{- toToml $merged -}}

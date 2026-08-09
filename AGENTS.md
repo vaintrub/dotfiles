@@ -405,7 +405,11 @@ not a hard fail. `mise` then materializes the toolchain per
 Codex auto-writes several sections into `~/.codex/config.toml` after every
 session: `[projects."<path>"]` (trust state), `[notice]` (UI dismissals),
 `[tui.*]` (theme + NUX counters), `[tool_suggest]` (disabled tools),
-top-level `windows_wsl_setup_acknowledged`.
+`[marketplaces.*]` (plugin-source paths + fetch timestamps), top-level
+`windows_wsl_setup_acknowledged`.
+
+`[desktop]` (font sizes, detail mode) and `[features]` look similar but
+are user preferences, not runtime state — leave them in the target.
 
 These are per-machine runtime state — we don't sync them across machines.
 `dot_codex/modify_config.toml` handles this: on every `chezmoi apply`,
