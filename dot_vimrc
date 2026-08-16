@@ -24,47 +24,54 @@ Plug 'mattn/emmet-vim'
 
 call plug#end()
 
-" Python tab settings (PEP 8 recommendations)
+" Default indent: 4 spaces (Python, shell — see AGENTS.md §8).
 set tabstop=4
 set shiftwidth=4
 set smarttab
-set expandtab " Use spaces, not tabs
-set softtabstop=4 " 4 spaces per tab
-set colorcolumn=80
-" Auto-indent
+set expandtab
+set softtabstop=4
+set colorcolumn=100 " matches the 100-char limit in CLAUDE.md
 set autoindent
-" Highlight everything that can be highlighted
 let python_highlight_all = 1
-let perl_sub_signatures = 1
-" 256 colours in the terminal (needed by many terminals, e.g. gnome-terminal)
-set t_co=256
 
-" Strip trailing whitespace on save (Python files only)
-autocmd bufwritepre *.py normal m`:%s/\s\+$//e ``
-" Smart indent after keywords (Python files)
-autocmd bufread *.py set smartindent cinwords=if,elif,else,for,while,try,except,finally,def,class
+" `autocmd!` so re-sourcing replaces these instead of stacking copies.
+augroup vimrc
+  autocmd!
 
-syntax on " Enable syntax highlighting
+  " Compound filetypes (chezmoi.vim reports `yaml.chezmoitmpl`) match on each
+  " dot-separated part, so plain `yaml` here is enough.
+  autocmd FileType yaml,json,javascript,javascriptreact,typescript,
+        \typescriptreact,html,css,scss,sass
+        \ setlocal tabstop=2 shiftwidth=2 softtabstop=2
 
-set nu " Show line numbers
-set mousehide " Hide mouse cursor while typing
-set mouse=a " Enable mouse support
-set termencoding=utf-8 " Terminal encoding
-set novisualbell " No screen flash
-set t_vb= " No beep either
-" Convenient backspace behaviour
+  " Strip trailing whitespace on save (Python files only). `keeppatterns` so
+  " the search history survives; winsaveview so the cursor does.
+  autocmd BufWritePre *.py let b:_view = winsaveview()
+        \ | keeppatterns %s/\s\+$//e
+        \ | call winrestview(b:_view)
+  " Smart indent after keywords (Python files)
+  autocmd BufRead *.py setlocal smartindent
+        \ cinwords=if,elif,else,for,while,try,except,finally,def,class
+augroup END
+
+syntax on
+
+set nu
+set mousehide
+set mouse=a
+set termencoding=utf-8
+" belloff, not `set vb t_vb=`: t_vb is reset when the GUI starts.
+set belloff=all
 set backspace=indent,eol,start whichwrap+=<,>,[,]
-" No dashes between tabs
-set showtabline=1
 
 " Wrap long lines on word boundaries
 set wrap
 set linebreak
 
-" Disable .swp and ~ (backup) files
+" No swap/backup clutter
 set nobackup
 set noswapfile
-set encoding=utf-8 " Default file encoding
+set encoding=utf-8
 set fileencodings=utf8,cp1251
 
 " Yank goes to system clipboard. macOS: both registers map to NSPasteboard.
@@ -77,9 +84,6 @@ set ruler
 set hidden
 nnoremap <c-n> :bnext<cr>
 nnoremap <c-p> :bprev<cr>
-
-" Disable sound in vim
-set visualbell t_vb=
 
 " Switch tabs via cmd+number (macvim)
 if has("gui_macvim")

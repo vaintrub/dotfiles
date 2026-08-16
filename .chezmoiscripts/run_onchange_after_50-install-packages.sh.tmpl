@@ -36,6 +36,8 @@ export DOTFILES_GUI_LINUX_DNF={{ (.packages.gui.linux_dnf | default (list)) | so
 # config is read by mise directly, so embed its hash to trigger `mise install`
 # on tool add/remove (chezmoi's documented run_onchange dependency idiom).
 # mise-config-hash: {{ include "dot_config/mise/config.toml.tmpl" | sha256sum }}
+# lib-hash: {{ include "lib/install-packages.sh" | sha256sum }}
+# common-hash: {{ include "lib/common.sh" | sha256sum }}
 
 # GITHUB_TOKEN for mise's GitHub-backed installs: pre-exported env wins.
 # Otherwise mise authenticates itself via `github.credential_command =
@@ -43,4 +45,6 @@ export DOTFILES_GUI_LINUX_DNF={{ (.packages.gui.linux_dnf | default (list)) | so
 # PATH — see dot_config/mise/config.toml.tmpl). Empty = anonymous (60/hr).
 # On rate-limit, lib/install-packages.sh::mise_install_tools() warns + hints.
 export INSTALL_PACKAGES_INVOKE=1
+# common.sh first: install-packages.sh calls into it.
+. "{{ .chezmoi.sourceDir }}/lib/common.sh"
 . "{{ .chezmoi.sourceDir }}/lib/install-packages.sh"

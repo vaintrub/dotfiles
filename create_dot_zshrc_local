@@ -5,8 +5,7 @@
 # edits here are durable.
 #
 # Use for things that aren't portable:
-#   - per-machine secrets / tokens (prefer 1Password or env vars set
-#     by direnv, but for now this works too)
+#   - per-machine secrets / tokens (prefer 1Password or an `op run` wrapper)
 #   - hostname-specific aliases / functions
 #   - PATH additions for tools installed outside mise / brew
 #   - SSH_AUTH_SOCK overrides
@@ -17,4 +16,3 @@
 # export GITHUB_TOKEN="ghp_..."
 # alias k=kubectl
 # export PATH="/opt/local-tool/bin:$PATH"
-# eval "$(direnv hook zsh)"

@@ -1,6 +1,7 @@
 # Global gitignore — patterns ignored across every repo on this machine.
 # Wired via `core.excludesFile = ~/.gitignore_global` in dot_gitconfig.tmpl.
-# Keep this list to TRULY universal junk (OS detritus, editor backups).
+# Keep this list to universal junk: OS detritus, editor backups, and the
+# one cross-ecosystem convention below for per-machine override files.
 # Language-specific or project-specific ignores belong in the repo's
 # own .gitignore.
 
@@ -44,9 +45,7 @@ Session.vim
 .idea/
 *.iml
 
-# --- direnv / per-machine env overrides ---
-.envrc.local
-.env.local
-
-# --- Generic local-override convention ---
+# --- Per-machine override convention ---
+# Only files whose LAST extension is .local: .env.local, .envrc.local, …
+# NOT mise.local.toml or settings.local.json.
 *.local

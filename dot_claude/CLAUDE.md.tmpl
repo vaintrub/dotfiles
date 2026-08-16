@@ -1,0 +1,22 @@
+# Global rules for Claude
+
+Loaded for every Claude Code session as per-user global instructions. The bulk
+below is shared with Codex — edit it once in
+`.chezmoitemplates/ai-common.md`, never in this file's copy of the rendered
+output.
+
+The rule files that section indexes load themselves: `~/.claude/rules/*.md` are
+read at session start — universal rules always, frontend rules only when
+matching files are in play (`paths:` frontmatter). The index is a summary; those
+files are the source of truth.
+
+## Tool preferences (Claude Code specific)
+
+- Use Read/Edit/Write/Bash dedicated tools (NOT cat/sed/awk/echo via Bash)
+- Prefer `rg` over `grep`, `fd` over `find` when available
+- For long-running commands, use `run_in_background: true`
+- Quote file paths with spaces in shell commands
+
+{{ includeTemplate "ai-common.md" . }}
+
+@RTK.md

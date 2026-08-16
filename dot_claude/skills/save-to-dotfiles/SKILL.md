@@ -91,14 +91,15 @@ Map intent → source file (in the chezmoi source dir; `chezmoi cd` to navigate)
 | iTerm2 preference (complex GUI) | edit via GUI → iTerm2 writes directly to `<chezmoi-source>/iterm/com.googlecode.iterm2.plist` → check `git status` after `chezmoi cd` | quit + relaunch iTerm2 |
 | p10k tweak (one-line override) | `dot_p10k.zsh` in-place | new shell |
 | p10k major theme change | run `p10k configure` (rewrites `dot_p10k.zsh`) | (done by p10k itself) |
-| Brew formula or cask (Mac) / apt/dnf package (Linux) | `.chezmoidata/packages.yaml` under `common.brews` / `darwin.casks` / `linux.{apt,dnf}` | `chezmoi apply` runs install-packages script |
+| Brew formula or cask (Mac) / apt/dnf package (Linux) | `.chezmoidata/packages.yaml` under `packages.{core,dev}.{brews,apt,dnf}` (tier cascade core ⊂ dev ⊂ workstation) or `packages.gui.mac_casks` | `chezmoi apply` runs install-packages script |
 | Claude global rule | `dot_claude/rules/<name>.md` with frontmatter | next Claude session |
 | Claude setting / statusline / plugin enable | `.chezmoitemplates/claude-settings-base.json` (curated base; `dot_claude/modify_settings.json` merges tool-added keys) | next Claude session |
-| Claude custom agent | `dot_claude/agents/<name>/...` | next Claude session |
+| Claude custom agent | `dot_claude/agents/<name>.md` (directory doesn't exist yet — create it) | next Claude session |
 | Claude custom skill | `dot_claude/skills/<name>/SKILL.md` | next Claude session |
-| Codex behavioural rule | `dot_codex/AGENTS.md` (inline section) | next Codex session |
-| Codex setting (model, plugin) | `.chezmoitemplates/codex-config-base.toml` (`dot_codex/modify_config.toml` merges) | next Codex session |
-| Codex skill | `dot_claude/skills/<name>/SKILL.md` — `~/.codex/skills` is a symlink to `~/.claude/skills`, so both tools see it | next Codex session |
+| Rule for BOTH agents (git, stack, style, workflow) | `.chezmoitemplates/ai-common.md` — included by `dot_claude/CLAUDE.md.tmpl` and `dot_codex/AGENTS.md.tmpl` | next session of either |
+| Codex-only behavioural rule | `dot_codex/AGENTS.md.tmpl` (inline, outside the shared include) | next Codex session |
+| Codex setting (model, plugin) | `.chezmoitemplates/codex-config-base.toml` (`dot_codex/modify_private_config.toml` merges) | next Codex session |
+| Codex skill | `dot_claude/skills/<name>/SKILL.md` PLUS `dot_codex/skills/<name>/symlink_SKILL.md` whose body is `../../../.claude/skills/<name>/SKILL.md`. `~/.codex/skills` is a real directory — per-skill file symlinks, not a directory symlink. | next Codex session |
 | New file to manage (new `~/.<X>` to track) | `chezmoi add ~/.<X>` (copies live → `dot_<X>` in source) | already applied |
 | New install-time hook | `.chezmoiscripts/run_<once_before|onchange_after|once_after>_<name>.sh.tmpl` | next `chezmoi apply` |
 | New external (vendored archive/repo) | `.chezmoiexternal.toml.tmpl` entry | `chezmoi apply -R` (force refresh) |
@@ -140,7 +141,23 @@ paths:
 Ask user: universal or path-conditional? If conditional, which file globs?
 
 **Codex AGENTS.md additions** — Codex has no `dot_claude/rules/`-style
-auto-discovery. Behavioural rules go inline into `dot_codex/AGENTS.md`.
+auto-discovery. A rule that should reach BOTH agents goes in
+`.chezmoitemplates/ai-common.md`, which both instruction files include.
+Codex-only wording goes inline into `dot_codex/AGENTS.md.tmpl`, outside the
+include. Never edit the rendered `~/.claude/CLAUDE.md` / `~/.codex/AGENTS.md`.
+
+**New skills come in pairs.** A skill is only usable by both agents if it has
+BOTH files, and `tests/unit/repo-invariants.bats` fails if they drift:
+
+```sh
+dot_claude/skills/<name>/SKILL.md                 # the skill itself
+dot_codex/skills/<name>/symlink_SKILL.md          # body, verbatim, one line:
+                                                  # ../../../.claude/skills/<name>/SKILL.md
+```
+
+Then `git add` both and confirm with `git status` that neither is ignored — a
+tracked symlink pointing at an untracked SKILL.md materializes as a dangling
+`~/.codex/skills/<name>/SKILL.md` on every other machine.
 
 **Tool-mutated files** (`~/.claude/settings.json`, `~/.codex/config.toml`):
 - Edit the **base** file in `.chezmoitemplates/`:
@@ -230,10 +247,12 @@ Ask before committing — user may want to test the reload first.
 
 **If user says "сохрани, что я хочу всегда `brew install <X>` после клона":**
 - **Gate 1**: portable in intent (per-package, no path/host) ✓
-- **Gate 2**: cross-platform via `.chezmoidata/packages.yaml`. If `<X>` exists
-  on both Mac and Linux, add to `common.brews` (Mac via brew) + `linux.apt`
-  and `linux.dnf` (Linux distro names may differ — e.g. `fd` → `fd-find`).
-  If Mac GUI app, add to `darwin.casks`.
+- **Gate 2**: cross-platform via `.chezmoidata/packages.yaml`. Pick the tier
+  first (`core` = every machine, `dev` = CLI toolchain, `gui` = workstation).
+  If `<X>` exists on both Mac and Linux, add to `packages.<tier>.brews` (Mac)
+  + `packages.<tier>.apt` and `.dnf` (distro names may differ — e.g. `fd` →
+  `fd-find`). If Mac GUI app, add to `packages.gui.mac_casks`. Prefer mise
+  (`dot_config/mise/config.toml.tmpl`) for anything with a registry entry.
 - **Gate 3**: target = `.chezmoidata/packages.yaml` under the right subkey.
 - Edit, `chezmoi apply` → `run_onchange_after_50-install-packages.sh.tmpl`
   re-runs (script content embeds YAML, hash changed) and brew bundle / apt /

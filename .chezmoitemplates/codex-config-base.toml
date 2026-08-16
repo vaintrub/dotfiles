@@ -1,5 +1,6 @@
+# model_reasoning_effort is deliberately absent: Codex writes it from the TUI,
+# and pinning it here would revert the choice on every apply.
 model = "gpt-5.6-sol"
-model_reasoning_effort = "medium"
 personality = "pragmatic"
 
 {{ range .plugins.codex -}}
@@ -7,15 +8,13 @@ personality = "pragmatic"
 enabled = true
 
 {{ end -}}
-{{ range .mcp -}}
 # MCP servers (shared list in .chezmoidata/packages.yaml; Claude gets the same
 # via `claude mcp add`). Declarative here = no blocking CLI during apply.
+{{ range .mcp -}}
 [mcp_servers.{{ .name }}]
 url = "{{ .url }}"
 
 {{ end -}}
 # Runtime-mutated sections ([projects.*], [notice], [tui.*], [tool_suggest],
-# [marketplaces.*], windows_wsl_setup_acknowledged) are stripped on every
-# `chezmoi apply` by dot_codex/modify_config.toml's `unset` chain.
-# When Codex's `ConfigEdit` enum (codex-rs/core/src/config/edit.rs)
-# gains a new runtime-section variant, add it there too.
+# [marketplaces.*], [[skills.config]]) are stripped on every apply by
+# dot_codex/modify_private_config.toml — see AGENTS.md §9.

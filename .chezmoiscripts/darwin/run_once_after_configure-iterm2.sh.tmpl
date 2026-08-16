@@ -13,15 +13,6 @@ set -eu
 
 iterm_dir="{{ .chezmoi.sourceDir }}/iterm"
 
-# Sanity check: chezmoi sourceDir should contain the iterm/ plist directory.
-# Fail loudly if it's missing — typically only happens during a manual
-# misconfig of sourceDir.
-if [ ! -d "$iterm_dir" ]; then
-    echo "ERROR: $iterm_dir does not exist" >&2
-    echo "Verify chezmoi sourceDir resolves to this repo (try 'chezmoi cd')." >&2
-    exit 1
-fi
-
 current=$(defaults read com.googlecode.iterm2 PrefsCustomFolder 2>/dev/null || true)
 load=$(defaults read com.googlecode.iterm2 LoadPrefsFromCustomFolder 2>/dev/null || true)
 

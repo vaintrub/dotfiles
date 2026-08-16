@@ -1,14 +1,10 @@
 #!/usr/bin/env bats
-# Profile-AGNOSTIC post-apply asserts. Runs from BOTH apply-core and apply-dev
-# CI jobs (and locally on any profile). Verifies things that should be true on
-# every machine after chezmoi apply, regardless of which profile is active.
-#
-# Profile-SPECIFIC asserts live in:
-#   tests/files/core.bats — core-only (no rtk, no dev tools)
-#   tests/files/dev.bats  — dev tier asserts (mise tools, claude CLI, etc.)
+# Post-apply asserts true at every profile.
 
 setup() {
-    export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
+    export PATH="$HOME/.local/bin:$PATH"
+    # `mise activate --shims` emits the shims PATH itself — no hardcoded layout.
+    command -v mise >/dev/null && eval "$(mise activate bash --shims)"
     hash -r 2>/dev/null || true
 }
 
@@ -99,8 +95,23 @@ setup() {
     [ -f "$HOME/.codex/AGENTS.md" ]
 }
 
-@test "~/.codex/config.toml exists" {
+@test "~/.codex/config.toml exists and is mode 0600 (matches Codex's own write mode)" {
     [ -f "$HOME/.codex/config.toml" ]
+    [ "$(stat -c %a "$HOME/.codex/config.toml" 2>/dev/null \
+        || stat -f %OLp "$HOME/.codex/config.toml")" = "600" ]
+}
+
+@test "codex skill symlinks resolve into ~/.claude/skills" {
+    # -f follows the symlink, so a dangling one fails here.
+    [ -f "$HOME/.codex/skills/save-to-dotfiles/SKILL.md" ]
+}
+
+# --- 1Password SSH agent ----------------------------------------------------
+
+@test "~/.config/1Password/ssh/agent.toml exists and is mode 0600" {
+    [ -f "$HOME/.config/1Password/ssh/agent.toml" ]
+    [ "$(stat -c %a "$HOME/.config/1Password/ssh/agent.toml" 2>/dev/null \
+        || stat -f %OLp "$HOME/.config/1Password/ssh/agent.toml")" = "600" ]
 }
 
 # --- mise itself + core tools (fzf + zoxide installed at every tier) ------
@@ -126,29 +137,40 @@ setup() {
     command -v zoxide
 }
 
-# --- OS-native core packages (Linux apt — always installed at every tier) -
+# --- OS-native core packages (every tier) ----------------------------------
+# These come from apt/dnf, so they only apply on Linux.
 
-@test "apt: zsh installed" {
+require_linux() {
+    [ "$(uname -s)" = Linux ] || skip "Linux-only package assert"
+}
+
+@test "pkg: zsh installed" {
+    require_linux
     command -v zsh
 }
 
-@test "apt: vim installed" {
+@test "pkg: vim installed" {
+    require_linux
     command -v vim
 }
 
-@test "apt: tmux installed" {
+@test "pkg: tmux installed" {
+    require_linux
     command -v tmux
 }
 
-@test "apt: git installed" {
+@test "pkg: git installed" {
+    require_linux
     command -v git
 }
 
-@test "apt: ufw installed" {
+@test "pkg: ufw installed" {
+    require_linux
     command -v ufw
 }
 
-@test "apt: tcpdump installed" {
+@test "pkg: tcpdump installed" {
+    require_linux
     command -v tcpdump
 }
 

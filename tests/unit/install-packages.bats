@@ -5,10 +5,6 @@
 
 setup() {
     SOURCE_DIR="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
-    # Mocks recorded here; cleared per-test by bats' tmpdir lifecycle.
-    export CALLS_LOG="$BATS_TEST_TMPDIR/calls.log"
-    : >"$CALLS_LOG"
-
     # Default env (overridden per-test).
     export DOTFILES_PROFILE="core"
     export DOTFILES_OS="linux"
@@ -26,6 +22,8 @@ setup() {
 
     # Wipe INSTALL_PACKAGES_INVOKE so sourcing the lib doesn't auto-run main.
     unset INSTALL_PACKAGES_INVOKE
+    # shellcheck source=../../lib/common.sh
+    . "$SOURCE_DIR/lib/common.sh"
     # shellcheck source=../../lib/install-packages.sh
     . "$SOURCE_DIR/lib/install-packages.sh"
 }
@@ -78,9 +76,9 @@ setup() {
     [ "$status" -eq 0 ]
 }
 
-@test "is_debian_family: linux-pop with idLike=debian → true (fallback)" {
+@test "is_debian_family: linux-pop with idLike=\"ubuntu debian\" → true (fallback)" {
     DOTFILES_OSID=linux-pop
-    DOTFILES_OSRELEASE_IDLIKE="debian"
+    DOTFILES_OSRELEASE_IDLIKE="ubuntu debian"
     run is_debian_family
     [ "$status" -eq 0 ]
 }
@@ -106,7 +104,6 @@ setup() {
     id() { echo 0; }
     sudo() { echo "sudo $*" >>"$sudo_called"; }
     apt-get() { echo "apt-get $*" >>"$apt_get_called"; }
-    export -f id sudo apt-get 2>/dev/null || true
 
     DOTFILES_CORE_APT="curl git"
     DOTFILES_DEV_APT=""
@@ -165,6 +162,22 @@ setup() {
     [[ "$install_line" =~ htop ]]
     [[ "$install_line" =~ firefox ]]
     [[ "$install_line" =~ code ]]
+}
+
+@test "apt_install: failing update still runs install (does not abort under set -e)" {
+    apt_get_called="$BATS_TEST_TMPDIR/apt.log"
+    id() { echo 0; }
+    apt-get() {
+        echo "apt-get $*" >>"$apt_get_called"
+        case "$1" in update) return 1 ;; *) return 0 ;; esac
+    }
+
+    DOTFILES_CORE_APT="curl git"
+    DOTFILES_DEV_APT=""
+    run apt_install
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "apt-get update failed" ]]
+    grep -q 'apt-get install' "$apt_get_called"
 }
 
 @test "apt_install: no root + no sudo → skip with warning" {
@@ -407,15 +420,23 @@ setup() {
 # --- guard sanity ----------------------------------------------------------
 
 @test "INSTALL_PACKAGES_INVOKE guard: sourcing without flag does not run main" {
-    out=$(INSTALL_PACKAGES_INVOKE="" sh -c '. "'"$SOURCE_DIR"'/lib/install-packages.sh"; echo POST_SOURCE')
+    out=$(INSTALL_PACKAGES_INVOKE="" sh -c '. "'"$SOURCE_DIR"'/lib/common.sh"; . "'"$SOURCE_DIR"'/lib/install-packages.sh"; echo POST_SOURCE')
     [[ "$out" =~ "POST_SOURCE" ]]
     [[ ! "$out" =~ "install-packages" ]]
 }
 
 @test "INSTALL_PACKAGES_INVOKE=1: sourcing runs main" {
-    DOTFILES_PROFILE=core DOTFILES_OS=darwin DOTFILES_OSID=darwin \
+    # The assignments must prefix a COMMAND: a list of bare assignments
+    # exports nothing, so the child would never see the guard.
+    #
+    # The child gets a PATH without mise and DOTFILES_OS that matches neither
+    # branch, so main() reaches no installer: it must not touch the real
+    # toolchain just to prove the guard fires.
+    out=$(PATH=/usr/bin:/bin \
+        DOTFILES_PROFILE=core DOTFILES_OS=none DOTFILES_OSID=none \
         DOTFILES_CORE_BREWS="" DOTFILES_DEV_BREWS="" DOTFILES_GUI_MAC_CASKS="" \
         INSTALL_PACKAGES_INVOKE=1 \
-        out=$(sh -c '. "'"$SOURCE_DIR"'/lib/install-packages.sh"' 2>&1) || true
-    [[ "$out" =~ "install-packages" ]] || skip "non-fatal: brew may be missing in test env"
+        sh -c '. "'"$SOURCE_DIR"'/lib/common.sh"; . "'"$SOURCE_DIR"'/lib/install-packages.sh"' 2>&1) || true
+    [[ "$out" =~ "profile=core" ]]
+    [[ "$out" =~ "mise not on PATH" ]]
 }

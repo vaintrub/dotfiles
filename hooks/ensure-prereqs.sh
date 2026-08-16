@@ -11,6 +11,10 @@ set -eu
 export DEBIAN_FRONTEND=noninteractive
 export TZ=Etc/UTC
 
+# shellcheck source-path=SCRIPTDIR
+# shellcheck source=../lib/common.sh
+. "$(dirname "$0")/../lib/common.sh"
+
 is_tty=0
 tty -s && is_tty=1
 
@@ -26,8 +30,13 @@ case "$(uname -s)" in
             echo "Installing Homebrew (Xcode CLT installs as side effect)..."
             /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
         fi
+        # The installer only prints the shellenv line, so brew is not yet on PATH.
+        dotfiles_ensure_brew_path || {
+            echo "ERROR: Homebrew installed but brew is not on PATH." >&2
+            exit 1
+        }
         if ! command -v mise >/dev/null 2>&1; then
-            brew install mise 2>&1 || echo "brew install mise failed" >&2
+            brew install mise || echo "WARNING: brew install mise failed." >&2
         fi
         ;;
     Linux)
@@ -41,47 +50,49 @@ case "$(uname -s)" in
             missing="$missing ca-certificates"
         fi
 
-        if [ "$(id -u)" -eq 0 ]; then
-            sudo_cmd=""
-        elif command -v sudo >/dev/null 2>&1; then
-            sudo_cmd="sudo -E"
-        else
-            sudo_cmd=""
-        fi
-
-        sudo_usable=1
-        if [ -n "$sudo_cmd" ] && [ "$is_tty" -eq 0 ]; then
-            if ! sudo -n true 2>/dev/null; then
-                sudo_usable=0
-            else
-                sudo_cmd="sudo -nE"
-            fi
-        fi
-
         if [ -n "$missing" ]; then
-            if [ -z "$sudo_cmd" ] && [ "$(id -u)" -ne 0 ]; then
-                echo "WARNING: missing tools:$missing — neither root nor sudo available." >&2
-            elif [ "$sudo_usable" -eq 0 ]; then
-                echo "WARNING: missing tools:$missing — non-interactive apply, sudo prompt would block." >&2
-                echo "  Install manually:$sudo_cmd apt-get install -y$missing  (or dnf install -y$missing)" >&2
-            elif command -v apt-get >/dev/null 2>&1; then
-                # stdout → /dev/null so hook stays silent during chezmoi diff/verify.
-                $sudo_cmd apt-get update -qq >/dev/null
-                # shellcheck disable=SC2086
-                $sudo_cmd apt-get install -y --no-install-recommends $missing >/dev/null
-            elif command -v dnf >/dev/null 2>&1; then
-                # shellcheck disable=SC2086
-                $sudo_cmd dnf install -y $missing >/dev/null
+            # No TTY: a password prompt would hang the apply.
+            if [ "$is_tty" -eq 0 ]; then
+                sudo_mode=noninteractive
             else
-                echo "WARNING: missing tools:$missing — neither apt-get nor dnf found." >&2
-                exit 0
+                sudo_mode=interactive
+            fi
+
+            if sudo_cmd=$(dotfiles_sudo_cmd "$sudo_mode"); then
+                # stdout → /dev/null so the hook stays silent during diff/verify.
+                # shellcheck disable=SC2086
+                dotfiles_pkg_install auto "$sudo_cmd" quiet $missing
+            else
+                echo "WARNING: missing tools:$missing — cannot escalate privileges." >&2
+                echo "  Non-interactive run without passwordless sudo, or sudo absent." >&2
+                echo "  Install manually: sudo apt-get install -y$missing  (or dnf install -y$missing)" >&2
+            fi
+
+            # These are hard prerequisites: the rest of the apply reads the
+            # source state with them (dot_gitconfig.tmpl shells out to git).
+            # dotfiles_pkg_install never fails the caller, so check the
+            # postcondition and stop here rather than somewhere confusing.
+            still_missing=""
+            for tool in git zsh vim tmux curl; do
+                command -v "$tool" >/dev/null 2>&1 || still_missing="$still_missing $tool"
+            done
+            if [ -n "$still_missing" ]; then
+                echo "ERROR: hard prerequisites still missing after install:$still_missing" >&2
+                exit 1
             fi
         fi
 
         if ! command -v mise >/dev/null 2>&1; then
-            curl -fsSL https://mise.run | sh
-            export PATH="$HOME/.local/bin:$PATH"
-            hash -r
+            # Staged, not `curl … | sh`: a pipe reports sh's status, so a failed
+            # download would look like success and leave mise silently absent.
+            installer=$(mktemp)
+            if command -v curl >/dev/null 2>&1 \
+                && curl -fsSL https://mise.run -o "$installer"; then
+                sh "$installer"
+            else
+                echo "WARNING: could not fetch https://mise.run — mise not installed." >&2
+            fi
+            rm -f "$installer"
         fi
         ;;
     *)

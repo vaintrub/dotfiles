@@ -2,12 +2,13 @@
 # Package-install library. Sourced by run_onchange_after_50-install-packages.sh.tmpl
 # (renders chezmoi facts into DOTFILES_* env vars first). Bats-sourceable
 # standalone — the guard at the bottom only runs main when INSTALL_PACKAGES_INVOKE=1.
+# Requires lib/common.sh to be sourced first.
 #
 # Env required:
 #   DOTFILES_PROFILE          core | dev | workstation
 #   DOTFILES_OS               darwin | linux
 #   DOTFILES_OSID             darwin | linux-<id>
-#   DOTFILES_OSRELEASE_IDLIKE comma-list (Linux only)
+#   DOTFILES_OSRELEASE_IDLIKE space-separated list, per os-release(5)
 #   DOTFILES_{CORE,DEV}_{BREWS,APT,DNF}
 #   DOTFILES_GUI_{MAC_CASKS,LINUX_APT,LINUX_DNF}
 
@@ -23,8 +24,8 @@ is_debian_family() {
     case "$DOTFILES_OSID" in
         linux-debian|linux-ubuntu) return 0 ;;
     esac
-    case ",${DOTFILES_OSRELEASE_IDLIKE:-}," in
-        *,debian,*) return 0 ;;
+    case " ${DOTFILES_OSRELEASE_IDLIKE:-} " in
+        *" debian "*) return 0 ;;
     esac
     return 1
 }
@@ -33,20 +34,11 @@ is_fedora_family() {
     [ "$DOTFILES_OSID" = "linux-fedora" ]
 }
 
-_ensure_brew_path() {
-    if command -v brew >/dev/null 2>&1; then return 0; fi
-    if [ -x /opt/homebrew/bin/brew ]; then
-        eval "$(/opt/homebrew/bin/brew shellenv)"
-    elif [ -x /usr/local/bin/brew ]; then
-        eval "$(/usr/local/bin/brew shellenv)"
-    else
-        echo "brew not found — ensure-prereqs hook should have installed it." >&2
-        return 1
-    fi
-}
-
 brew_bundle_install() {
-    _ensure_brew_path || return 0
+    dotfiles_ensure_brew_path || {
+        echo "brew not found — ensure-prereqs hook should have installed it." >&2
+        return 0
+    }
 
     {
         for f in $DOTFILES_CORE_BREWS; do echo "brew \"$f\""; done
@@ -65,20 +57,8 @@ brew_bundle_install() {
     fi
 }
 
-_sudo_cmd() {
-    if [ "$(id -u)" -eq 0 ]; then
-        echo ""
-        return 0
-    fi
-    if command -v sudo >/dev/null 2>&1; then
-        echo "sudo -E"
-        return 0
-    fi
-    return 1
-}
-
 apt_install() {
-    sudo_cmd=$(_sudo_cmd) || {
+    sudo_cmd=$(dotfiles_sudo_cmd) || {
         echo "Neither root nor sudo available — skipping apt install." >&2
         return 0
     }
@@ -91,14 +71,11 @@ apt_install() {
         pkgs="$pkgs $DOTFILES_GUI_LINUX_APT"
     fi
     # shellcheck disable=SC2086
-    $sudo_cmd apt-get update -qq
-    # shellcheck disable=SC2086
-    $sudo_cmd apt-get install -y --no-install-recommends $pkgs || \
-        echo "apt-get install had failures — re-run interactively." >&2
+    dotfiles_pkg_install apt-get "$sudo_cmd" verbose $pkgs
 }
 
 dnf_install() {
-    sudo_cmd=$(_sudo_cmd) || {
+    sudo_cmd=$(dotfiles_sudo_cmd) || {
         echo "Neither root nor sudo available — skipping dnf install." >&2
         return 0
     }
@@ -111,8 +88,7 @@ dnf_install() {
         pkgs="$pkgs $DOTFILES_GUI_LINUX_DNF"
     fi
     # shellcheck disable=SC2086
-    $sudo_cmd dnf install -y $pkgs || \
-        echo "dnf install had failures — re-run interactively." >&2
+    dotfiles_pkg_install dnf "$sudo_cmd" verbose $pkgs
 }
 
 linux_pkg_install() {
@@ -142,7 +118,7 @@ mise_install_tools() {
         echo "    gh auth login                                              # recommended; mise picks it up automatically" >&2
         echo "    export GITHUB_TOKEN=ghp_yourPAT                            # one-off env" >&2
         echo "    export GITHUB_TOKEN=\$(op read 'op://Personal/GitHub API Token/credential')" >&2
-        echo "  Then: chezmoi apply" >&2
+        echo "  Then: mise install" >&2
         echo "" >&2
     fi
 }
@@ -177,8 +153,6 @@ main() {
 
     mise_install_tools
 
-    # goimports + ssh-audit are declared in dot_config/mise/config.toml.tmpl
-    # (go: / pipx: backends), installed by mise_install_tools above.
     if is_dev; then
         post_install_rtk_init
     fi

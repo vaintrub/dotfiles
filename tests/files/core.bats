@@ -1,13 +1,10 @@
 #!/usr/bin/env bats
-# CORE-tier-only post-apply asserts. Runs after `chezmoi apply` against
-# profile=core. Verifies the negative-space asserts: things that should
-# NOT be present at the core tier (dev tools, rtk, claude CLI).
-#
-# Profile-agnostic asserts live in tests/files/common.bats.
-# Dev-tier asserts live in tests/files/dev.bats.
+# Post-apply asserts for profile=core: dev tools must NOT be present.
 
 setup() {
-    export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
+    export PATH="$HOME/.local/bin:$PATH"
+    # `mise activate --shims` emits the shims PATH itself — no hardcoded layout.
+    command -v mise >/dev/null && eval "$(mise activate bash --shims)"
     hash -r 2>/dev/null || true
 }
 
@@ -20,11 +17,11 @@ setup() {
     ! grep -q '^node ' "$HOME/.config/mise/config.toml"
 }
 
-@test "no rtk binary at core profile (install-rtk gated to dev|workstation)" {
+@test "no rtk binary at core profile (mise dev-only block)" {
     ! command -v rtk
 }
 
-@test "no claude CLI at core profile (npm globals gated to dev|workstation)" {
+@test "no claude CLI at core profile (mise dev-only block)" {
     ! command -v claude
 }
 

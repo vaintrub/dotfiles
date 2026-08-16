@@ -1,8 +1,4 @@
-{{- /* Only renders on Linux: file lives in .chezmoiscripts/linux/ but chezmoi
-       still processes every script regardless of subdir, so the OS guard
-       below stays as belt-and-suspenders. Headless guard skips the script
-       on SSH sessions without a graphical session — fontconfig may not be
-       installed, no point caching fonts no one will see. */ -}}
+{{- /* Skipped on headless Linux, where fontconfig may not even be installed. */ -}}
 {{- $headless := false -}}
 {{- if and (ne (env "SSH_CONNECTION") "") (eq (env "DISPLAY") "") (eq (env "WAYLAND_DISPLAY") "") -}}
 {{- $headless = true -}}

@@ -7,14 +7,12 @@
 {{- $profile := .profile | default "core" -}}
 {{- $isDev   := or (eq $profile "dev") (eq $profile "workstation") -}}
 [settings]
-# Idiomatic version files (.nvmrc, .python-version, .go-version) — disabled
-# upstream since 2025.10.0; re-enabled here for projects predating .mise.toml.
+# Off upstream since mise 2025.10.0; re-enabled for projects predating mise.toml.
 idiomatic_version_file_enable_tools = ["node", "python", "go"]
 {{ if lookPath "gh" }}
 [settings.github]
-# mise reads gh's token from hosts.yml only; macOS keeps it in the Keychain,
-# so bridge via `gh auth token` (reads Keychain) → authed API (5000/hr vs 60
-# anon). Invoked once per run; falls through to anon if gh unauthed.
+# mise only reads gh's hosts.yml, but macOS keeps the token in the Keychain —
+# `gh auth token` bridges both. 5000/hr authed vs 60 anon; falls back to anon.
 credential_command = "gh auth token"
 {{ end }}
 [tools]
@@ -27,7 +25,7 @@ credential_command = "gh auth token"
 # --- Languages ----------------------------------------------------------
 node   = "lts"
 go     = "latest"
-python = "3.12"
+python = "latest"
 rust   = "stable"
 
 # --- CLI utilities ------------------------------------------------------
@@ -38,7 +36,7 @@ rust   = "stable"
 "aqua:sharkdp/fd"                           = "latest"
 "aqua:gitleaks/gitleaks"                    = "latest"
 "aqua:mikefarah/yq"                         = "latest"   # Go yq, NOT Python
-"aqua:direnv/direnv"                         = "latest"   # per-project env+secrets (see hook in dot_zshrc)
+"aqua:direnv/direnv"                        = "latest"   # per-project env+secrets (see hook in dot_zshrc)
 
 # --- Cloud + Kubernetes -------------------------------------------------
 "aqua:helm/helm"                            = "latest"
@@ -69,25 +67,20 @@ rust   = "stable"
 "aqua:astral-sh/uv"                         = "latest"
 
 # --- AI CLIs (native binaries, no Node coupling) ------------------------
-# Fallback if aqua-registry breaks: swap to npm:@anthropic-ai/claude-code
-# / npm:@openai/codex (mise's npm backend resolves identically).
+# If aqua-registry breaks, npm:@anthropic-ai/claude-code / npm:@openai/codex
+# resolve identically.
 "aqua:anthropics/claude-code"               = "latest"
 "aqua:openai/codex"                         = "latest"
 
 # --- Auth + secrets -----------------------------------------------------
-# `op` is a registry alias for `1password`; backends resolve vfox first
-# (vfox:mise-plugins/vfox-1password), aqua fallback (aqua:1password/cli).
-# Installs via vfox here. Cross-platform: Mac + Linux arm64/amd64.
-op                                          = "latest"
+op                                          = "latest"   # registry alias for 1password (vfox)
 
 # rtk: Linux arm64 needs glibc ≥2.39 (Ubuntu 24.04+); init skips gracefully on older.
 "github:rtk-ai/rtk"                         = "latest"
 
-# Not in mise (installed elsewhere):
-#   htop/tree/nmap/wireguard-tools/telnet/postgresql-client — OS-native (C deps)
+# OS-native packages (htop, nmap, wireguard-tools, postgresql-client) live in
+# .chezmoidata/packages.yaml — they have C deps mise would have to rebuild.
 #
-# Division of labour with direnv (hooked in dot_zshrc): mise owns TOOL VERSIONS,
-# direnv owns per-project ENV + 1Password secrets (.envrc + from_op). Safe to
-# run both — mise only conflicts with direnv when BOTH manage a tool (e.g.
-# `layout python` vs python here). Never use direnv `layout`/PATH_add for tools.
+# mise owns tool versions, direnv owns per-project env + secrets. They only
+# collide when both manage a tool, so never use direnv `layout`/`PATH_add`.
 {{- end }}
