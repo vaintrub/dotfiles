@@ -87,9 +87,13 @@ plugins:
     - frontend-design@claude-plugins-official
     - caveman@caveman
     - sepia@sepia                   # de-AI writing pass for prose and docs
+    - wiki@llm-wiki
+    - mattpocock-skills@claude-plugins-official
+    - supabase@claude-plugins-official
   claude_marketplaces:
     - caveman:JuliusBrussee/caveman
     - sepia:Nanako0129/sepia
+    - llm-wiki:nvk/llm-wiki
   codex:
     - github@openai-curated
     - google-drive@openai-curated

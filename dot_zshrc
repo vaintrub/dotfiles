@@ -90,15 +90,33 @@ export LANG=en_US.UTF-8
 export EDITOR="${EDITOR:-vim}"
 export VISUAL="$EDITOR"
 
-# --- SSH agent (1Password) ---
+# --- SSH agent ---
 # Route all SSH auth (ssh, git, ssh-add) through 1Password's agent so keys
-# live in 1Password, not on disk. Only set when the agent socket exists, so
-# machines without 1Password keep their default $SSH_AUTH_SOCK.
+# live in 1Password, not on disk. Machines without that agent fall back to
+# stabilising a forwarded one (see below).
 case "$(uname -s)" in
     Darwin) _op_sock="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock" ;;
     Linux)  _op_sock="$HOME/.1password/agent.sock" ;;
 esac
-[[ -S $_op_sock ]] && export SSH_AUTH_SOCK="$_op_sock"
+if [[ -S $_op_sock ]]; then
+    export SSH_AUTH_SOCK="$_op_sock"
+else
+    # No 1Password agent (typically a headless box reached over SSH). There the
+    # agent is forwarded to a per-login socket, /tmp/ssh-XXXX/agent.<pid>, that
+    # dies with the login that created it — while a tmux pane started under an
+    # earlier login keeps the now-dead path in its environment and every ssh/git
+    # call from it fails with "Permission denied (publickey)". Pin whatever
+    # socket is live behind a fixed name and export that instead, so panes
+    # outlive the login they were started in.
+    _fwd_sock="$HOME/.ssh/agent.sock"
+    if [[ $SSH_AUTH_SOCK != $_fwd_sock && -S $SSH_AUTH_SOCK ]]; then
+        [[ -d $HOME/.ssh ]] || mkdir -m 700 -p "$HOME/.ssh"
+        ln -sfn "$SSH_AUTH_SOCK" "$_fwd_sock"
+    fi
+    # -S follows the symlink: a dangling one is skipped rather than exported.
+    [[ -S $_fwd_sock ]] && export SSH_AUTH_SOCK="$_fwd_sock"
+    unset _fwd_sock
+fi
 unset _op_sock
 
 # --- PATH ---
