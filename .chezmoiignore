@@ -10,19 +10,18 @@ CLAUDE.md
 # iTerm2 plist lives at source root `iterm/` (outside dot_*) so chezmoi doesn't
 # materialise it into $HOME. iTerm2 reads + writes the plist there directly,
 # driven by `defaults write com.googlecode.iterm2 PrefsCustomFolder` (set by
-# .chezmoiscripts/run_once_after_configure-iterm2.sh.tmpl). No symlink layer.
+# .chezmoiscripts/darwin/run_once_after_configure-iterm2.sh.tmpl). No symlink layer.
 iterm
 
 # Custom hooks dir at source root (we don't use `.chezmoihooks/` because
 # chezmoi doctor flags any `.chezmoi*` dir not in its hardcoded whitelist
 # as 'suspicious-entries'). Scripts here are invoked via .chezmoi.toml.tmpl
-# [hooks.read-source-state.pre.command] = "{{ .chezmoi.workingTree }}/hooks/..."
+# [hooks.read-source-state.pre.command] (see .chezmoi.toml.tmpl).
 # Not for $HOME materialization — ignore the target path.
 hooks
 
-# Bats post-apply smoke tests (CI runs them after `chezmoi apply` in a
-# devcontainer). Never materialised into $HOME — only used from CI or
-# locally via `bats tests/files/*.bats`.
+# Bats tests — run from CI or locally via `bats tests/files/*.bats`.
+# Never materialised into $HOME.
 tests
 
 # GitHub Actions workflows. Not part of $HOME state — only relevant to

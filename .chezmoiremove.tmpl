@@ -1,11 +1,14 @@
 {{- /*
-  Lists target-state paths (relative to $HOME) that chezmoi should remove on
-  next `chezmoi apply`. Use when deprecating a managed file — list it here
-  so chezmoi cleans it up on every machine, then remove from this file once
-  all machines have been applied.
-
-  Empty by default. Add entries one per line, e.g.:
-
-      .config/old-tool/config
-      .some-removed-dotfile
+  Target paths (relative to $HOME) to delete on apply. Re-evaluated every run,
+  so this is a short-lived migration step — drop the entry once every machine
+  has applied. One path per line.
 */ -}}
+{{- /*
+  The gitleaks pre-push hook and the core.hooksPath that pointed at it both
+  left this repo. chezmoi does not delete a target just because its source
+  disappeared, so machines applied before that keep an orphan nothing manages.
+  Only the file: the directory may hold hooks a person put there by hand.
+  Drop this entry once every machine has applied.
+*/ -}}
+.config/git/hooks/pre-push
+

@@ -1,13 +1,7 @@
 {{- if eq .chezmoi.os "linux" -}}
 #!/bin/sh
-# Set zsh as the login shell on Linux if not already. Three paths:
-#   1. Already zsh → idempotent no-op.
-#   2. Passwordless sudo available (jetson, cloud-init machines) → use
-#      `sudo -n chsh -s ... $(id -un)` which doesn't prompt and works
-#      even without a TTY. Auto-adds zsh to /etc/shells if missing.
-#   3. Interactive (TTY) but no passwordless sudo → bare `chsh -s` will
-#      prompt for password — fine for human users at a real terminal.
-#   4. No TTY and no passwordless sudo → print warning, skip.
+# Set zsh as the login shell. Passwordless sudo is tried first: it is the only
+# path that works without a TTY. Bare chsh needs one, so it is TTY-gated.
 set -eu
 
 zsh_path=$(command -v zsh || true)

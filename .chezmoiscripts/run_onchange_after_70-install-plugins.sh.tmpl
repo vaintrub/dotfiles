@@ -1,73 +1,57 @@
 {{- /*
-  Install Claude Code + Codex plugins + MCP servers from .chezmoidata/packages.yaml.
-  Claude: `plugin marketplace add` (defensively re-adds claude-plugins-official
-  in case claude was never launched interactively) + `plugin install`/`update`.
-  Codex: only non-reserved marketplaces need `plugin marketplace add`; enable
-  flags live in .chezmoitemplates/codex-config-base.toml.
-  Caveman-for-Codex is manual (skills CLI doesn't wire per-agent symlinks yet).
+  Claude + Codex plugins and MCP servers from .chezmoidata/packages.yaml.
+  Claude has no declarative user-scope config, so everything goes through its
+  CLI. Codex takes its enable flags and MCP servers declaratively from
+  .chezmoitemplates/codex-config-base.toml instead.
 */ -}}
 #!/bin/sh
 set -eu
 
 {{ if eq .chezmoi.os "darwin" -}}
-# Defensive PATH on first apply (mise activate may not have hit parent shell yet).
-if [ -x /opt/homebrew/bin/brew ]; then
-    eval "$(/opt/homebrew/bin/brew shellenv)"
-elif [ -x /usr/local/bin/brew ]; then
-    eval "$(/usr/local/bin/brew shellenv)"
-fi
+# mise activate may not have reached the parent shell on a first apply.
+. "{{ .chezmoi.sourceDir }}/lib/common.sh"
+dotfiles_ensure_brew_path || true
 {{- end }}
 
 if command -v claude >/dev/null 2>&1; then
+    # Re-added defensively: the marketplace is absent until claude has been
+    # launched interactively at least once.
     if ! out=$(claude plugin marketplace add anthropics/claude-plugins-official 2>&1); then
         echo "WARNING: claude plugin marketplace add (official) failed:" >&2
         echo "$out" >&2
     fi
-{{ range .plugins.claude_marketplaces -}}
-{{- $parts := splitn ":" 2 . -}}
-{{- $name := $parts._0 -}}
-{{- $repo := $parts._1 }}
-    if ! out=$(claude plugin marketplace add {{ $repo | quote }} 2>&1); then
-        echo "WARNING: claude plugin marketplace add {{ $name }} failed:" >&2
+{{- range .plugins.claude_marketplaces }}
+{{- $parts := splitn ":" 2 . }}
+    if ! out=$(claude plugin marketplace add {{ $parts._1 | quote }} 2>&1); then
+        echo "WARNING: claude plugin marketplace add {{ $parts._0 }} failed:" >&2
         echo "$out" >&2
     fi
-{{ end -}}
-{{ range .plugins.claude -}}
+{{- end }}
+{{- range .plugins.claude }}
     claude plugin install {{ . | quote }} --scope user >/dev/null 2>&1 \
         || echo "claude plugin install {{ . }} failed" >&2
     claude plugin update {{ . }} >/dev/null 2>&1 || true
-{{ end -}}
+{{- end }}
     claude plugin marketplace update >/dev/null 2>&1 || true
 
-    # MCP servers (shared list in packages.yaml). Claude via CLI (no
-    # declarative user-scope config file exists); Codex gets the same list
-    # declaratively in config.toml. User scope = all projects. Idempotent:
-    # `mcp get` succeeds if already registered.
-{{ range .mcp -}}
+    # Idempotent: `mcp get` succeeds when the server is already registered.
+{{- range .mcp }}
     if ! claude mcp get {{ .name | quote }} >/dev/null 2>&1; then
         claude mcp add -s user --transport http {{ .name | quote }} {{ .url | quote }} >/dev/null 2>&1 \
             && echo "claude mcp add {{ .name }}" \
             || echo "claude mcp add {{ .name }} failed" >&2
     fi
-{{ end -}}
+{{- end }}
 else
     echo "claude CLI not found, skipping Claude plugin install" >&2
 fi
 
 if command -v codex >/dev/null 2>&1; then
-{{ range .plugins.codex_marketplaces -}}
-    repo={{ . | quote }}
-    mkt_name="${repo##*/}"
-    if ! grep -q "^\[marketplaces\.${mkt_name}\]" "$HOME/.codex/config.toml" 2>/dev/null; then
-        codex plugin marketplace add "$repo" >/dev/null 2>&1 \
-            || echo "codex plugin marketplace add $repo failed" >&2
-    fi
-{{ end -}}
+{{- range .plugins.codex_marketplaces }}
+    codex plugin marketplace add {{ . | quote }} >/dev/null 2>&1 \
+        || echo "codex plugin marketplace add {{ . }} failed" >&2
+{{- end }}
     codex plugin marketplace upgrade >/dev/null 2>&1 || true
-    # Codex MCP servers are declarative — rendered into ~/.codex/config.toml
-    # [mcp_servers] by .chezmoitemplates/codex-config-base.toml. (codex's
-    # `mcp add` CLI blocks/fails on remote servers in non-interactive apply;
-    # the config file is robust + needs no node/auth/network.)
 else
     echo "codex CLI not found, skipping Codex plugin install" >&2
 fi

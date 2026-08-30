@@ -11,7 +11,8 @@
 
 packages:
   core:
-    brews: []                       # Mac ships zsh/vim/tmux/git/curl from base
+    brews:
+      - tmux                        # macOS ships zsh/vim/git/curl from base, not tmux
     apt:
       - zsh
       - vim
@@ -74,8 +75,6 @@ packages:
       - visual-studio-code
       - ngrok
       - 1password                   # desktop app — Touch ID unlock for `op` CLI
-      - font-meslo-lg-nerd-font
-      - font-monaspace
     # Linux desktop placeholder.
     linux_apt: []
     linux_dnf: []
@@ -87,8 +86,10 @@ plugins:
     - figma@claude-plugins-official
     - frontend-design@claude-plugins-official
     - caveman@caveman
+    - sepia@sepia                   # de-AI writing pass for prose and docs
   claude_marketplaces:
     - caveman:JuliusBrussee/caveman
+    - sepia:Nanako0129/sepia
   codex:
     - github@openai-curated
     - google-drive@openai-curated

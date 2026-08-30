@@ -22,34 +22,16 @@ fi
 source ${zsh_plugins}.zsh
 
 # --- `code` from any terminal ---
-# Vs the stock VSCode CLI, this function changes one thing: bare `code`
-# (no args) opens a *.code-workspace in cwd if one exists, else opens
-# cwd. Any explicit args pass through unchanged.
+# Bare `code` opens a *.code-workspace from cwd if there is one, else cwd;
+# explicit args pass through. Over SSH, outside VSCode's own terminal, it emits
+# a `vscode://vscode-remote/…` URL that an iTerm2 Trigger opens on the Mac.
 #
-# In an SSH session ($SSH_CONNECTION set):
-#   • Inside VSCode's *integrated* terminal — the env is already wired,
-#     so dispatch to the real `code` shim and we're done.
-#   • From any other terminal (iTerm2, tmux pane) — emit a
-#     `vscode://vscode-remote/ssh-remote+<host>/<path>` URL. The iTerm2
-#     Trigger turns it into `open <url>`, macOS routes it to VSCode, and
-#     VSCode reuses an existing Remote-SSH window (or opens a new one).
+# Forwarding to a Remote-SSH IPC socket instead would be unreliable: VSCode
+# Server's `vscode-ipc-*.sock` files outlive their windows (microsoft/vscode#153311),
+# and a half-dead socket accepts the connection, returns 0, and drops the message.
 #
-# We deliberately do NOT try to find and forward to a Remote-SSH IPC
-# socket ourselves: VSCode Server's `vscode-ipc-*.sock` files outlive
-# the windows that created them (upstream bug — microsoft/vscode#153311
-# and friends), and a live `connect()` is not the same as "the listener
-# is actually still reachable on the Mac side". Half-dead sockets
-# accept connections silently, give back rc=0, and lose the message.
-# Letting VSCode resolve the URL itself avoids that whole class of
-# zombie-socket guesswork.
-#
-# Housekeeping: while we're here, sweep VSCode's stale leftover sockets
-# (cheap via zsh's built-in zsocket).
-#
-# Override host with `export VSCODE_REMOTE_HOST=<alias>` when the short
-# hostname doesn't match your local ~/.ssh/config Host entry.
-# Glob qualifiers: (N) null on no-match, (om) order by mtime newest-first,
-# (.) regular files only.
+# Override the host with VSCODE_REMOTE_HOST when `hostname -s` differs from the
+# ~/.ssh/config alias.
 code() {
     if (( $# == 0 )); then
         local -a ws=( *.code-workspace(N) )
@@ -84,9 +66,11 @@ code() {
     # Hand off to the local Mac's VSCode via vscode-remote URL. The iTerm2
     # Trigger fires `open <url>` and VSCode reuses an existing Remote-SSH
     # window (or opens a new one) — predictable, no socket guesswork.
-    local path=${1:A}
+    # `target`, not `path`: zsh ties `path` to `PATH`, so `local path=…`
+    # would blank $PATH for the rest of the body.
+    local target=${1:A}
     printf 'vscode://vscode-remote/ssh-remote+%s%s\n' \
-        "${VSCODE_REMOTE_HOST:-${HOST%%.*}}" "${path// /%20}"
+        "${VSCODE_REMOTE_HOST:-${HOST%%.*}}" "${target// /%20}"
 }
 
 # --- VSCode `code` CLI on PATH (macOS) ---
@@ -111,33 +95,32 @@ export VISUAL="$EDITOR"
 # live in 1Password, not on disk. Only set when the agent socket exists, so
 # machines without 1Password keep their default $SSH_AUTH_SOCK.
 case "$(uname -s)" in
-  Darwin) _op_sock="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock" ;;
-  Linux)  _op_sock="$HOME/.1password/agent.sock" ;;
+    Darwin) _op_sock="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock" ;;
+    Linux)  _op_sock="$HOME/.1password/agent.sock" ;;
 esac
 [[ -S $_op_sock ]] && export SSH_AUTH_SOCK="$_op_sock"
 unset _op_sock
 
 # --- PATH ---
 # Set BEFORE mise activate so curl-pipe-installed mise (at ~/.local/bin/mise
-# on Linux) is discoverable. On Mac brew's .zprofile shellenv adds
-# /opt/homebrew/bin earlier — these lines are still safe (idempotent appends).
+# on Linux) is discoverable. The appends are not idempotent on their own —
+# ~/.zprofile adds some of the same dirs and every nested shell inherits and
+# appends again — so keep the array unique.
+typeset -U path PATH
 export PATH="$PATH:$HOME/.local/bin"
 export PATH="$PATH:$HOME/go/bin"
 
 # --- Runtime + dev-tool manager (mise) ---
-# mise is the primary installer for ~28 dev tools (Go/Python/Node/Rust +
-# kubectl/helm/k9s/jq/gh/fzf/yq/delta/... via aqua backend). Activate enables
-# auto-version-switch on cd when .mise.toml / .tool-versions / .nvmrc /
-# .python-version / .go-version is present.
-command -v mise > /dev/null && eval "$(mise activate zsh)"
+# activate = auto version-switch on cd (.mise.toml / .tool-versions / .nvmrc / …).
+command -v mise >/dev/null 2>&1 && eval "$(mise activate zsh)"
 
 # --- fzf shell integration (key-bindings + completion) ---
 # fzf ≥0.48 emits both via `fzf --zsh` — installer-agnostic, version-stable
 # (replaces digging mise's install layout via `mise where fzf`).
-command -v fzf > /dev/null && source <(fzf --zsh)
+command -v fzf >/dev/null 2>&1 && source <(fzf --zsh)
 
 # --- Smart cd (zoxide) ---
-command -v zoxide > /dev/null && eval "$(zoxide init zsh)"
+command -v zoxide >/dev/null 2>&1 && eval "$(zoxide init zsh)"
 
 # --- Powerlevel10k theme ---
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
@@ -146,23 +129,14 @@ command -v zoxide > /dev/null && eval "$(zoxide init zsh)"
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
 # --- SSH visual tints (orange ❯ + amber tmux bar) ---
-# Defensive nudge so I can't type into the wrong machine by accident:
-#   • p10k `❯` turns orange (208). Not red — that's already taken by
-#     PROMPT_CHAR_ERROR_* (last command failed); colliding would erase
-#     the success/failure signal.
-#   • tmux paints both the bar and the window-list background dark
-#     amber on the next `tmux` start. Targets `status_bg` +
-#     `window_status_bg` directly instead of `colour_1`: colour_1 is
-#     reused by gpakosz as `window_status_current_fg`, `message_fg`,
-#     `mode_fg`, etc., so overriding it would also recolour the
-#     active-window text and tmux messages — unintended side effects.
-#     Setting these here (not in .tmux.conf.local) is required:
-#     gpakosz's `_apply_theme` reads tmux_conf_* via `printenv`, so the
-#     value must be in the env before the tmux server starts. tmux's
-#     own config parser stores `name=value` as a literal — no shell
-#     expansion — so a ${SSH_CONNECTION:+…} branch inside
-#     .tmux.conf.local would reach the helper as a literal string and
-#     get rejected as a malformed colour.
+# So typing into the wrong machine is visible. Orange, not red: red is taken by
+# PROMPT_CHAR_ERROR_* and would erase the success/failure signal.
+#
+# tmux targets status_bg / window_status_bg / colour_15 rather than colour_1 —
+# gpakosz reuses colour_1 for active-window text and messages. These must be
+# exported here, not set in .tmux.conf.local: `_apply_theme` reads them with
+# printenv before the server starts, and tmux's parser stores `name=value`
+# literally, so a ${SSH_CONNECTION:+…} branch would arrive unexpanded.
 if [[ -n $SSH_CONNECTION ]]; then
     typeset -g POWERLEVEL9K_PROMPT_CHAR_OK_{VIINS,VICMD,VIVIS,VIOWR}_FOREGROUND=208
     # Three coordinated overrides paint every "default-bar" surface
@@ -183,15 +157,8 @@ if [[ -n $SSH_CONNECTION ]]; then
 fi
 
 # --- Per-machine overrides ---
-# Sourced LAST so machine-local edits win over EVERYTHING tracked here
-# (aliases, env vars, even POWERLEVEL9K_* tweaks if user re-sources
-# ~/.p10k.zsh after their override block, or SSH tmux_conf_theme_* if
-# the user wants different cues for their machine).
-#
-# File seeded as a commented stub by chezmoi (`create_dot_zshrc_local`),
-# then never overwritten — edits persist across `chezmoi apply` runs.
-# Override the p10k prompt itself via `p10k configure` editing
-# `~/.p10k.zsh` directly (Powerlevel10k convention).
+# Sourced after everything tracked above except the direnv hook, which direnv
+# requires last. Seeded once as a commented stub (create_dot_zshrc_local).
 [[ ! -f ~/.zshrc_local ]] || source ~/.zshrc_local
 
 # --- direnv (per-project env + 1Password secrets via .envrc) ---
@@ -199,4 +166,4 @@ fi
 # secrets (e.g. `from_op` op:// refs in an .envrc). Safe alongside mise as long
 # as direnv never manages tools/PATH (no `layout`/`PATH_add` for toolchains).
 # Hook goes LAST (after prompt + ~/.zshrc_local) per direnv's own guidance.
-command -v direnv > /dev/null && eval "$(direnv hook zsh)"
+command -v direnv >/dev/null 2>&1 && eval "$(direnv hook zsh)"

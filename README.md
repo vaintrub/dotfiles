@@ -41,9 +41,9 @@ Prompted on init (the detected env is shown as a hint; you pick). Cached in `~/.
 
 | Profile | What you get | Use case |
 |---|---|---|
-| `core` | OS baseline (zsh, vim, tmux, git, curl; Linux also ufw, tcpdump) + Nerd fonts + mise + fzf + zoxide. ~50 MB. | VPS, jetson/SSH first-touch, Codespace, recovery |
+| `core` | OS baseline (zsh, vim, tmux, git, curl; Linux also ufw, tcpdump) + Nerd fonts (skipped on headless Linux) + mise + fzf + zoxide. ~50 MB. | VPS, jetson/SSH first-touch, Codespace, recovery |
 | `dev` | core + full CLI toolchain: 4 languages (Go/Python/Node/Rust) + ~30 mise binaries (kubectl/helm/jq/gh/delta/… + `op` + `rtk` + `claude-code` + `codex`) + a few OS-native brews/apts. ~1.9 GB first apply. | Headless dev box |
-| `workstation` | dev + GUI apps. macOS casks: iterm2, docker-desktop, visual-studio-code, ngrok, 1password, fonts. | Primary GUI machine |
+| `workstation` | dev + GUI apps. macOS casks: iterm2, docker-desktop, visual-studio-code, ngrok, 1password. (Fonts come from chezmoi externals, not casks.) | Primary GUI machine |
 
 Exact tool lists are the source of truth in `dot_config/mise/config.toml.tmpl` (mise) and `.chezmoidata/packages.yaml` (brew/apt/dnf). Add a mise tool: `mise registry | grep -i <name>` → add the slug to the config (inside the `$isDev` block unless every tier needs it) → `chezmoi apply` (the install script embeds the mise-config hash, so apply auto-reruns `mise install` — no manual step).
 
@@ -53,7 +53,7 @@ Docker is intentionally not in `dev` (the `docker.io` vs `docker-ce` apt conflic
 
 ```sh
 # Partial install — GitHub rate-limit hit mid-apply, some mise tools missing:
-gh auth login && chezmoi apply        # mise auto-uses gh's token; retries idempotently
+gh auth login && mise install         # mise auto-uses gh's token; retries idempotently
 
 # mise shims stale / new tools not on PATH:
 mise reshim && exec zsh
@@ -70,13 +70,19 @@ chezmoi state delete-bucket --bucket=scriptState && chezmoi apply
 Drop an untracked `~/.config/mise/config.local.toml` to skip or pin tools on one box — mise merges it over the tracked config, local wins:
 
 ```toml
+[settings]
+# Skip entirely on this box (no Rust toolchain on a small VPS, no gh here).
+disable_tools = ["rust", "aqua:cli/cli"]
+
 [tools]
-rust = "skip"            # no Rust toolchain on a small VPS
-python = "3.11"          # pin older Python here
-"aqua:cli/cli" = "skip"  # no gh on this box
+python = "3.11"          # or pin a different version
 ```
 
-Then `mise install`. (Mac firewall isn't managed — enable via System Settings → Network → Firewall. Linux `core` ships `ufw`, disabled; `sudo ufw enable` to activate.)
+Then `mise install`. Note `disable_tools` is the only way to drop an inherited
+tool — there is no `"skip"` version sentinel; mise would try to fetch a release
+tagged `skip`, 404, and leave a permanent `(missing)` row.
+
+(Mac firewall isn't managed — enable via System Settings → Network → Firewall. Linux `core` ships `ufw`, disabled; `sudo ufw enable` to activate.)
 
 ## Day-to-day
 
@@ -93,6 +99,8 @@ On another machine: `chezmoi update` (= git pull + apply).
 ## Secrets
 
 Three mechanisms, one per concern — full guide in [AGENTS.md](AGENTS.md):
+
+No global git hooks: `core.hooksPath` replaces a repository's own `.git/hooks` instead of adding to it, so a machine-wide hook silently disables whatever a project installed. Secret scanning belongs in CI or GitHub push protection; `gitleaks git` stays on PATH for a manual sweep.
 
 - **Install-time** (GitHub API rate limit): mise reads `gh auth token` via `github.credential_command`, so `gh auth login` once is enough (5000/hr authed vs 60 anon).
 - **Render-time** (tokens baked into files like `~/.npmrc`): chezmoi-native `onepasswordRead` against the `.chezmoidata/secrets.yaml` catalog, into a `private_` (0600) target.
@@ -114,4 +122,4 @@ Prefs load straight from the repo via `PrefsCustomFolder` (set by a `run_once_af
 
 ## AI tooling (Claude Code + Codex)
 
-Global config for both CLIs — **only user-curated settings are tracked**; auth tokens, plugin caches, NUX state, project trust-levels stay machine-local. Settings merge tool-safely via `modify_` (jq for Claude `settings.json`, TOML for Codex `config.toml`), rules auto-load from `dot_claude/rules/*.md`, and plugins install from `.chezmoidata/packages.yaml`. Layout, the `modify_` rationale, rules frontmatter, and the full not-tracked list are in [AGENTS.md](AGENTS.md).
+Global config for both CLIs — **only user-curated settings are tracked**; auth tokens, plugin caches, NUX state, project trust-levels stay machine-local. Settings merge tool-safely via `modify_` templates (JSON for Claude `settings.json`, TOML for Codex `config.toml`), the instruction files share a body from `.chezmoitemplates/ai-common.md`, rules auto-load from `dot_claude/rules/*.md`, and plugins install from `.chezmoidata/packages.yaml`. Layout, the `modify_` rationale, rules frontmatter, and the full not-tracked list are in [AGENTS.md](AGENTS.md).

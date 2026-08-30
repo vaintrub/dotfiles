@@ -9,8 +9,6 @@
   - drop runtime sections that Codex auto-writes
   - mergeOverwrite our curated base on top (base wins for managed keys)
   - serialize back to TOML
-
-  Replaces the .gitattributes/codex-strip git-clean-filter mechanism.
 */ -}}
 {{- $existing := fromToml .chezmoi.stdin -}}
 {{- $base := fromToml (includeTemplate "codex-config-base.toml" .) -}}
@@ -19,6 +17,7 @@
 {{- $existing = unset $existing "tui" -}}
 {{- $existing = unset $existing "tool_suggest" -}}
 {{- $existing = unset $existing "marketplaces" -}}
-{{- $existing = unset $existing "windows_wsl_setup_acknowledged" -}}
+{{- /* [[skills.config]] carries absolute paths; the rest of [skills] is preference. */ -}}
+{{- if hasKey $existing "skills" }}{{ $_ := unset (get $existing "skills") "config" }}{{ end -}}
 {{- $merged := mergeOverwrite $existing $base -}}
 {{- toToml $merged -}}

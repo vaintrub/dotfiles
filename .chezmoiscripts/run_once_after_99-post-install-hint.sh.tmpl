@@ -20,18 +20,22 @@ If any tools are missing (anonymous GitHub API rate-limit on slow links):
   # OR — if you use 1Password, create the item once:
   #   op item create --vault Personal --title 'GitHub API Token' \
   #     credential=<your-PAT>
-  chezmoi apply                    # picks up the new token and retries missing tools
+  mise install                     # retries the missing tools with the new token
   mise reshim                      # only if shim symlinks are stale (rare)
 
 Per-machine override (skip rust on a small VPS, pin a different python):
 
-  cat > ~/.config/mise/config.local.toml <<'OVERRIDE'
-  [tools]
-  rust = "skip"
-  python = "3.11"
-  OVERRIDE
+  # Paste as-is; the heredoc terminator has to sit at column 0.
+cat > ~/.config/mise/config.local.toml <<'OVERRIDE'
+[settings]
+disable_tools = ["rust"]
+[tools]
+python = "3.11"
+OVERRIDE
 
-  # Re-apply to pick up the override:
-  chezmoi apply
+  # disable_tools is the only way to drop an inherited tool — mise has no
+  # "skip" version sentinel; it would 404 and leave a (missing) row forever.
+
+  # Then: mise install
 
 EOF

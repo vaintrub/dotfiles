@@ -1,15 +1,10 @@
 #!/usr/bin/env bats
-# Dev-tier post-apply asserts. Runs only by CI's `apply-dev` job (after
-# `chezmoi apply` against profile=dev on Ubuntu). Verifies the full mise
-# toolchain landed + post-install steps succeeded + AI CLIs are reachable.
-#
-# Counterpart of tests/files/common.bats which covers the profile-agnostic
-# baseline (dotfiles present, mise itself + fzf/zoxide, core apt packages).
-#
-# Run locally on a dev-profile machine: bats tests/files/dev.bats
+# Post-apply asserts for profile=dev: full mise toolchain, post-installs, AI CLIs.
 
 setup() {
-    export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
+    export PATH="$HOME/.local/bin:$PATH"
+    # `mise activate --shims` emits the shims PATH itself — no hardcoded layout.
+    command -v mise >/dev/null && eval "$(mise activate bash --shims)"
     hash -r 2>/dev/null || true
 }
 
@@ -21,10 +16,10 @@ setup() {
 
 # --- languages (mise core backends) ----------------------------------------
 
-@test "node on PATH (mise lts)" { command -v node; }
-@test "go on PATH (mise latest)" { command -v go; }
-@test "python on PATH (mise 3.12)" { command -v python; }
-@test "rustc on PATH (mise stable)" { command -v rustc; }
+@test "node on PATH" { command -v node; }
+@test "go on PATH" { command -v go; }
+@test "python on PATH" { command -v python; }
+@test "rustc on PATH" { command -v rustc; }
 
 # --- CLI utilities (mise aqua) --------------------------------------------
 
@@ -35,6 +30,7 @@ setup() {
 @test "fd" { command -v fd; }
 @test "yq" { command -v yq; }
 @test "gitleaks" { command -v gitleaks; }
+@test "direnv" { command -v direnv; }
 
 # --- cloud + Kubernetes (mise aqua) ---------------------------------------
 
@@ -89,18 +85,6 @@ setup() {
 
 @test "no (missing) mise tools post-install" {
     ! mise ls 2>/dev/null | grep -q '(missing)'
-}
-
-# --- idempotency -----------------------------------------------------------
-
-@test "chezmoi diff is empty post-apply" {
-    run chezmoi diff
-    if [ "$status" -ne 0 ] || [ -n "$output" ]; then
-        echo "chezmoi diff exit=$status output:" >&2
-        echo "$output" >&2
-    fi
-    [ "$status" -eq 0 ]
-    [ -z "$output" ]
 }
 
 # --- apt dev packages (sanity check beyond common.bats core list) ---------

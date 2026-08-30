@@ -27,9 +27,8 @@
     editor = vim
     excludesFile = ~/.gitignore_global
     autocrlf = input
-    # Global hooks dir (chezmoi-managed). Hooks here fire from ALL repos;
-    # per-repo override: `git config --local core.hooksPath ''`.
-    hooksPath = ~/.config/git/hooks
+    # No core.hooksPath on purpose: it REPLACES $GIT_DIR/hooks rather than
+    # adding to it, silently disabling whatever a repository installed itself.
 {{ if lookPath "delta" -}}
     pager = delta
 {{- end }}
