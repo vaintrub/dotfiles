@@ -86,8 +86,10 @@ plugins:
     - figma@claude-plugins-official
     - frontend-design@claude-plugins-official
     - caveman@caveman
+    - sepia@sepia                   # de-AI writing pass for prose and docs
   claude_marketplaces:
     - caveman:JuliusBrussee/caveman
+    - sepia:Nanako0129/sepia
   codex:
     - github@openai-curated
     - google-drive@openai-curated
