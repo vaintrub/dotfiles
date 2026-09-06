@@ -143,9 +143,12 @@ Source-of-truth location is `~/.local/share/chezmoi/` — chezmoi's default (XDG
 
 ### iTerm2 — `iterm/com.googlecode.iterm2.plist`
 
-- **XML plist** (kept XML so it diffs — see §2), do NOT hand-edit. Edit via iTerm2 GUI → preferences
-  written directly into `~/.local/share/chezmoi/iterm/com.googlecode.iterm2.plist`
-  → `git status` (in source) shows the dirty plist for review.
+- **XML plist** (kept XML so it diffs — see §2), do NOT hand-edit while iTerm2 runs.
+  Edit via iTerm2 GUI, then save deliberately: **Save Now** (Settings → General →
+  Settings), the red `(!)` badge in the Settings titlebar, or **Copy** at quit —
+  auto-save is off unless `NoSyncNeverRemindPrefsChangesLostForFile_selection` is 2.
+  A save rewrites the whole file, so `git status` (in source) then shows it dirty;
+  commit it alone, as an `iterm:` commit, never via `git commit -am`.
 - The path `iterm/` at source root is INTENTIONALLY outside `dot_*` so chezmoi
   doesn't try to apply it (it's in `.chezmoiignore`). iTerm2 reads + writes
   here directly via `PrefsCustomFolder` setting.
@@ -153,7 +156,7 @@ Source-of-truth location is `~/.local/share/chezmoi/` — chezmoi's default (XDG
   iTerm2's own `~/.config/iterm2/` (AppSupport + sockets dir).
   `PrefsCustomFolder` is set to `<sourceDir>/iterm/` (renders to
   `/Users/vaintrub/.local/share/chezmoi/iterm/` on this machine), so iTerm2
-  operates directly on the source-tracked binary.
+  operates directly on the source-tracked plist.
 - `PrefsCustomFolder` is set on first apply by
   `.chezmoiscripts/darwin/run_once_after_configure-iterm2.sh.tmpl`.
 - Reload: quit and relaunch iTerm2 (answer "Don't Save" only if you don't want

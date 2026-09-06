@@ -114,11 +114,11 @@ Gotcha: needs iTerm2 **≥3.5.11** (older betas drop Nerd Font glyphs inside tmu
 
 ## iTerm2 (macOS)
 
-Prefs load straight from the repo via `PrefsCustomFolder` (set by a `run_once_after_*` script) — no symlink layer. GUI edits write directly into `iterm/com.googlecode.iterm2.plist`, so `git status` (from `chezmoi cd`) surfaces them for review + commit. The committed plist ships a `vscode://` Trigger for the flow below.
+Prefs load straight from the repo via `PrefsCustomFolder` (set by a `run_once_after_*` script) — no symlink layer. `iterm/com.googlecode.iterm2.plist` *is* the live settings file, but iTerm2 writes it only when you say so: **Save Now** (Settings → General → Settings), the red `(!)` badge in the Settings titlebar, or answering **Copy** at quit. Then `git status` (from `chezmoi cd`) surfaces the change for review + commit — as its own `iterm:` commit, since each save rewrites the whole file.
 
 ## VSCode from any terminal
 
-`code <path>` works in any pane; bare `code` opens a `*.code-workspace` in cwd if present, else cwd. Over SSH a zshrc function emits a `vscode://vscode-remote/ssh-remote+<host>/<path>` URL that the iTerm2 Trigger opens on the Mac side (Remote-SSH reuses/opens a window). If the remote's `hostname -s` ≠ your local `~/.ssh/config` Host alias, set `export VSCODE_REMOTE_HOST=my-alias`.
+`code <path>` works in any pane; bare `code` opens a `*.code-workspace` in cwd if present, else cwd. Over SSH a zshrc function emits a `vscode://vscode-remote/ssh-remote+<host>/<path>` URL; ⌘-click it and Remote-SSH reuses or opens a window on the Mac side. (An auto-run iTerm2 Trigger used to save the click — deleted, because it ran `/bin/sh -c` on any matching text a remote host printed.) If the remote's `hostname -s` ≠ your local `~/.ssh/config` Host alias, set `export VSCODE_REMOTE_HOST=my-alias`.
 
 ## AI tooling (Claude Code + Codex)
 

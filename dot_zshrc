@@ -24,7 +24,7 @@ source ${zsh_plugins}.zsh
 # --- `code` from any terminal ---
 # Bare `code` opens a *.code-workspace from cwd if there is one, else cwd;
 # explicit args pass through. Over SSH, outside VSCode's own terminal, it emits
-# a `vscode://vscode-remote/…` URL that an iTerm2 Trigger opens on the Mac.
+# a `vscode://vscode-remote/…` URL that ⌘-click opens on the Mac.
 #
 # Forwarding to a Remote-SSH IPC socket instead would be unreliable: VSCode
 # Server's `vscode-ipc-*.sock` files outlive their windows (microsoft/vscode#153311),
@@ -63,9 +63,12 @@ code() {
         fi
     done
 
-    # Hand off to the local Mac's VSCode via vscode-remote URL. The iTerm2
-    # Trigger fires `open <url>` and VSCode reuses an existing Remote-SSH
-    # window (or opens a new one) — predictable, no socket guesswork.
+    # Hand off to the local Mac's VSCode via a vscode-remote URL: ⌘-click it and
+    # VSCode reuses an existing Remote-SSH window, or opens a new one. iTerm2
+    # needs no setup for that — it applies no scheme allowlist and hands the URL
+    # to LaunchServices, never to a shell. An auto-run Trigger used to save the
+    # click; it was deleted because it exec'd `/bin/sh -c` on any matching text
+    # a remote host printed.
     # `target`, not `path`: zsh ties `path` to `PATH`, so `local path=…`
     # would blank $PATH for the rest of the body.
     local target=${1:A}
