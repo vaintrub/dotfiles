@@ -32,6 +32,28 @@ source ${zsh_plugins}.zsh
 #
 # Override the host with VSCODE_REMOTE_HOST when `hostname -s` differs from the
 # ~/.ssh/config alias.
+
+# Percent-encode a path for that URL. Encoding only spaces is not enough: an
+# unencoded `#` or `?` truncates the path silently — `…/notes#1` parses as path
+# `…/notes`, fragment `1`. `no_multibyte` makes the scan byte-wise, so a UTF-8
+# path encodes per byte rather than per codepoint; `emulate -L` keeps that
+# option local, since options set inside a zsh function are otherwise global.
+_code_url_encode() {
+    emulate -L zsh
+    setopt no_multibyte
+    local s=$1 out= c hex i
+    for (( i = 1; i <= $#s; i++ )); do
+        c=$s[i]
+        if [[ $c == [A-Za-z0-9._~/-] ]]; then
+            out+=$c
+        else
+            printf -v hex '%02X' "'$c"
+            out+="%$hex"
+        fi
+    done
+    print -rn -- $out
+}
+
 code() {
     if (( $# == 0 )); then
         local -a ws=( *.code-workspace(N) )
@@ -73,7 +95,7 @@ code() {
     # would blank $PATH for the rest of the body.
     local target=${1:A}
     printf 'vscode://vscode-remote/ssh-remote+%s%s\n' \
-        "${VSCODE_REMOTE_HOST:-${HOST%%.*}}" "${target// /%20}"
+        "${VSCODE_REMOTE_HOST:-${HOST%%.*}}" "$(_code_url_encode $target)"
 }
 
 # --- VSCode `code` CLI on PATH (macOS) ---
