@@ -72,6 +72,15 @@ skill_names() {
     [ -z "$missing" ]
 }
 
+@test "dot_p10k.zsh keeps the hand-written settings a wizard re-run drops" {
+    # p10k configure rewrites the file wholesale. It recommends verbose instant
+    # prompt and never writes TERM_SHELL_INTEGRATION, so both vanish silently.
+    grep -qE '^[[:space:]]*typeset -g POWERLEVEL9K_INSTANT_PROMPT=quiet$' dot_p10k.zsh
+    grep -q "'quiet' not 'verbose': direnv prints" dot_p10k.zsh
+    grep -qE '^[[:space:]]*typeset -g POWERLEVEL9K_TERM_SHELL_INTEGRATION=true$' dot_p10k.zsh
+    grep -q 'Emits OSC 133 semantic marks' dot_p10k.zsh
+}
+
 @test "every skill file is tracked by git (no .gitignore swallowing new skills)" {
     untracked=$(git ls-files --others --exclude-standard --ignored \
         -- 'dot_claude/skills/*' 'dot_codex/skills/*')

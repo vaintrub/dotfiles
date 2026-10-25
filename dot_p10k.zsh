@@ -5,6 +5,11 @@
 # transient_prompt, instant_prompt=verbose.
 # Type `p10k configure` to generate another config.
 #
+# Hand-edited after the wizard: POWERLEVEL9K_INSTANT_PROMPT=quiet (the wizard
+# chose verbose) and POWERLEVEL9K_TERM_SHELL_INTEGRATION=true, each with its
+# rationale. A wizard re-run drops both; tests/unit/repo-invariants.bats fails
+# until they are restored.
+#
 # Config for Powerlevel10k with lean prompt style. Type `p10k configure` to generate
 # your own config based on it.
 #

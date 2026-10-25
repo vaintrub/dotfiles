@@ -191,6 +191,138 @@ setup() {
     [[ "$output" =~ "Neither root nor sudo" ]]
 }
 
+# --- dnf_install ------------------------------------------------------------
+
+@test "dnf_install: workstation profile installs core + dev + gui via dnf, no sudo as root" {
+    dnf_called="$BATS_TEST_TMPDIR/dnf.log"
+    sudo_called="$BATS_TEST_TMPDIR/sudo.log"
+    id() { echo 0; }
+    sudo() { echo "sudo $*" >>"$sudo_called"; }
+    dnf() { echo "dnf $*" >>"$dnf_called"; }
+
+    DOTFILES_PROFILE=workstation
+    DOTFILES_CORE_DNF="zsh git"
+    DOTFILES_DEV_DNF="htop"
+    DOTFILES_GUI_LINUX_DNF="firefox"
+    dnf_install
+
+    [ ! -f "$sudo_called" ]
+    grep -qx 'dnf install -y zsh git htop firefox' "$dnf_called"
+}
+
+@test "dnf_install: core profile excludes dev + gui lists" {
+    dnf_called="$BATS_TEST_TMPDIR/dnf.log"
+    id() { echo 0; }
+    dnf() { echo "dnf $*" >>"$dnf_called"; }
+
+    DOTFILES_PROFILE=core
+    DOTFILES_CORE_DNF="zsh git"
+    DOTFILES_DEV_DNF="htop"
+    DOTFILES_GUI_LINUX_DNF="firefox"
+    dnf_install
+
+    grep -qx 'dnf install -y zsh git' "$dnf_called"
+}
+
+@test "dnf_install: no root + no sudo → skip with warning" {
+    id() { echo 1000; }
+    command() {
+        case "$2" in sudo) return 1 ;; *) builtin command "$@" ;; esac
+    }
+
+    run dnf_install
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "Neither root nor sudo" ]]
+}
+
+# --- brew_bundle_install ----------------------------------------------------
+
+@test "brew_bundle_install: workstation profile pipes core + dev brews and casks to brew bundle" {
+    brewfile="$BATS_TEST_TMPDIR/Brewfile"
+    dotfiles_ensure_brew_path() { return 0; }
+    brew() {
+        case "$1" in
+            bundle) cat >"$brewfile" ;;
+            list) return 1 ;;
+        esac
+    }
+
+    DOTFILES_PROFILE=workstation
+    DOTFILES_CORE_BREWS="git zsh"
+    DOTFILES_DEV_BREWS="libpq"
+    DOTFILES_GUI_MAC_CASKS="iterm2"
+    brew_bundle_install
+
+    [ "$(cat "$brewfile")" = "$(printf '%s\n' 'brew "git"' 'brew "zsh"' 'brew "libpq"' 'cask "iterm2"')" ]
+}
+
+@test "brew_bundle_install: core profile sends no dev brews and no casks" {
+    brewfile="$BATS_TEST_TMPDIR/Brewfile"
+    dotfiles_ensure_brew_path() { return 0; }
+    brew() {
+        case "$1" in
+            bundle) cat >"$brewfile" ;;
+            list) return 1 ;;
+        esac
+    }
+
+    DOTFILES_PROFILE=core
+    DOTFILES_CORE_BREWS="git"
+    DOTFILES_DEV_BREWS="libpq"
+    DOTFILES_GUI_MAC_CASKS="iterm2"
+    brew_bundle_install
+
+    [ "$(cat "$brewfile")" = 'brew "git"' ]
+}
+
+@test "brew_bundle_install: dev profile adds dev brews, still no casks" {
+    brewfile="$BATS_TEST_TMPDIR/Brewfile"
+    dotfiles_ensure_brew_path() { return 0; }
+    brew() {
+        case "$1" in
+            bundle) cat >"$brewfile" ;;
+            list) return 1 ;;
+        esac
+    }
+
+    DOTFILES_PROFILE=dev
+    DOTFILES_CORE_BREWS="git"
+    DOTFILES_DEV_BREWS="libpq"
+    DOTFILES_GUI_MAC_CASKS="iterm2"
+    brew_bundle_install
+
+    [ "$(cat "$brewfile")" = "$(printf '%s\n' 'brew "git"' 'brew "libpq"')" ]
+}
+
+@test "brew_bundle_install: failing bundle warns, still links libpq, returns 0" {
+    brew_called="$BATS_TEST_TMPDIR/brew.log"
+    dotfiles_ensure_brew_path() { return 0; }
+    brew() {
+        echo "brew $*" >>"$brew_called"
+        case "$1" in
+            bundle) cat >/dev/null; return 1 ;;
+            list) return 0 ;;
+        esac
+    }
+
+    DOTFILES_CORE_BREWS="git"
+    run brew_bundle_install
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "brew bundle had failures" ]]
+    grep -qx 'brew link --force libpq' "$brew_called"
+}
+
+@test "brew_bundle_install: brew absent → skip with warning, brew never called" {
+    brew_called="$BATS_TEST_TMPDIR/brew.log"
+    dotfiles_ensure_brew_path() { return 1; }
+    brew() { echo "brew $*" >>"$brew_called"; }
+
+    run brew_bundle_install
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "brew not found" ]]
+    [ ! -f "$brew_called" ]
+}
+
 # --- linux_pkg_install dispatcher -----------------------------------------
 
 @test "linux_pkg_install: linux-ubuntu → apt path" {
