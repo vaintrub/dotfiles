@@ -35,7 +35,7 @@ sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply vaintrub
 | `.chezmoitemplates/` | shared template partials (base configs read by `modify_` scripts, and `ai-common.md` read by both agents' instruction files, via `includeTemplate`; not applied to $HOME) |
 | `lib/` | shell libraries sourced by `.chezmoiscripts/*` wrappers via `{{ .chezmoi.sourceDir }}/lib/X.sh`. `common.sh` (privilege detection + package install, shared with the prereqs hook; the caller passes the manager explicitly so a distro chosen from `.osid` is never second-guessed) and `install-packages.sh`. Pure POSIX `sh`, no template syntax. Chezmoi-ignored so it never deploys to $HOME — also makes the libraries `source`-able by bats unit tests with mocked externals. |
 | `tests/files/*.bats` | post-apply asserts (CI: dotfile presence, tool functionality, content sanity). `common.bats` runs at every profile; `core.bats` / `dev.bats` carry the tier-specific asserts. |
-| `tests/unit/*.bats` | function-level unit tests that need no `chezmoi apply`. `common.bats` + `install-packages.bats` source `lib/` (with `INSTALL_PACKAGES_INVOKE` unset so `main` doesn't auto-run) and mock externals (`sudo`/`apt-get`/`dnf`/`mise`/`id`/`command`) to drive each branch. `ensure-prereqs.bats` runs the real prereqs hook under `/bin/sh` with PATH confined to fakes. `repo-invariants.bats` checks source-tree invariants instead — Claude/Codex skill sets match, symlink bodies resolve, no skill file is gitignored, root install scripts export mise's shims, every source path `save-to-dotfiles` names exists, the hand-written `dot_p10k.zsh` settings survive. |
+| `tests/unit/*.bats` | function-level unit tests that need no `chezmoi apply`. `common.bats` + `install-packages.bats` source `lib/` (with `INSTALL_PACKAGES_INVOKE` unset so `main` doesn't auto-run) and mock externals (`sudo`/`apt-get`/`dnf`/`mise`/`id`/`command`) to drive each branch. `ensure-prereqs.bats` runs the real prereqs hook under `/bin/sh` with PATH confined to fakes. `repo-invariants.bats` checks source-tree invariants instead — Claude/Codex skill sets match, symlink bodies resolve, no skill file is gitignored, root install scripts export mise's shims, the hook's package list stays inside `packages.core`, every source path `save-to-dotfiles` names exists, the hand-written `dot_p10k.zsh` settings survive. |
 | `.github/workflows/ci.yaml` | GitHub Actions: `unit` job (bats over all of `tests/unit/`) → `apply` job, a `profile: [core, dev]` matrix running `chezmoi apply` then `tests/files/common.bats` + `tests/files/<profile>.bats`. Triggers on push (master, chore/**, feat/**, feature/**, fix/**, docs/**). |
 | `.chezmoiversion`, `.chezmoiremove.tmpl` | chezmoi-native metadata: minimum-version pin + list of target paths to delete on apply. Entries are re-evaluated on EVERY apply, so a path listed here stays deleted until the entry goes — treat it as a short-lived migration step, not a record. What apply does with an entry depends on chezmoi's entry state, not on intent: with no record for the path it deletes whatever is there silently (rc 0), and finding the path already absent records nothing; it stops to ask only when it holds a record and the file no longer matches it (a non-interactive apply then exits 1); `--force` makes all three a silent delete. One entry today: the orphaned gitleaks hook `.config/git/hooks/pre-push`. |
 | `.chezmoi*.{toml.tmpl,ignore,external.toml.tmpl}` | chezmoi metadata (templated) |
@@ -363,11 +363,24 @@ chezmoi cd && git commit -am 'tmux: bump oh-my-tmux to <SHA>' && exit
 ## 7. Cross-platform conventions
 
 ### Hard prerequisites
-`git`, `zsh`, `vim`, `tmux`, `curl`. Installed automatically by
-`hooks/ensure-prereqs.sh` (registered as `hooks.read-source-state.pre`
-in `.chezmoi.toml.tmpl`) on every apply — runs apt/dnf on Linux, brew on Mac.
-Non-interactive runs demand passwordless sudo; if a hard prereq is still
-missing afterwards the hook exits 1 rather than letting the apply continue.
+`hooks/ensure-prereqs.sh` (registered as `hooks.read-source-state.pre` in
+`.chezmoi.toml.tmpl`) runs before every source-state read, but mutates only
+under `apply`, `init` and `update`, and never under `--dry-run`/`-n`; `diff`,
+`status`, `verify` and the rest leave it at once.
+
+- **Linux:** installs `git zsh vim tmux curl ca-certificates` via apt/dnf when
+  any is missing; non-interactive runs demand passwordless sudo. Only `git`
+  and `curl` are fatal — still missing afterwards, the hook exits 1. `zsh`,
+  `vim` and `tmux` play no part in reading the source state, so a box that
+  cannot install them gets a warning, and script 50 tries again later in the
+  same apply. The list is hardcoded (the hook runs before the source state
+  exists) and must stay a subset of `packages.core.{apt,dnf}`;
+  `repo-invariants.bats` enforces that.
+- **macOS:** installs Homebrew (the Xcode CLT comes with it) and mise, and
+  nothing else. There is no base-tool loop and no postcondition check on
+  Darwin, and that is intent, not a gap: macOS ships zsh, vim and curl, git
+  arrives with the CLT, and tmux comes from `packages.core.brews` in script 50.
+  Don't "fix" the code to match the Linux branch.
 
 ### Soft prerequisites (per-feature, skip with reason if missing)
 `brew` on Mac + `mise` cross-platform (both installed by the prereqs hook);

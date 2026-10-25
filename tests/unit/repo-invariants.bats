@@ -81,6 +81,34 @@ skill_names() {
     grep -q 'Emits OSC 133 semantic marks' dot_p10k.zsh
 }
 
+core_packages() {
+    # $1: apt | dnf — the items under packages.core.<manager> in packages.yaml.
+    awk -v mgr="$1:" '
+        /^packages:/ { p = 1; next }
+        /^[^ #]/ { p = 0 }
+        p && /^  [a-z]/ { core = ($1 == "core:") }
+        p && core && /^    [a-z]/ { m = ($1 == mgr) }
+        p && core && m && /^      - / { print $2 }
+    ' .chezmoidata/packages.yaml
+}
+
+@test "the prereqs hook installs nothing outside packages.core.{apt,dnf}" {
+    # The hook runs before the source state exists, so its list is hardcoded.
+    # It must stay a subset, or a box gets a package no tier asked for.
+    hook_pkgs=$(sed -n 's/^[[:space:]]*for tool in \(.*\); do$/\1/p' hooks/ensure-prereqs.sh)
+    [ -n "$hook_pkgs" ]
+    for mgr in apt dnf; do
+        core=$(core_packages "$mgr")
+        [ -n "$core" ]
+        for p in $hook_pkgs ca-certificates; do
+            grep -qx "$p" <<<"$core" || {
+                echo "hook installs $p, which is not in packages.core.$mgr" >&2
+                return 1
+            }
+        done
+    done
+}
+
 @test "every skill file is tracked by git (no .gitignore swallowing new skills)" {
     untracked=$(git ls-files --others --exclude-standard --ignored \
         -- 'dot_claude/skills/*' 'dot_codex/skills/*')

@@ -86,17 +86,26 @@ case "$(uname -s)" in
                 echo "  Install manually: sudo apt-get install -y$missing  (or dnf install -y$missing)" >&2
             fi
 
-            # These are hard prerequisites: the rest of the apply reads the
-            # source state with them (dot_gitconfig.tmpl shells out to git).
             # dotfiles_pkg_install never fails the caller, so check the
-            # postcondition and stop here rather than somewhere confusing.
+            # postcondition here rather than fail somewhere confusing. Only git
+            # and curl are fatal: this tree is a git checkout that `chezmoi
+            # update` pulls, and the mise install below fetches with curl. zsh,
+            # vim and tmux play no part in reading the source state, and script
+            # 50 installs them again later in this same apply.
             still_missing=""
-            for tool in git zsh vim tmux curl; do
+            for tool in git curl; do
                 command -v "$tool" >/dev/null 2>&1 || still_missing="$still_missing $tool"
             done
             if [ -n "$still_missing" ]; then
                 echo "ERROR: hard prerequisites still missing after install:$still_missing" >&2
                 exit 1
+            fi
+            soft_missing=""
+            for tool in zsh vim tmux; do
+                command -v "$tool" >/dev/null 2>&1 || soft_missing="$soft_missing $tool"
+            done
+            if [ -n "$soft_missing" ]; then
+                echo "WARNING: still missing after install:$soft_missing — script 50 retries them later in this apply." >&2
             fi
         fi
 

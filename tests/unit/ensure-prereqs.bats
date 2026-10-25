@@ -83,3 +83,24 @@ hook() {
     [ "$status" -eq 0 ]
     grep -q 'apt-get install' "$LOG"
 }
+
+# --- step 3: only git and curl are fatal ------------------------------------
+
+@test "tmux that cannot be installed is a warning, not a refused apply" {
+    UNINSTALLABLE="tmux" CHEZMOI_COMMAND=apply run hook
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "WARNING: still missing after install: tmux" ]]
+}
+
+@test "curl that cannot be installed stops the apply" {
+    rm "$BIN/curl"
+    UNINSTALLABLE="curl" CHEZMOI_COMMAND=apply run hook
+    [ "$status" -eq 1 ]
+    [[ "$output" =~ "hard prerequisites still missing after install: curl" ]]
+}
+
+@test "git that cannot be installed stops the apply" {
+    UNINSTALLABLE="git" CHEZMOI_COMMAND=apply run hook
+    [ "$status" -eq 1 ]
+    [[ "$output" =~ "hard prerequisites still missing after install: git" ]]
+}
