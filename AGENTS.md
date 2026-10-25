@@ -37,7 +37,7 @@ sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply vaintrub
 | `tests/files/*.bats` | post-apply asserts (CI: dotfile presence, tool functionality, content sanity). `common.bats` runs at every profile; `core.bats` / `dev.bats` carry the tier-specific asserts. |
 | `tests/unit/*.bats` | function-level unit tests that need no `chezmoi apply`. `common.bats` + `install-packages.bats` source `lib/` (with `INSTALL_PACKAGES_INVOKE` unset so `main` doesn't auto-run) and mock externals (`sudo`/`apt-get`/`dnf`/`mise`/`id`/`command`) to drive each branch. `repo-invariants.bats` checks source-tree invariants instead — Claude/Codex skill sets match, symlink bodies resolve, no skill file is gitignored, root install scripts export mise's shims, every source path `save-to-dotfiles` names exists. |
 | `.github/workflows/ci.yaml` | GitHub Actions: `unit` job (bats over all of `tests/unit/`) → `apply` job, a `profile: [core, dev]` matrix running `chezmoi apply` then `tests/files/common.bats` + `tests/files/<profile>.bats`. Triggers on push (master, chore/**, feat/**, feature/**, fix/**, docs/**). |
-| `.chezmoiversion`, `.chezmoiremove.tmpl` | chezmoi-native metadata: minimum-version pin + list of target paths to delete on apply. Entries are re-evaluated on EVERY apply, so a path listed here stays deleted until the entry goes — treat it as a short-lived migration step, not a record. Empty today. |
+| `.chezmoiversion`, `.chezmoiremove.tmpl` | chezmoi-native metadata: minimum-version pin + list of target paths to delete on apply. Entries are re-evaluated on EVERY apply, so a path listed here stays deleted until the entry goes — treat it as a short-lived migration step, not a record. What apply does with an entry depends on chezmoi's entry state, not on intent: with no record for the path it deletes whatever is there silently (rc 0), and finding the path already absent records nothing; it stops to ask only when it holds a record and the file no longer matches it (a non-interactive apply then exits 1); `--force` makes all three a silent delete. One entry today: the orphaned gitleaks hook `.config/git/hooks/pre-push`. |
 | `.chezmoi*.{toml.tmpl,ignore,external.toml.tmpl}` | chezmoi metadata (templated) |
 | `README.md`, `LICENSE` | docs / license |
 | `AGENTS.md` (this file), `CLAUDE.md` → `AGENTS.md` (symlink) | repo-level AI guide |
@@ -58,7 +58,7 @@ The mapping from source file name to live `$HOME` path is mechanical and chezmoi
 | `dot_X` | becomes `.X` in target ($HOME) |
 | `executable_X` | mode +x |
 | `private_X` | mode 0600 (or 0700 dir) |
-| `readonly_X` | mode 0400 |
+| `readonly_X` | clears the write bits — 0444 at a 022 umask, not 0400. For 0400 use `private_readonly_X`, in that order: `readonly_private_X` lands a file literally named `private_X` (same attribute-order trap as `modify_private_`) |
 | `symlink_X` | becomes a symbolic link; file content = link target string |
 | `modify_X` | runs as a script: stdin = existing file content, stdout = new file content |
 | `modify_X` + `#chezmoi:modify-template` annotation | template; `.chezmoi.stdin` = existing; output = new content |
@@ -251,13 +251,18 @@ rendered unconditionally into `~/.config/mise/config.toml` (see
 to anonymous). Pre-exported `GITHUB_TOKEN` env still
 wins; this also covers interactive `mise upgrade`/`install`, not just apply.
 
-Secret-handling architecture (three layers, three mechanisms):
+Secret-handling architecture (three concerns, three mechanisms):
 
 | Concern | Mechanism | Where |
 |---|---|---|
 | Install-time | mise `github.credential_command = "gh auth token"` + recovery warning if rate-limited | mise config + `mise_install_tools()` |
-| Render-time | chezmoi-native `onepasswordRead` via `.chezmoidata/secrets.yaml` `op_refs:` catalog | per-file `private_dot_<X>.tmpl` |
+| Runtime SSH auth | 1Password's agent for a local login; over SSH the forwarded agent, pinned behind `~/.ssh/agent.sock` | `dot_config/private_1Password/private_ssh/private_agent.toml`, `dot_zshrc` `# --- SSH agent ---` |
 | Runtime CLI | 1Password Shell Plugins (`op plugin init <cli>`) | user-managed, per-CLI |
+
+No file renders a secret today. When the first one does, it will read it with
+chezmoi's native `{{ onepasswordRead "op://<vault>/<item>/<field>" }}` inside a
+`private_dot_<X>.tmpl` target, so the rendered file lands 0600; a reference
+catalog under `.chezmoidata/` earns its place only once several files share it.
 
 The library is pure POSIX `sh` with no template syntax — bats unit tests
 under `tests/unit/install-packages.bats` `source` it (with the invoke
@@ -395,8 +400,25 @@ not a hard fail. `mise` then materializes the toolchain per
 | `dot_codex/modify_private_config.toml` | **Go template** | `#chezmoi:modify-template` annotation, uses chezmoi `fromToml`/`toToml`/`mergeOverwrite`. `private_` here because Codex writes the target 0600. |
 
 ### Lint
-- `shellcheck -x` for shell scripts in `.chezmoiscripts/`, `hooks/`, `lib/`
-  and `dot_claude/`. Run locally before committing — deliberately not a CI job.
+- Plain shell (`hooks/`, `lib/`, `dot_claude/executable_statusline-command.sh`):
+  `shellcheck -x <file>`.
+- Script templates (`.chezmoiscripts/**/*.sh.tmpl`): shellcheck dies on the
+  first `{{`, so render first and lint the result:
+  ```sh
+  set -o pipefail
+  chezmoi execute-template --source . < f.sh.tmpl | shellcheck -x -s sh -
+  ```
+  - `-s sh` is required: an OS-guarded script renders to zero bytes on the
+    other OS, and bare shellcheck fails that with SC2148.
+  - `-x` is required, or the unfollowed `. lib/common.sh` (SC1091) exits 1.
+  - `--source .` needs a chezmoi config with `[data]` filled in; on a machine
+    with none it dies with `map has no entry for key "profile"`.
+  - Without `pipefail` a render failure is invisible: the pipeline reports
+    shellcheck's status, and `-s sh` suppresses the SC2148 an empty render
+    would raise. A green run is not proof the file rendered.
+  - To lint the other OS's branch, add `--override-data
+    '{"chezmoi":{"os":"linux"}}'` (or `darwin`).
+- Run locally before committing — deliberately not a CI job.
 - `shellcheck` doesn't support zsh — `dot_zshrc` / `dot_p10k.zsh` not linted
 
 ### Style

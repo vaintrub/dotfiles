@@ -103,7 +103,7 @@ Three mechanisms, one per concern — full guide in [AGENTS.md](AGENTS.md):
 No global git hooks: `core.hooksPath` replaces a repository's own `.git/hooks` instead of adding to it, so a machine-wide hook silently disables whatever a project installed. Secret scanning belongs in CI or GitHub push protection; `gitleaks git` stays on PATH for a manual sweep.
 
 - **Install-time** (GitHub API rate limit): mise reads `gh auth token` via `github.credential_command`, so `gh auth login` once is enough (5000/hr authed vs 60 anon).
-- **Render-time** (tokens baked into files like `~/.npmrc`): chezmoi-native `onepasswordRead` against the `.chezmoidata/secrets.yaml` catalog, into a `private_` (0600) target.
+- **Runtime SSH auth**: 1Password's SSH agent for a local login; over SSH the forwarded agent, which `~/.zshrc` pins behind `~/.ssh/agent.sock` so tmux panes outlive the login that started them.
 - **Runtime CLI auth**: [1Password Shell Plugins](https://developer.1password.com/docs/cli/shell-plugins/) per CLI — `op plugin init gh` / `aws` / `npm`, biometric-gated, no disk exposure.
 
 ## tmux
