@@ -10,7 +10,7 @@ Exceptions:
 - A specific change the user just directed in this turn ("fix that typo", "remove the `console.log`").
 - Doc-only edits (notes/, docs/, AGENTS.md, ADR, README) — those are free without pre-approval, since they're reversible and discussion-friendly.
 
-**Why:** During Hero Phase 2 (calliope, 2026-05-12), I repeatedly translated user requests into immediate code:
+**Why:** During one landing-page iteration session, I repeatedly translated user requests into immediate code:
 
 > User: "background looks boring, let's make it nicer + cursor animation + new video + video bottom corner is missing"
 > Me: *writes all four changes in one shot, ships, asks user to look*

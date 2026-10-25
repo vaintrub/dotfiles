@@ -5,7 +5,7 @@ description: Universal — don't trust verbal descriptions of bugs. Ask for scre
 
 **Rule:** When the user reports a bug verbally — "elements overlap when I scroll", "horizontal scrollbar in the middle", "this looks wrong" — ask for visual evidence (screenshot, screen recording, log output, error message) BEFORE proposing a fix.
 
-**Why:** Verbal descriptions of bugs are ambiguous in ways that aren't obvious to either side. In the Hero Phase 2 session (calliope, 2026-05-12):
+**Why:** Verbal descriptions of bugs are ambiguous in ways that aren't obvious to either side. In one landing-page session:
 
 - User said "horizontal scrollbar in the middle of the screen" → I assumed page overflow → spent ~30 minutes diagnosing. Actual cause: viewport-override conflict between MCP emulation, DevTools device toolbar, and physical Chrome window. None of my code had any overflow.
 - User said "not fullscreen" → I assumed vertical → added `min-height: 100svh`. User actually meant the 1240 px container looked tiny on their (assumed) 4K monitor — needed edge-to-edge fix.

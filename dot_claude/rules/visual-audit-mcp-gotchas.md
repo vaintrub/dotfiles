@@ -17,7 +17,7 @@ paths:
 
 **Rule:** When using `chrome-devtools` MCP for visual audits, expect these specific failure modes and apply the workarounds proactively.
 
-**Why:** Each of these caused ~30+ minutes of confusion during the Hero Phase 2 session (calliope, 2026-05-12). They are reproducible and predictable — adding them to memory means the next visual-audit session avoids them.
+**Why:** Each of these caused ~30+ minutes of confusion during one landing-page session. They are reproducible and predictable — adding them to memory means the next visual-audit session avoids them.
 
 ## Gotcha 1 — Three layers of viewport override can silently conflict
 
