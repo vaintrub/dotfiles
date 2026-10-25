@@ -29,13 +29,13 @@ sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply vaintrub
 | `iterm/com.googlecode.iterm2.plist` | real iTerm2 plist, currently XML so it diffs (chezmoi-ignored). iTerm2 reads + writes here directly via `PrefsCustomFolder` (set by run_once_after script) |
 | `dot_claude/` | Claude Code: instructions, settings (modify_), statusline, skills, rules |
 | `dot_codex/` | Codex CLI: AGENTS.md, config.toml (modify_), shared skills (symlink) |
-| `.chezmoidata/packages.yaml` | single source of truth for all packages (Mac brews/casks, Linux apt/dnf), Claude/Codex plugin lists, AND MCP servers (`mcp:` — one list, into both agents: Claude via `claude mcp add` in 70, Codex declaratively in `codex-config-base.toml`; keyless remote only) |
+| `.chezmoidata/packages.yaml` | single source of truth for all packages (Mac brews/casks, Linux apt/dnf) and MCP servers (`mcp:` — one list, into both agents: Claude via `claude mcp add` in 70, Codex declaratively in `codex-config-base.toml`; keyless remote only). For Claude/Codex plugins it is the install baseline, not enable state (§9) |
 | `.chezmoiscripts/` | install hooks (run_once_after_*, run_onchange_after_*). Per-OS subdirs: `darwin/`, `linux/`. The numeric prefix orders the root scripts — 50 packages + mise tools, 70 Claude/Codex plugins + Claude MCP, 99 first-apply hint; subdir scripts sort after all of them, so the hint prints before the per-OS steps |
 | `hooks/` | hook scripts registered in `.chezmoi.toml.tmpl`. `ensure-prereqs.sh` runs BEFORE source-state read on every apply, installing minimum tools (git/zsh/vim/tmux/curl + brew on Mac). Sources `lib/common.sh` via `$(dirname "$0")/../lib/`. |
 | `.chezmoitemplates/` | shared template partials (base configs read by `modify_` scripts, and `ai-common.md` read by both agents' instruction files, via `includeTemplate`; not applied to $HOME) |
 | `lib/` | shell libraries sourced by `.chezmoiscripts/*` wrappers via `{{ .chezmoi.sourceDir }}/lib/X.sh`. `common.sh` (privilege detection + package install, shared with the prereqs hook; the caller passes the manager explicitly so a distro chosen from `.osid` is never second-guessed) and `install-packages.sh`. Pure POSIX `sh`, no template syntax. Chezmoi-ignored so it never deploys to $HOME — also makes the libraries `source`-able by bats unit tests with mocked externals. |
 | `tests/files/*.bats` | post-apply asserts (CI: dotfile presence, tool functionality, content sanity). `common.bats` runs at every profile; `core.bats` / `dev.bats` carry the tier-specific asserts. |
-| `tests/unit/*.bats` | function-level unit tests that need no `chezmoi apply`. `common.bats` + `install-packages.bats` source `lib/` (with `INSTALL_PACKAGES_INVOKE` unset so `main` doesn't auto-run) and mock externals (`sudo`/`apt-get`/`dnf`/`mise`/`id`/`command`) to drive each branch. `repo-invariants.bats` checks source-tree invariants instead — Claude/Codex skill sets match, symlink bodies resolve, no skill file is gitignored. |
+| `tests/unit/*.bats` | function-level unit tests that need no `chezmoi apply`. `common.bats` + `install-packages.bats` source `lib/` (with `INSTALL_PACKAGES_INVOKE` unset so `main` doesn't auto-run) and mock externals (`sudo`/`apt-get`/`dnf`/`mise`/`id`/`command`) to drive each branch. `repo-invariants.bats` checks source-tree invariants instead — Claude/Codex skill sets match, symlink bodies resolve, no skill file is gitignored, root install scripts export mise's shims, every source path `save-to-dotfiles` names exists. |
 | `.github/workflows/ci.yaml` | GitHub Actions: `unit` job (bats over all of `tests/unit/`) → `apply` job, a `profile: [core, dev]` matrix running `chezmoi apply` then `tests/files/common.bats` + `tests/files/<profile>.bats`. Triggers on push (master, chore/**, feat/**, feature/**, fix/**, docs/**). |
 | `.chezmoiversion`, `.chezmoiremove.tmpl` | chezmoi-native metadata: minimum-version pin + list of target paths to delete on apply. Entries are re-evaluated on EVERY apply, so a path listed here stays deleted until the entry goes — treat it as a short-lived migration step, not a record. Empty today. |
 | `.chezmoi*.{toml.tmpl,ignore,external.toml.tmpl}` | chezmoi metadata (templated) |
@@ -406,39 +406,50 @@ not a hard fail. `mise` then materializes the toolchain per
 - **Feature detection**: `command -v foo >/dev/null 2>&1`, never `which`
 - **Idempotency**: check state first, print "Already X" when there's nothing to do
 
-## 9. Codex runtime-section strip (via chezmoi `modify_`)
+## 9. Tool-written config: the two `modify_` merges
 
-Codex auto-writes several sections into `~/.codex/config.toml` after every
-session: `[projects."<path>"]` (trust state), `[notice]` (UI dismissals),
-`[tui.*]` (theme + NUX counters), `[tool_suggest]` (disabled tools),
-`[marketplaces.*]` (plugin-source paths + fetch timestamps), top-level
-`windows_wsl_setup_acknowledged`.
+Codex and Claude Code both rewrite their own config files, so neither is a
+plain chezmoi target. Each is a `modify_` template — the
+`#chezmoi:modify-template` annotation makes chezmoi render it as a Go template
+with the current target as `.chezmoi.stdin`, and the output is the new file —
+and each pulls its curated base from `.chezmoitemplates/` via `includeTemplate`.
 
-`[desktop]` (font sizes, detail mode) and `[features]` look similar but
-are user preferences, not runtime state — leave them in the target.
+**Codex.** `dot_codex/modify_private_config.toml` parses the live file,
+`mergeOverwrite`s `codex-config-base.toml` on top (the base wins for the keys it
+declares) and serialises the result with `toToml`. Everything else Codex writes
+passes through: `[projects."<path>"]` trust rows, `[marketplaces.*]`, `[tui.*]`,
+`[notice]`, `[tool_suggest]`, `[[skills.config]]`, `[desktop]`, `[features]`.
+That state is per-machine and still never reaches git: apply writes only the
+target, and `chezmoi re-add` is a silent no-op on a `modify_` entry. The one way
+it does reach git is `chezmoi add ~/.codex/config.toml`, which exits 0, deletes
+the template, and writes the live file — trust rows included — as a plain
+`dot_codex/private_config.toml` into a public repo. Never run it; edit the base.
 
-These are per-machine runtime state — we don't sync them across machines.
-`dot_codex/modify_private_config.toml` handles this: on every `chezmoi apply`,
-the existing target file is piped in, runtime sections are dropped via
-chezmoi's `fromToml` / `unset` template functions, our curated base from
-`.chezmoitemplates/codex-config-base.toml` is `mergeOverwrite`-ed on top,
-then serialized back via `toToml`. Idempotent — applies don't grow the file.
+`model` and `model_reasoning_effort` stay out of the base: Codex writes both from
+its TUI, and a base value would revert that choice on every apply.
 
-The annotation `#chezmoi:modify-template` at the top of the file tells
-chezmoi to render it as a Go template (not run as a script) and exposes
-the existing target file's contents as `.chezmoi.stdin`.
+After any Codex session `chezmoi status` shows `MM .codex/config.toml`, and it
+stays: Codex writes the file in its own order and quoting, `toToml` re-serialises
+it alphabetically, so actual never equals target. That line is not drift. `czs`
+(in `dot_zshrc`) is `chezmoi status` with that line filtered out and chezmoi's
+exit status kept.
 
-When the **`ConfigEdit` enum** in
-[`codex-rs/core/src/config/edit.rs`](https://github.com/openai/codex/tree/main/codex-rs/core/src/config/edit.rs)
-gains a new runtime section variant, add it to the `unset` chain in
-`dot_codex/modify_private_config.toml`.
+**Claude Code.** `dot_claude/modify_settings.json` (`fromJson` /
+`mergeOverwrite` / `toPrettyJson`) merges in two steps so the curated base stays
+authoritative for the keys it declares while tool-written keys survive; see the
+header comment in that file. iTerm2's Claude Code integration and the `claude`
+CLI both rewrite the file's formatting and key order, so an `MM` on it is
+usually noise — compare with `jq -S` before calling it drift.
 
-`dot_claude/modify_settings.json` does the analogous thing for Claude Code —
-also a pure Go template (`fromJson` / `mergeOverwrite` / `toPrettyJson`), not
-shell+jq. It merges in two steps so the curated base stays authoritative for
-the keys it declares while tool-written keys survive; see the header comment
-in that file. Both modify_ scripts pull their base from `.chezmoitemplates/`
-via `includeTemplate`.
+`enabledPlugins` is a union, which makes `plugins.claude` in
+`.chezmoidata/packages.yaml` an install baseline, not enable state: script 70
+installs every listed plugin, the base enables them, and a value already in the
+live file wins, so a plugin turned off with `claude plugin disable -s user`
+stays off. (Codex is the opposite: plugins under `plugins.codex` are re-enabled
+on every apply.) Retiring a Claude plugin takes three steps on each machine,
+because script 70 never uninstalls and the union keeps the row: drop the
+`packages.yaml` line, run `claude plugin uninstall <plugin>`, and delete its
+`enabledPlugins` entry from `~/.claude/settings.json`.
 
 ## 10. Visual coordination — SSH cues
 

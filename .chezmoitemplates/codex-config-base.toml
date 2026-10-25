@@ -14,6 +14,5 @@ enabled = true
 url = "{{ .url }}"
 
 {{ end -}}
-# Runtime-mutated sections ([projects.*], [notice], [tui.*], [tool_suggest],
-# [marketplaces.*], [[skills.config]]) are stripped on every apply by
-# dot_codex/modify_private_config.toml — see AGENTS.md §9.
+# Sections Codex writes at runtime ([projects.*], [marketplaces.*], [tui.*],
+# [notice], ...) are left alone by the merge — see AGENTS.md §9.

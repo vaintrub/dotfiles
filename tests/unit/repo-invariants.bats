@@ -53,6 +53,25 @@ skill_names() {
     done
 }
 
+@test "every source path save-to-dotfiles names exists" {
+    # Agents follow this table without checking it, and it has rotted before.
+    # Placeholders (<name>) and brace sets are skipped; globs must match.
+    missing=""
+    while IFS= read -r p; do
+        case "$p" in *'<'*|*'{'*|*' '*) continue ;; esac
+        if [[ $p == *'*'* ]]; then
+            compgen -G "$p" >/dev/null || missing="$missing $p"
+        else
+            [ -e "$p" ] || missing="$missing $p"
+        fi
+    done < <(grep -oE '`(dot_|\.chezmoi)[^`]*`' dot_claude/skills/save-to-dotfiles/SKILL.md \
+        | tr -d '`' | sort -u)
+    if [ -n "$missing" ]; then
+        echo "save-to-dotfiles names source paths that do not exist:$missing" >&2
+    fi
+    [ -z "$missing" ]
+}
+
 @test "every skill file is tracked by git (no .gitignore swallowing new skills)" {
     untracked=$(git ls-files --others --exclude-standard --ignored \
         -- 'dot_claude/skills/*' 'dot_codex/skills/*')

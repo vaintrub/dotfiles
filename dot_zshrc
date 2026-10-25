@@ -106,6 +106,17 @@ code() {
 # --- Aliases ---
 alias zshconfig="vim ~/.zshrc"
 
+# `chezmoi status` minus `MM .codex/config.toml`, which Codex makes permanent
+# (AGENTS.md §9). Filters the output only; chezmoi's exit status survives.
+czs() {
+    local out
+    out=$(chezmoi status "$@") || return
+    local -a lines=( "${(@f)out}" )
+    lines=( ${lines:#MM .codex/config.toml} )
+    (( $#lines )) && print -rl -- $lines
+    return 0
+}
+
 # --- Locale ---
 export LANG=en_US.UTF-8
 

@@ -543,6 +543,20 @@ own agent** (this is the regression the `elif` shape caused).
 Six findings argue about the same twenty lines and five of them are documentation
 *of* those lines. Deciding the code first collapses them.
 
+**Landed** (the model item in its own commit, the rest in one more). All six
+unsets went, `notice` included, leaving a one-line merge.
+`alwaysThinkingEnabled` is out of the Claude base. §9 is rewritten, `czs` ships
+in `dot_zshrc`, and `save-to-dotfiles` has its five rows fixed plus the `mcp:`
+row, with a repo invariant over every source path it names. The disputed
+`~/.zshrc_local` exception was checked before it was written down: an edit
+never shows in `chezmoi status`, a deletion shows `DA .zshrc_local`, and a
+non-interactive apply then exits 1 on the overwrite prompt. One fact surfaced
+on the way and is now in §9: the Codex merge has base-wins semantics, so
+`plugins.codex` entries are re-enabled on every apply, the opposite of the
+Claude union. Verified by rendering the template against the pre-Wave-1 live
+file. The trust row and both marketplaces survive, the output is semantically
+identical to the input, and a second render is byte-identical.
+
 - **Delete the `unset` chain** — `dot_codex/modify_private_config.toml:15-21`,
   which is **six** unsets: the five section unsets plus the `skills.config` strip
   that the prose must name explicitly, or "drop the rest" is undefined for it.
