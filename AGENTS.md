@@ -379,10 +379,12 @@ not a hard fail. `mise` then materializes the toolchain per
 `dot_config/mise/config.toml.tmpl` (profile-aware: `core` = fzf+zoxide+jq;
 `dev`/`workstation` = full set: Go/Python/Node/Rust + 27 more aqua binaries + op (vfox) + rtk (github) + goimports (go) + ssh-audit (pipx)).
 
-### Headless SSH detection (for things like font install)
+### Headless detection (font install, Linux only)
 ```sh
-[ -n "$SSH_CONNECTION" ] && [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ]
+[ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ]
 ```
+No `SSH_CONNECTION` test: a console, cron or CI apply has no display either.
+Never apply it on macOS, which sets neither variable.
 
 ### OS branching pattern in .tmpl files
 ```

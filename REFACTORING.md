@@ -681,6 +681,17 @@ folder trust and theme survive an apply; `jq -r '.enabledPlugins'
 
 Zero apply risk on the Mac. Group as 3–4 commits.
 
+**Landed in four commits.** One for docs (lint recipe, `readonly_`,
+`.chezmoiremove`, secrets, plus the `secrets.yaml` deletion), one for the rules
+narratives, one for tests (brew/dnf plus the p10k guard), one for fonts. The §7
+"Hard prerequisites" rewrite stays with Wave 5 step 3, as planned. Two
+departures. The secrets table never got the SSH-agent row Wave 2 was assumed
+to add, so this wave added it, and the count stays three. And every corrected
+chezmoi claim was re-run on 2.73.3 in a scratch source/destination pair rather
+than carried over from the 2.72.0 notes. All held: `readonly_` 0444,
+`private_readonly_` 0400, `readonly_private_` gives a literal `private_dot_X`,
+and the three `.chezmoiremove` cases plus `--force`.
+
 - AGENTS.md §7 "Hard prerequisites" is false for macOS in both directions.
   **This rewrite belongs in Wave 5 step 3's commit** — the same paragraph states
   the five-tool hard-fail that step 3 narrows. Whichever wave owns it must also

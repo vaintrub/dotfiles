@@ -1,6 +1,7 @@
-{{- /* Skipped on headless Linux, where fontconfig may not even be installed. */ -}}
+{{- /* Skipped on Linux with no display, where fontconfig may not even be
+  installed. Same probe as .chezmoiexternal.toml.tmpl — keep them in step. */ -}}
 {{- $headless := false -}}
-{{- if and (ne (env "SSH_CONNECTION") "") (eq (env "DISPLAY") "") (eq (env "WAYLAND_DISPLAY") "") -}}
+{{- if and (eq (env "DISPLAY") "") (eq (env "WAYLAND_DISPLAY") "") -}}
 {{- $headless = true -}}
 {{- end -}}
 {{- if and (eq .chezmoi.os "linux") (not $headless) -}}
