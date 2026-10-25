@@ -98,7 +98,7 @@ Map intent → source file (in the chezmoi source dir; `chezmoi cd` to navigate)
 | Claude custom skill | `dot_claude/skills/<name>/SKILL.md` | next Claude session |
 | Rule for BOTH agents (git, stack, style, workflow) | `.chezmoitemplates/ai-common.md` — included by `dot_claude/CLAUDE.md.tmpl` and `dot_codex/AGENTS.md.tmpl` | next session of either |
 | Codex-only behavioural rule | `dot_codex/AGENTS.md.tmpl` (inline, outside the shared include) | next Codex session |
-| Codex setting (model, plugin) | `.chezmoitemplates/codex-config-base.toml` (`dot_codex/modify_private_config.toml` merges) | next Codex session |
+| Codex setting (personality, plugin; never `model` / `model_reasoning_effort` — Codex owns those from its TUI) | `.chezmoitemplates/codex-config-base.toml` (`dot_codex/modify_private_config.toml` merges) | next Codex session |
 | Codex skill | `dot_claude/skills/<name>/SKILL.md` PLUS `dot_codex/skills/<name>/symlink_SKILL.md` whose body is `../../../.claude/skills/<name>/SKILL.md`. `~/.codex/skills` is a real directory — per-skill file symlinks, not a directory symlink. | next Codex session |
 | New file to manage (new `~/.<X>` to track) | `chezmoi add ~/.<X>` (copies live → `dot_<X>` in source) | already applied |
 | New install-time hook | `.chezmoiscripts/run_<once_before|onchange_after|once_after>_<name>.sh.tmpl` | next `chezmoi apply` |

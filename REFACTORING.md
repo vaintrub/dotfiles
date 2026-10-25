@@ -163,10 +163,12 @@ that never source a zshrc. Both are needed.
 
 ## 2. Ground rules
 
-- `git tag pre-audit master && git switch -c chore/audit-remediation` (the
-  branch name matches CI's `chore/**` trigger). One wave per commit; Waves 4 and
-  5 split into 3–4. Rollback is `git revert <sha> && chezmoi apply`; the floor is
-  `git reset --hard pre-audit && chezmoi apply`.
+- `git switch -c chore/audit-remediation` (the branch name matches CI's
+  `chore/**` trigger). One wave per commit; Waves 4 and 5 split into 3–4, and
+  every wave accumulates on PR #45. Rollback is `git revert <sha> && chezmoi
+  apply`; the floor is `git switch master && chezmoi apply`. There is no
+  `pre-audit` tag, by decision: until #45 merges, master holds nothing of the
+  programme except Wave 2.
   Two carve-outs. **Wave 5 steps 1 and 2 revert together or not at all** —
   reverting the gitconfig guard while the hook gate stands re-creates the failure
   the ordering exists to prevent. And **the iTerm2 plist reverts only with iTerm2
@@ -212,7 +214,7 @@ that never source a zshrc. Both are needed.
 
 ### Wave 0 — safety net and baseline (no functional change)
 
-- Branch + `pre-audit` tag. (The tree already carries this file, its
+- Branch (no tag — see §2). (The tree already carries this file, its
   `.chezmoiignore` entry, and the Wave 6 trigger removal; commit those first so
   `git status` is clean.)
 - Run `chezmoi init` once. It is not drift: the rendered template is
@@ -602,8 +604,9 @@ Six findings argue about the same twenty lines and five of them are documentatio
   `permissions.defaultMode`, `skipAutoPermissionPrompt` and `voiceEnabled`. (See
   §5 for the security cost those two carry alongside unpinned third-party
   plugins — real, and not an argument for removing them blindly.)
-- Delete `model = "gpt-5.6-sol"` from the Codex base. It fights the TUI the same
-  way `model_reasoning_effort` does two lines above. (Commit 40cb6d8 is not
+- **Done:** `model = "gpt-5.6-sol"` is deleted from the Codex base. It fought the
+  TUI the same way `model_reasoning_effort` did, and the `save-to-dotfiles` row
+  that routed `model` there now says not to. (Commit 40cb6d8 is not
   *solely* that hand-sync — its subject line is the marketplace strip — but it
   does carry it.)
 - **Keep the two-step Claude merge and `deepCopy`.** State the experiment
@@ -1130,7 +1133,8 @@ so the first apply after that date carries a silent major-version move as a side
 effect of an unrelated refactor. `mise lock --global` also closes the
 "same config text, different versions a month apart" gap — **but only after the
 lockfile it writes (`~/.config/mise/mise.lock`) is itself chezmoi-managed**;
-untracked, it pins one machine and no other.
+untracked, it pins one machine and no other. Decided 2026-10-25: the 24 → 26
+move is accepted and `lts` stays unpinned; the lockfile question stays open.
 
 **`chezmoi apply` is not convergent when it half-fails.** Every install path
 turns failure into a stderr line and returns 0, after which the wrapper exits 0

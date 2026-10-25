@@ -1,6 +1,5 @@
-# model_reasoning_effort is deliberately absent: Codex writes it from the TUI,
-# and pinning it here would revert the choice on every apply.
-model = "gpt-5.6-sol"
+# model and model_reasoning_effort are deliberately absent: Codex writes both
+# from the TUI, and pinning them here would revert the choice on every apply.
 personality = "pragmatic"
 
 {{ range .plugins.codex -}}
