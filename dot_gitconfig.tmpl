@@ -53,10 +53,16 @@
 {{- end }}
 
 [merge]
-{{- $gitVersion := output "git" "--version" | regexFind "[0-9]+\\.[0-9]+\\.[0-9]+" }}
+{{- /*
+  Through sh, not `output "git"`: a missing git, or macOS's CLT stub after an
+  OS upgrade, exits non-zero, and `output` then aborts every whole-tree
+  command (status, diff, verify, apply). An empty version falls to diff3
+  rather than reaching semverCompare, which errors on "".
+*/ -}}
+{{- $gitVersion := output "sh" "-c" "git --version 2>/dev/null || true" | regexFind "[0-9]+\\.[0-9]+\\.[0-9]+" }}
     # zdiff3 (zealous diff3) needs git >= 2.35; older git (e.g. Ubuntu jammy
     # 2.34) errors "unknown style 'zdiff3'" on checkout/merge. diff3 elsewhere.
-{{- if semverCompare ">=2.35.0" $gitVersion }}
+{{- if and $gitVersion (semverCompare ">=2.35.0" $gitVersion) }}
     conflictStyle = zdiff3
 {{- else }}
     conflictStyle = diff3
