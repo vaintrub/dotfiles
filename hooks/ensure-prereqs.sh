@@ -8,6 +8,24 @@
 #   apt/dnf + mise via curl-pipe. No Alpine/Arch support.
 set -eu
 
+# chezmoi runs this before EVERY source-state read — diff, status, verify,
+# managed — and only the commands that apply state may install anything.
+# A dry run reports CHEZMOI_COMMAND=apply, so it is caught by its flags in
+# CHEZMOI_ARGS (the whole argv; -*n* covers short clusters like -nv).
+case "${CHEZMOI_COMMAND:-apply}" in
+    apply|init|update) ;;
+    *) exit 0 ;;
+esac
+set -f
+for _arg in ${CHEZMOI_ARGS:-}; do
+    case "$_arg" in
+        --dry-run) exit 0 ;;
+        --*) ;;
+        -*n*) exit 0 ;;
+    esac
+done
+set +f
+
 export DEBIAN_FRONTEND=noninteractive
 export TZ=Etc/UTC
 
