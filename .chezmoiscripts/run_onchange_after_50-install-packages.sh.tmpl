@@ -6,7 +6,8 @@
 #!/bin/sh
 set -eu
 
-# Non-interactive apt (chezmoi child sh has no TTY).
+# apt must never stop the apply on a debconf question. Not a no-TTY workaround:
+# chezmoi hands its own stdin to scripts, so a terminal may well be attached.
 export DEBIAN_FRONTEND=noninteractive
 export TZ=Etc/UTC
 
@@ -41,8 +42,8 @@ export DOTFILES_GUI_LINUX_DNF={{ (.packages.gui.linux_dnf | default (list)) | so
 
 # GITHUB_TOKEN for mise's GitHub-backed installs: pre-exported env wins.
 # Otherwise mise authenticates itself via `github.credential_command =
-# "gh auth token"` (rendered into ~/.config/mise/config.toml when gh is on
-# PATH — see dot_config/mise/config.toml.tmpl). Empty = anonymous (60/hr).
+# "gh auth token"` (see dot_config/mise/config.toml.tmpl). No gh, or gh not
+# logged in = anonymous (60/hr).
 # On rate-limit, lib/install-packages.sh::mise_install_tools() warns + hints.
 export INSTALL_PACKAGES_INVOKE=1
 # common.sh first: install-packages.sh calls into it.

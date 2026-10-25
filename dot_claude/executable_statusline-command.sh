@@ -8,7 +8,7 @@
 set -eu
 
 input=$(cat)
-cwd=$(echo "$input" | jq -r '.cwd // ""')
+cwd=$(echo "$input" | jq -r '.cwd // ""' 2>/dev/null || true)
 [ -z "$cwd" ] && cwd="$PWD"
 dir=$(basename "$cwd")
 

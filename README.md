@@ -41,8 +41,8 @@ Prompted on init (the detected env is shown as a hint; you pick). Cached in `~/.
 
 | Profile | What you get | Use case |
 |---|---|---|
-| `core` | OS baseline (zsh, vim, tmux, git, curl; Linux also ufw, tcpdump) + Nerd fonts (skipped on headless Linux) + mise + fzf + zoxide. ~50 MB. | VPS, jetson/SSH first-touch, Codespace, recovery |
-| `dev` | core + full CLI toolchain: 4 languages (Go/Python/Node/Rust) + ~30 mise binaries (kubectl/helm/jq/gh/delta/… + `op` + `rtk` + `claude-code` + `codex`) + a few OS-native brews/apts. ~1.9 GB first apply. | Headless dev box |
+| `core` | OS baseline (zsh, vim, tmux, git, curl; Linux also ufw, tcpdump) + Nerd fonts (skipped on headless Linux) + mise + fzf + zoxide + jq. ~50 MB. | VPS, jetson/SSH first-touch, Codespace, recovery |
+| `dev` | core + full CLI toolchain: 4 languages (Go/Python/Node/Rust) + ~30 mise binaries (kubectl/helm/gh/delta/… + `op` + `rtk` + `claude-code` + `codex`) + a few OS-native brews/apts. ~1.9 GB first apply. | Headless dev box |
 | `workstation` | dev + GUI apps. macOS casks: iterm2, docker-desktop, visual-studio-code, ngrok, 1password. (Fonts come from chezmoi externals, not casks.) | Primary GUI machine |
 
 Exact tool lists are the source of truth in `dot_config/mise/config.toml.tmpl` (mise) and `.chezmoidata/packages.yaml` (brew/apt/dnf). Add a mise tool: `mise registry | grep -i <name>` → add the slug to the config (inside the `$isDev` block unless every tier needs it) → `chezmoi apply` (the install script embeds the mise-config hash, so apply auto-reruns `mise install` — no manual step).

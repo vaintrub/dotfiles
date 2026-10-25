@@ -94,7 +94,7 @@ Live ↔ source mapping for our key paths:
 | `~/.codex/skills/advanced-typescript/SKILL.md` | `dot_codex/skills/advanced-typescript/symlink_SKILL.md` (body: `../../../.claude/skills/advanced-typescript/SKILL.md`) | file-level symlink to Claude's copy |
 | iTerm2 plist | `iterm/com.googlecode.iterm2.plist` (source root, chezmoi-ignored) | iTerm2 reads + writes directly via `PrefsCustomFolder` setting (no chezmoi-managed symlink) |
 | `~/.config/tmux/` | `.chezmoiexternal.toml.tmpl` | archive external |
-| `~/.config/mise/config.toml` | `dot_config/mise/config.toml.tmpl` | Go template (profile-aware: core tier = fzf+zoxide only; dev/workstation = full toolchain) |
+| `~/.config/mise/config.toml` | `dot_config/mise/config.toml.tmpl` | Go template (profile-aware: core tier = fzf+zoxide+jq; dev/workstation = full toolchain) |
 | `~/Library/Fonts/MesloLGS NF *.ttf` + `MonaspaceNeon-*.otf` (Mac) or `~/.local/share/fonts/...` (Linux) | `.chezmoiexternal.toml.tmpl` | externals (4 MesloLGS NF files + 4 Monaspace Neon via archive-file from the static release zip; headless-skip) |
 
 **Always edit the source path**, never the live target — the diff stays in source, ready to commit.
@@ -246,8 +246,9 @@ intentionally a thin wrapper (~30 LOC) that:
 
 GitHub auth for mise's backend installs is NOT handled here — mise
 authenticates itself via `github.credential_command = "gh auth token"`,
-rendered into `~/.config/mise/config.toml` when `gh` is on PATH (see
-`dot_config/mise/config.toml.tmpl`). Pre-exported `GITHUB_TOKEN` env still
+rendered unconditionally into `~/.config/mise/config.toml` (see
+`dot_config/mise/config.toml.tmpl`; without a logged-in `gh` mise falls back
+to anonymous). Pre-exported `GITHUB_TOKEN` env still
 wins; this also covers interactive `mise upgrade`/`install`, not just apply.
 
 Secret-handling architecture (three layers, three mechanisms):
@@ -364,8 +365,8 @@ missing afterwards the hook exits 1 rather than letting the apply continue.
 Both are installed by `run_onchange_after_50-install-packages.sh.tmpl`.
 Each is guarded with `command -v` in scripts + zshrc — missing → feature skips,
 not a hard fail. `mise` then materializes the toolchain per
-`dot_config/mise/config.toml.tmpl` (profile-aware: `core` = fzf+zoxide only;
-`dev`/`workstation` = full set: Go/Python/Node/Rust + 28 more aqua binaries + op (vfox) + rtk (github) + goimports (go) + ssh-audit (pipx)).
+`dot_config/mise/config.toml.tmpl` (profile-aware: `core` = fzf+zoxide+jq;
+`dev`/`workstation` = full set: Go/Python/Node/Rust + 27 more aqua binaries + op (vfox) + rtk (github) + goimports (go) + ssh-audit (pipx)).
 
 ### Headless SSH detection (for things like font install)
 ```sh

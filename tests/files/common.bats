@@ -114,15 +114,18 @@ setup() {
         || stat -f %OLp "$HOME/.config/1Password/ssh/agent.toml")" = "600" ]
 }
 
-# --- mise itself + core tools (fzf + zoxide installed at every tier) ------
+# --- mise itself + core tools (fzf + zoxide + jq installed at every tier) -
 
 @test "~/.config/mise/config.toml exists" {
     [ -f "$HOME/.config/mise/config.toml" ]
 }
 
-@test "~/.config/mise/config.toml has core tools (fzf + zoxide)" {
+@test "~/.config/mise/config.toml has core tools (fzf + zoxide + jq)" {
     grep -q 'aqua:junegunn/fzf' "$HOME/.config/mise/config.toml"
     grep -q 'aqua:ajeetdsouza/zoxide' "$HOME/.config/mise/config.toml"
+    # Asserted on the rendered config, not `command -v jq`: CI apt-installs jq
+    # itself, so a PATH probe passes whether or not mise ships it.
+    grep -q 'aqua:jqlang/jq' "$HOME/.config/mise/config.toml"
 }
 
 @test "mise binary on PATH" {

@@ -267,6 +267,15 @@ Verify: `bats tests/unit/` green (54/54 today); `chezmoi init && chezmoi status`
 Nothing here can regress the provisioned Mac; all of it bites only on a machine
 that does not exist yet.
 
+**Landed in one commit:** the shims export in 70, the ungated
+`[settings.github]`, jq in the core block with the statusline guard and the
+rendered-config assert, the script-50 comment, and the ratchet. The ratchet is
+widened to every root script that probes PATH at all, because a tool list
+inside the test would rot. **Dropped:** `dotfiles_is_tty()`. Its only caller
+would be the hook, since the other two `tty -s` sites have to stay as they are:
+both are `run_once_` scripts keyed on rendered content, so editing them
+re-fires the Touch-ID `/etc/pam.d` edit and the Linux `chsh` on every machine.
+
 - **The strongest bug in the audit.** `run_onchange_after_70-install-plugins`
   never puts mise's shims on PATH. `claude` and `codex` are mise/aqua binaries;
   chezmoi `exec()`s each script as a fresh child without a login shell; script

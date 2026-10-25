@@ -7,6 +7,10 @@
 #!/bin/sh
 set -eu
 
+# claude and codex are mise shims. chezmoi exec()s every script as a fresh
+# child, so script 50's export of this same line never reaches here.
+export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
+
 {{ if eq .chezmoi.os "darwin" -}}
 # mise activate may not have reached the parent shell on a first apply.
 . "{{ .chezmoi.sourceDir }}/lib/common.sh"

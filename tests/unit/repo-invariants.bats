@@ -41,6 +41,18 @@ skill_names() {
     done
 }
 
+@test "every root install script that probes PATH puts mise's shims on it" {
+    # chezmoi exec()s each script as a fresh child, so one script's PATH export
+    # never reaches the next. CI pre-seeds the shims and cannot catch this.
+    for f in .chezmoiscripts/run_*.sh.tmpl; do
+        grep -qE 'command -v|lib/install-packages\.sh' "$f" || continue
+        grep -q '^export PATH=.*\.local/share/mise/shims' "$f" || {
+            echo "$f probes PATH without exporting mise's shims" >&2
+            return 1
+        }
+    done
+}
+
 @test "every skill file is tracked by git (no .gitignore swallowing new skills)" {
     untracked=$(git ls-files --others --exclude-standard --ignored \
         -- 'dot_claude/skills/*' 'dot_codex/skills/*')
