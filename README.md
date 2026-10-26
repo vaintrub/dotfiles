@@ -62,8 +62,9 @@ cat >> ~/.config/mise/config.local.toml <<'EOF'
 disable_tools = ["rust"]            # any tool name, backend-qualified for aqua (e.g. "aqua:cli/cli")
 EOF
 
-# brew bundle or another install step failed, now fixed — re-run every script:
-chezmoi state delete-bucket --bucket=scriptState && chezmoi apply
+# an install step failed and is now fixed — re-run that one script
+# (50-packages-darwin, 50-packages-linux or 70-install-plugins):
+chezmoi state delete --bucket=entryState --key="$HOME/.chezmoiscripts/50-packages-darwin.sh" && chezmoi apply
 
 # "config file template has changed":
 chezmoi init

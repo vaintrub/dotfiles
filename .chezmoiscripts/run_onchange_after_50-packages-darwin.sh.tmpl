@@ -12,14 +12,24 @@ for b in /opt/homebrew/bin/brew /usr/local/bin/brew; do
     if [ -x "$b" ]; then brew=$b; break; fi
 done
 if [ -z "$brew" ]; then
-    # Needs a terminal: the installer asks for the sudo password.
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-    brew=/opt/homebrew/bin/brew
-    [ -x "$brew" ] || brew=/usr/local/bin/brew
+    # Needs a terminal: the installer asks for the sudo password. Staged, not
+    # `bash -c "$(curl …)"`, which runs an empty script, exit 0, when the
+    # download fails.
+    installer=$(mktemp)
+    curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh -o "$installer"
+    /bin/bash "$installer"
+    rm -f "$installer"
+    for b in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+        if [ -x "$b" ]; then brew=$b; break; fi
+    done
+    if [ -z "$brew" ]; then
+        echo "ERROR: the Homebrew installer finished, but no brew binary exists." >&2
+        exit 1
+    fi
 fi
 eval "$("$brew" shellenv)"
 
-brew bundle --file=/dev/stdin <<'BREWFILE' || echo "WARNING: brew bundle had failures. Once fixed: chezmoi state delete-bucket --bucket=scriptState && chezmoi apply" >&2
+brew bundle --file=- <<'BREWFILE' || echo "WARNING: brew bundle had failures. Once fixed, re-run this script: chezmoi state delete --bucket=entryState --key=$HOME/.chezmoiscripts/50-packages-darwin.sh && chezmoi apply" >&2
 {{ range .packages.darwin.core }}brew {{ . | quote }}
 {{ end -}}
 {{ if ne .profile "core" }}{{ range .packages.darwin.dev }}brew {{ . | quote }}

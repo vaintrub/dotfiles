@@ -151,8 +151,11 @@ then 70), then `darwin/` and `linux/`. They run after every file is written.
 - **Re-runs.** `run_onchange_` scripts re-run when their rendered text changes.
   Both 50s embed the mise config's hash, 70 embeds it and the profile, and the
   package lists render inline, so editing a list re-runs the right script. To
-  re-run everything once: `chezmoi state delete-bucket --bucket=scriptState &&
-  chezmoi apply`.
+  re-run one by hand: `chezmoi state delete --bucket=entryState
+  --key="$HOME/.chezmoiscripts/<name>.sh" && chezmoi apply`. `run_onchange_`
+  state lives in `entryState`, `run_once_` in `scriptState`. Never delete a
+  whole bucket: `entryState` also holds every file's record, and without it an
+  apply overwrites local edits without asking.
 - **PATH.** chezmoi execs each script fresh. Any script that calls claude,
   codex or rtk must export `~/.local/share/mise/shims` itself
   (`repo-invariants.bats` checks).

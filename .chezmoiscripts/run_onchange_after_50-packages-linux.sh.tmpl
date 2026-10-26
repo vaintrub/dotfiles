@@ -37,6 +37,10 @@ if ! command -v mise >/dev/null 2>&1; then
     curl -fsSL https://mise.run -o "$installer"
     sh "$installer"
     rm -f "$installer"
+else
+    # mise.run installs once; nothing else upgrades it on Linux (Homebrew does on
+    # macOS). self-update verifies the release signature before replacing it.
+    mise self-update --yes >/dev/null 2>&1 || echo "WARNING: mise self-update failed — run it by hand." >&2
 fi
 
 mise install --yes || {
