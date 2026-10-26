@@ -18,13 +18,13 @@ sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply --use-builtin-git=true v
 ```
 
 - **macOS** — run it in a terminal: the first apply installs Homebrew, which asks for the sudo password. `--use-builtin-git` lets the clone work before the Xcode CLT exists. Afterwards quit and relaunch iTerm2 once ("Don't Save").
-- **Ubuntu** — needs only `curl`. The apply installs everything else through apt (sudo, or as root).
+- **Ubuntu** — needs only `curl`. The apply installs the OS packages through apt (sudo, or as root) and the toolchain through mise.
 
 `chezmoi init` asks for a profile once:
 
 | Profile | Gets | Machine |
 |---|---|---|
-| `core` | zsh, vim, tmux, git, curl, ufw, tcpdump + mise with fzf, zoxide, jq | VPS |
+| `core` | Linux: zsh, vim, tmux, git, curl, ufw, tcpdump; macOS: tmux, mise. Both: mise with fzf, zoxide, jq | VPS |
 | `dev` | core + the full mise toolchain (languages, kubectl/helm/gh/delta/…, claude, codex, op, rtk) + a few OS packages | Jetson |
 | `workstation` | dev + macOS casks (iTerm2, Docker Desktop, VS Code, ngrok, 1Password) | MacBook |
 
@@ -53,8 +53,10 @@ On another machine: `chezmoi update`. After a change to `.chezmoi.toml.tmpl`, us
 ## Recovery
 
 ```sh
-# mise tools missing — GitHub rate limit, usually:
+# mise tools missing — often a GitHub rate limit on a fresh box:
 gh auth login && mise install       # mise uses gh's token from then on
+# no gh yet (it is a mise tool itself): mise install aqua:cli/cli first,
+# or run `GITHUB_TOKEN=<token> mise install` once
 
 # a tool has no build for this box — skip it here:
 cat >> ~/.config/mise/config.local.toml <<'EOF'

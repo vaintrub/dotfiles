@@ -1713,7 +1713,8 @@
   # Terminal shell integration. Emits OSC 133 semantic marks (prompt-start,
   # input-start, command/output-start, output-end + exit code) so terminals
   # (iTerm2, VS Code, WezTerm, kitty) can navigate between prompts, show
-  # per-command exit status, etc. p10k emits the full set with tmux passthrough.
+  # per-command exit status, etc. Inside tmux the marks go to tmux itself
+  # (next-prompt, pane-shell-prompt), not to the outer terminal.
   typeset -g POWERLEVEL9K_TERM_SHELL_INTEGRATION=true
 
   # Hot reload allows you to change POWERLEVEL9K options after Powerlevel10k has been initialized.

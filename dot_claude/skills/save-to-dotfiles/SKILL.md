@@ -54,9 +54,9 @@ A change is **machine-specific** and should NOT go in dotfiles when:
 | Absolute local path (`/Users/X/projects/...`, `/home/X/...`) | env var, or `~/.zshrc_local` (per-machine, edited in place — see Don'ts) |
 | Specific hostname or SSH alias unique to one machine | `~/.ssh/config` (sometimes per-machine) |
 | Hardware-specific (display scaling, physical keyboard mapping) | OS-native preferences, not dotfiles |
-| Secret / API key / token / password | 1Password, env var, or `~/.config/<tool>/.env` (gitignored) |
-| Per-machine auth state (`~/.claude.json`, `~/.codex/auth.json`) | Already gitignored — don't touch |
-| Per-machine permissions allowlist (`~/.claude/settings.local.json`) | Stays per-machine; chezmoi can manage as `private_` but typically left local |
+| Secret / API key / token / password | 1Password, env var, or `~/.config/<tool>/.env` (unmanaged — never `chezmoi add` it) |
+| Per-machine auth state (`~/.claude.json`, `~/.codex/auth.json`) | Unmanaged — don't touch, never `chezmoi add` |
+| Per-machine permissions allowlist (`~/.claude/settings.local.json`) | Never tracked; edit it in place. Claude reads it only for sessions started in `$HOME` |
 
 If portability fails: **stop**, tell user, suggest the alternative home, don't
 write to dotfiles.
@@ -89,11 +89,11 @@ Map intent → source file (in the chezmoi source dir; `chezmoi cd` to navigate)
 | Tmux setting / binding / colour | `dot_tmux.conf.local` (NEVER `~/.config/tmux/.tmux.conf` — that's the external) | `prefix r` in running tmux |
 | iTerm2 preference | change it in iTerm2's GUI, then make iTerm2 write `iterm/com.googlecode.iterm2.plist` (it reads and writes there via `PrefsCustomFolder`; auto-save is off): **Save Now** in Settings → General → Settings, the red `(!)` badge, or **Copy** at quit. Never `defaults write com.googlecode.iterm2 …` — that writes `~/Library/Preferences/`, a different store that never reaches git. A save rewrites the whole file: commit it alone as `iterm:`. | quit + relaunch iTerm2 |
 | p10k tweak (one-line override) | `dot_p10k.zsh` in-place | new shell |
-| p10k major theme change | run `p10k configure` — it rewrites the live `~/.p10k.zsh`, not the source — then `chezmoi re-add ~/.p10k.zsh`, review the diff (the wizard drops hand-written lines) and commit | new shell |
+| p10k major theme change | run `p10k configure` (answer **Quiet** at the instant-prompt question) — it rewrites the live `~/.p10k.zsh`, not the source — then `chezmoi re-add ~/.p10k.zsh`, put back `POWERLEVEL9K_TERM_SHELL_INTEGRATION=true` and both rationale comments (`repo-invariants.bats` fails until they are back), commit | new shell |
 | Brew formula or cask (Mac) / apt package (Linux) | `.chezmoidata/packages.yaml` under `packages.{darwin,linux}.{core,dev}` (tier cascade core ⊂ dev ⊂ workstation) or `packages.darwin.casks` (workstation only) | `chezmoi apply` re-runs that OS's packages script |
 | Claude global rule | `dot_claude/rules/<name>.md` with frontmatter | next Claude session |
 | Claude setting / statusline | `.chezmoitemplates/claude-settings-base.json` (curated base; `dot_claude/modify_settings.json` merges tool-added keys) | next Claude session |
-| Claude or Codex plugin | `.chezmoidata/packages.yaml` → `plugins.claude` / `plugins.codex`, plus `plugins.claude_marketplaces` / `plugins.codex_marketplaces` for a new marketplace. An install baseline, not enable state: a Claude plugin disabled on a machine stays disabled, while Codex re-enables listed plugins on every apply. Removing a line uninstalls nothing — retiring a Claude plugin is the three-step procedure in `AGENTS.md` §9 | `chezmoi apply` (script 70 re-runs for a Claude change; a Codex change lands through the config merge), then next session |
+| Claude or Codex plugin | `.chezmoidata/packages.yaml` → `plugins.claude` / `plugins.codex`, plus `plugins.claude_marketplaces` (entries `<name>:<owner>/<repo>#<tag>`, tag required — see `AGENTS.md` §9) / `plugins.codex_marketplaces` (plain source) for a new marketplace. An install baseline, not enable state: a Claude plugin disabled on a machine stays disabled, while Codex re-enables listed plugins on every apply. Removing a line uninstalls nothing — retiring a Claude plugin is the three-step procedure in `AGENTS.md` §9 | `chezmoi apply` (script 70 re-runs for a Claude change; a Codex change lands through the config merge), then next session |
 | MCP server (keyless remote only) | `.chezmoidata/packages.yaml` → `mcp:` (`name` + `url`); reaches both agents — Claude via `claude mcp add` in script 70, Codex via `.chezmoitemplates/codex-config-base.toml`. A server that needs an API key fails Gate 1: `<agent> mcp add` by hand on each machine | `chezmoi apply`, then next session |
 | Claude custom agent | `dot_claude/agents/<name>.md` (directory doesn't exist yet — create it) | next Claude session |
 | Claude custom skill | `dot_claude/skills/<name>/SKILL.md` | next Claude session |
@@ -103,7 +103,7 @@ Map intent → source file (in the chezmoi source dir; `chezmoi cd` to navigate)
 | Codex skill | `dot_claude/skills/<name>/SKILL.md` PLUS `dot_agents/skills/symlink_<name>` whose body is `../../.claude/skills/<name>` — a directory symlink in Codex's user skills dir `~/.agents/skills`; Codex skips file symlinks | next Codex session |
 | New file to manage (new `~/.<X>` to track) | `chezmoi add ~/.<X>` (copies live → `dot_<X>` in source) | already applied |
 | New install script | `.chezmoiscripts/run_onchange_after_<name>.sh.tmpl` (or `run_once_after_`), POSIX sh, OS-guarded — but first name the machine that needs it (`AGENTS.md` §12) | next `chezmoi apply` |
-| New external (vendored archive/repo) | `.chezmoiexternal.toml.tmpl` entry | `chezmoi apply -R` (force refresh) |
+| New external (vendored archive/repo) | `.chezmoiexternal.toml.tmpl` entry, pinned by SHA or tag in the URL, with `checksum.sha256` for single files | `chezmoi apply` |
 
 If multiple targets are reasonable (e.g. "make this an alias OR a function?"),
 **propose options** with trade-offs.
@@ -195,8 +195,9 @@ Show the diff. Suggest a conventional commit message (see repo conventions
 in `AGENTS.md` §11 at the source-dir root):
 
 - `feat:` new feature, `fix:` bug fix, `docs:` docs, `chore:` housekeeping,
-  `tweak:` small adjustment, plus area prefixes (`zshrc:`, `tmux:`, `iterm:`,
-  `code:`, `chezmoi:`) when scoped to one area.
+  `tweak:` small adjustment, an area prefix when scoped to one area (`zshrc:`,
+  `tmux:`, `iterm:`, `vim:`, `git:`, `chezmoi:`, `claude:`, `codex:`, `ci:`),
+  or a type with a scope (`fix(zshrc):`) — the list in `AGENTS.md` §11.
 - Short, lowercase, imperative, max 72 chars on summary line.
 - No AI attribution.
 - Body explains WHY when non-obvious.
@@ -212,20 +213,23 @@ Ask before committing — user may want to test the reload first.
   on apply.
 - **Don't edit `~/.config/tmux/`** — it's auto-extracted from the chezmoi
   external (gpakosz/.tmux archive). Customize via `dot_tmux.conf.local`.
-- **Don't hand-edit `dot_p10k.zsh` for major theme changes.** Run `p10k configure`,
-  which rewrites the target `~/.p10k.zsh`, then `chezmoi re-add ~/.p10k.zsh` to
-  bring it into source. Skip the re-add and the next apply reverts the wizard.
+- **Don't hand-edit `dot_p10k.zsh` for major theme changes.** Run `p10k configure`
+  (answer **Quiet** at the instant-prompt question), which rewrites the target
+  `~/.p10k.zsh`, then `chezmoi re-add ~/.p10k.zsh` to bring it into source and
+  restore the hand-written lines it drops (`AGENTS.md` §4). Skip the re-add and
+  the next apply reverts the wizard.
 - **Don't put bashisms in `.chezmoiscripts/*.sh.tmpl` scripts.** They render
   to POSIX `sh` (dash-compatible on Ubuntu).
 - **Don't put absolute local paths, hostnames, secrets, or per-machine state
   in dotfiles.** Those break on other machines. Use the alternatives from
   Step 1.
 - **Don't write to `~/.claude/settings.local.json`** through chezmoi —
-  it's per-machine permission state, gitignored.
+  it's per-machine permission state, never tracked.
 - **`~/.zshrc_local` is the one target you edit in place.** It is `create_`:
-  seeded once, never overwritten, so edits never show in `chezmoi status`. Don't
-  delete it to undo an override — blank it. A deleted file shows as
-  `DA .zshrc_local` and the next non-interactive apply stops on it.
+  written when missing, never overwritten, so edits never show in
+  `chezmoi status`. To undo an override, comment lines out. Don't empty or
+  delete the file: chezmoi treats an empty file as removed, shows `MD`/`DA`, and
+  the next non-interactive apply stops on it.
 - **Don't look for the base files in `$HOME`** — they live in source at
   `.chezmoitemplates/{claude-settings-base.json,codex-config-base.toml}`
   and are automatically excluded from apply (chezmoi's canonical location
@@ -263,4 +267,4 @@ Ask before committing — user may want to test the reload first.
 - Edit, `chezmoi apply` → that OS's `run_onchange_after_50-packages-*` script
   re-runs (the list renders into it) and brew bundle / apt install the new
   package idempotently.
-- Commit: `feat(packages): add <X>`
+- Commit: `feat: add <X> to packages`

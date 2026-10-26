@@ -1,8 +1,10 @@
 {{- /*
   Rendered to ~/.config/chezmoi/chezmoi.toml by `chezmoi init`; the cached
   profile short-circuits the prompt afterwards. Tiers cascade core ⊂ dev ⊂
-  workstation — see README. Default "core" is the safe fallback for CI, a
-  non-interactive run or an accidental enter. Re-prompt: `chezmoi init --prompt`.
+  workstation — see README. Default "core" is what an accidental enter picks;
+  without a terminal the prompt fails, so a non-interactive init needs
+  `--promptChoice "Install profile=<tier>"` or `--promptDefaults`.
+  Re-prompt: `chezmoi init --prompt`.
   Keep the prompt text free of "," and "=" so `--promptChoice` can answer it.
 */ -}}
 {{- $profile := promptChoiceOnce . "profile" "Install profile" (list "core" "dev" "workstation") "core" -}}

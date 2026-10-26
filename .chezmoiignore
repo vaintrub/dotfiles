@@ -13,7 +13,8 @@ CLAUDE.md
 # .chezmoiscripts/darwin/run_once_after_configure-iterm2.sh.tmpl). No symlink layer.
 iterm
 
-# Bats tests — run from CI or locally via `bats tests/files/*.bats`.
+# Bats tests — run from CI, or locally: `bats tests/unit/`, and after an apply
+# `bats tests/files/common.bats tests/files/<profile>.bats`.
 # Never materialised into $HOME.
 tests
 

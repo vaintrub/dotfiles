@@ -42,12 +42,12 @@ sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply --use-builtin-git=true v
 | `.chezmoi.toml.tmpl`, `.chezmoiignore`, `.chezmoiversion` | chezmoi metadata: the profile prompt, non-target paths, the minimum chezmoi version (2.72.0, for `shellQuote`) |
 | `tests/unit/repo-invariants.bats` | source-tree invariants, no apply needed |
 | `tests/files/*.bats` | post-apply smoke tests: `common` at every profile, then `core` or `dev` |
-| `.github/workflows/ci.yaml` | lint job, then one apply leg per machine class (§10) |
+| `.github/workflows/ci.yaml` | lint job, then one apply leg per machine class (§7) |
 | `AGENTS.md` (this file), `CLAUDE.md` → `AGENTS.md`, `README.md` | docs |
 
 **Never edit these targets; change the pin instead:** `~/.config/tmux/` (bump
-the SHA, then `chezmoi apply -R`) and `~/.vim/autoload/plug.vim` (bump the
-SHA, never `:PlugUpgrade`: it rewrites a managed file, and the next
+the SHA, then `chezmoi apply`) and `~/.vim/autoload/plug.vim` (bump the SHA
+and its checksum, never `:PlugUpgrade`: it rewrites a managed file, and the next
 non-interactive apply exits 1 on the conflict).
 
 ## 3. Source-state naming
@@ -59,7 +59,7 @@ non-interactive apply exits 1 on the conflict).
 | `private_X` | 0600 file / 0700 dir |
 | `readonly_X` | clears the write bits: 0444 at a 022 umask, not 0400. For 0400 use `private_readonly_X`, in that order — `readonly_private_X` lands a file literally named `private_X` |
 | `symlink_X` | a symlink; the file body is the link target |
-| `create_X` | written once if absent, never again |
+| `create_X` | written whenever missing; an existing file is never overwritten |
 | `modify_X` + `#chezmoi:modify-template` | a template whose `.chezmoi.stdin` is the current target; its output is the new file. Order matters: `modify_private_X`, never `private_modify_X` (a literal file named `modify_X`) |
 | `.tmpl` | rendered as a Go template |
 
@@ -67,7 +67,7 @@ Targets worth knowing beyond the obvious `dot_X` ↔ `~/.X`:
 
 | Live | Source | Note |
 |---|---|---|
-| `~/.zshrc_local` | `create_dot_zshrc_local` | per-machine overrides, sourced after p10k and the SSH tints. chezmoi holds an entry for it: blank it, never delete it (a deleted one shows `DA` and fails a non-interactive apply) |
+| `~/.zshrc_local` | `create_dot_zshrc_local` | per-machine overrides, sourced after p10k and the SSH tints. chezmoi holds an entry for it: comment lines out, never empty or delete it (an empty file counts as removed: `MD` or `DA`, and a non-interactive apply fails) |
 | `~/.gitconfig` | `dot_gitconfig.tmpl` | a template only for the macOS plist driver. delta and the gh credential helper sit behind runtime `command -v` guards. No `core.hooksPath`: it replaces a repo's own hooks instead of adding to them |
 | `~/.config/1Password/ssh/agent.toml` | `dot_config/private_1Password/private_ssh/private_agent.toml` | `private_` at every level. Items are matched by item, never by vault |
 | `~/.claude/settings.json` | `dot_claude/modify_settings.json` + `.chezmoitemplates/claude-settings-base.json` | §9. No `private_`: Claude writes it 0644 |
@@ -119,7 +119,8 @@ chezmoi's default `~/.local/share/chezmoi/`; `~/dotfiles` is only a symlink.
   one to matching files). Skills live in `dot_claude/skills/*/SKILL.md`, shared
   with Codex through the symlinks in §3.
 - **Never tracked** (machine-local, some secret): `~/.claude.json` (OAuth
-  tokens), `~/.claude/settings.local.json`, `~/.claude/plugins/*.json`,
+  tokens), `~/.claude/settings.local.json` (which Claude reads only for sessions
+  started in `$HOME` itself), `~/.claude/plugins/*.json`,
   `~/.codex/auth.json`, `installation_id`, Codex's sessions/cache/log/sqlite,
   `RTK.md` (written by `rtk init`, `.chezmoiignore`d).
 
@@ -183,7 +184,9 @@ CI runs the same on `ubuntu-22.04-arm` (dev), `ubuntu-24.04` (core) and
 `macos-latest` (dev, no casks), then `tests/files/`.
 
 **Rolling out.**
-- A normal change reaches another machine with `chezmoi update`.
+- A normal change reaches another machine with `chezmoi update`. When
+  `.chezmoiversion` rises, run `chezmoi upgrade` first: an older chezmoi
+  refuses every source-state command, `init` included.
 - A change to `.chezmoi.toml.tmpl` reaches it only through a re-init. Use
   `chezmoi git pull && chezmoi init && chezmoi apply`: `chezmoi update --init`
   applies in the same process with the *old* config, which breaks whenever the
@@ -222,8 +225,9 @@ it declares) and serialises with `toToml`. Everything else Codex writes passes
 through: trust rows, marketplaces, `[tui.*]`, `[notice]`, `[features]` and the
 rest. That state never reaches git — apply writes only the target, and
 `chezmoi re-add` skips a `modify_` entry — except through
-`chezmoi add ~/.codex/config.toml`, which deletes the template and commits the
-live file, trust rows included, into a public repo. Never run it; edit the base.
+`chezmoi add ~/.codex/config.toml`, which deletes the template and writes the
+live file, trust rows included, into the source — one commit away from a
+public repo. Never run it; edit the base.
 `model` and `model_reasoning_effort` stay out of the base: Codex writes both
 from its TUI.
 
@@ -237,15 +241,19 @@ iTerm2's integration) survive; see the header comment. The CLI and iTerm2
 reorder the file, so compare an `MM` on it with `jq -S` before calling it
 drift.
 
-`enabledPlugins` is a union: script 70 installs every `plugins.claude` entry,
-the base enables it, and a value already in the live file wins — a plugin
+`enabledPlugins` is a union: script 70 installs every missing `plugins.claude`
+entry, the base enables it, and a value already in the live file wins — a plugin
 disabled with `claude plugin disable -s user` stays off. So the list is an
 install baseline, not enable state. Codex is the opposite: `plugins.codex`
 entries are re-enabled on every apply. Retiring a Claude plugin takes three
 steps on each machine: drop the line, `claude plugin uninstall <plugin>`, and
-delete its `enabledPlugins` entry from `~/.claude/settings.json`.
+delete its `enabledPlugins` entry from `~/.claude/settings.json`. For a
+third-party marketplace, `claude plugin marketplace remove <name>` does all of
+it in one step (plugins, `enabledPlugins`, the marketplace record).
 
-Third-party marketplaces (`plugins.claude_marketplaces`) are pinned to a tag —
+Third-party marketplaces are entries `<name>:<owner>/<repo>#<tag>` in
+`plugins.claude_marketplaces`; the tag is required (the template fails
+without it). They are pinned to a tag —
 Claude Code refuses a commit — because their code runs inside the agent
 (caveman's hooks fire every session). To bump one, read the diff between the
 tags (`plugin.json` hooks, commands' `allowed-tools`, skills), then change the
@@ -268,8 +276,9 @@ gpakosz reads `tmux_conf_*` from the environment before the server starts.
 
 ## 11. Git commit conventions (this repo)
 
-- Prefixes: `feat:`, `fix:`, `docs:`, `chore:`, `tweak:`, `revert:`, or the
-  area (`tmux:`, `iterm:`, `zshrc:`, `chezmoi:`, `vim:`, `git:`).
+- Prefixes: `feat:`, `fix:`, `docs:`, `chore:`, `tweak:`, `revert:`, an area
+  (`tmux:`, `iterm:`, `zshrc:`, `vim:`, `git:`, `chezmoi:`, `claude:`, `codex:`,
+  `ci:`), or a type with a scope (`fix(zshrc):`).
 - Short, lowercase, imperative, ≤ 72 chars; the body explains why.
 - No AI attribution. New commits, not amends. Stage paths explicitly
   (`git add <paths>`), never `git commit -a` — the iTerm2 plist is often dirty.
@@ -281,7 +290,11 @@ gpakosz reads `tmux_conf_*` from the environment before the server starts.
 |---|---|---|
 | `~/.config/tmux/` (gpakosz/.tmux) | commit SHA in the URL | `dot_tmux.conf.local` |
 | `~/.vim/autoload/plug.vim` (junegunn/vim-plug) | commit SHA in the URL | the `plug#begin … plug#end` block |
-| `~/Library/Fonts/` MesloLGS NF ×4, Monaspace Neon ×4 (macOS) | MesloLGS from master, Monaspace by release tag | — (iTerm2 uses MesloLGS, VS Code Monaspace) |
+| `~/Library/Fonts/` MesloLGS NF ×4, Monaspace Neon ×4 (macOS) | MesloLGS by commit SHA, Monaspace by release tag; both checksummed | — (iTerm2 uses MesloLGS, VS Code Monaspace) |
+
+plug.vim and the fonts carry `checksum.sha256`: bump the URL and the sum
+together. The tmux archive has none, since GitHub doesn't keep archive bytes
+stable.
 
 No git submodules; externals replace them.
 
