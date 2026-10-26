@@ -69,7 +69,7 @@ Detect current platform: `uname -s` → `Darwin` (macOS) or `Linux`.
 |---|---|---|
 | **Cross-platform** | zsh aliases, vim settings, tmux bindings, Claude/Codex rules | no wrapping; if a CLI may be missing on some machines, use runtime `command -v X` checks |
 | **macOS-only** | `brew install …`, `defaults write …`, `pbcopy`, `osascript`, iTerm2 plist | shell file: `case "$(uname -s)" in Darwin) … ;; esac`. For `.chezmoiscripts/*.sh.tmpl`: `{{ if eq .chezmoi.os "darwin" }} … {{ end }}` |
-| **Linux-only** | `apt`/`dnf`, `xsel`/`xclip`/`wl-copy`, `/run/user/$UID/...` | analogous: `linux` |
+| **Linux-only** | `apt`, `/run/user/$UID/...` | analogous: `linux` |
 | **Conditional on tool availability** | `mise`, `zoxide`, `code` | `command -v X >/dev/null 2>&1 && …` |
 
 If unsure: ask. Don't pick silently.
@@ -90,10 +90,10 @@ Map intent → source file (in the chezmoi source dir; `chezmoi cd` to navigate)
 | iTerm2 preference | change it in iTerm2's GUI, then make iTerm2 write `iterm/com.googlecode.iterm2.plist` (it reads and writes there via `PrefsCustomFolder`; auto-save is off): **Save Now** in Settings → General → Settings, the red `(!)` badge, or **Copy** at quit. Never `defaults write com.googlecode.iterm2 …` — that writes `~/Library/Preferences/`, a different store that never reaches git. A save rewrites the whole file: commit it alone as `iterm:`. | quit + relaunch iTerm2 |
 | p10k tweak (one-line override) | `dot_p10k.zsh` in-place | new shell |
 | p10k major theme change | run `p10k configure` — it rewrites the live `~/.p10k.zsh`, not the source — then `chezmoi re-add ~/.p10k.zsh`, review the diff (the wizard drops hand-written lines) and commit | new shell |
-| Brew formula or cask (Mac) / apt/dnf package (Linux) | `.chezmoidata/packages.yaml` under `packages.{core,dev}.{brews,apt,dnf}` (tier cascade core ⊂ dev ⊂ workstation) or `packages.gui.mac_casks` | `chezmoi apply` runs install-packages script |
+| Brew formula or cask (Mac) / apt package (Linux) | `.chezmoidata/packages.yaml` under `packages.{darwin,linux}.{core,dev}` (tier cascade core ⊂ dev ⊂ workstation) or `packages.darwin.casks` (workstation only) | `chezmoi apply` re-runs that OS's packages script |
 | Claude global rule | `dot_claude/rules/<name>.md` with frontmatter | next Claude session |
 | Claude setting / statusline | `.chezmoitemplates/claude-settings-base.json` (curated base; `dot_claude/modify_settings.json` merges tool-added keys) | next Claude session |
-| Claude or Codex plugin | `.chezmoidata/packages.yaml` → `plugins.claude` / `plugins.codex`, plus `plugins.claude_marketplaces` / `plugins.codex_marketplaces` for a new marketplace. An install baseline, not enable state: a Claude plugin disabled on a machine stays disabled, while Codex re-enables listed plugins on every apply. Removing a line uninstalls nothing — retiring a Claude plugin is the three-step procedure in `AGENTS.md` §9 | `chezmoi apply` (script 70 re-runs), then next session |
+| Claude or Codex plugin | `.chezmoidata/packages.yaml` → `plugins.claude` / `plugins.codex`, plus `plugins.claude_marketplaces` / `plugins.codex_marketplaces` for a new marketplace. An install baseline, not enable state: a Claude plugin disabled on a machine stays disabled, while Codex re-enables listed plugins on every apply. Removing a line uninstalls nothing — retiring a Claude plugin is the three-step procedure in `AGENTS.md` §9 | `chezmoi apply` (script 70 re-runs for a Claude change; a Codex change lands through the config merge), then next session |
 | MCP server (keyless remote only) | `.chezmoidata/packages.yaml` → `mcp:` (`name` + `url`); reaches both agents — Claude via `claude mcp add` in script 70, Codex via `.chezmoitemplates/codex-config-base.toml`. A server that needs an API key fails Gate 1: `<agent> mcp add` by hand on each machine | `chezmoi apply`, then next session |
 | Claude custom agent | `dot_claude/agents/<name>.md` (directory doesn't exist yet — create it) | next Claude session |
 | Claude custom skill | `dot_claude/skills/<name>/SKILL.md` | next Claude session |
@@ -102,7 +102,7 @@ Map intent → source file (in the chezmoi source dir; `chezmoi cd` to navigate)
 | Codex setting (e.g. `personality`; never `model` / `model_reasoning_effort` — Codex owns those from its TUI) | `.chezmoitemplates/codex-config-base.toml` (`dot_codex/modify_private_config.toml` merges) | next Codex session |
 | Codex skill | `dot_claude/skills/<name>/SKILL.md` PLUS `dot_codex/skills/<name>/symlink_SKILL.md` whose body is `../../../.claude/skills/<name>/SKILL.md`. `~/.codex/skills` is a real directory — per-skill file symlinks, not a directory symlink. | next Codex session |
 | New file to manage (new `~/.<X>` to track) | `chezmoi add ~/.<X>` (copies live → `dot_<X>` in source) | already applied |
-| New install-time hook | `.chezmoiscripts/run_<once_before|onchange_after|once_after>_<name>.sh.tmpl` | next `chezmoi apply` |
+| New install script | `.chezmoiscripts/run_onchange_after_<name>.sh.tmpl` (or `run_once_after_`), POSIX sh, OS-guarded — but first name the machine that needs it (`AGENTS.md` §12) | next `chezmoi apply` |
 | New external (vendored archive/repo) | `.chezmoiexternal.toml.tmpl` entry | `chezmoi apply -R` (force refresh) |
 
 If multiple targets are reasonable (e.g. "make this an alias OR a function?"),
@@ -254,13 +254,13 @@ Ask before committing — user may want to test the reload first.
 **If user says "сохрани, что я хочу всегда `brew install <X>` после клона":**
 - **Gate 1**: portable in intent (per-package, no path/host) ✓
 - **Gate 2**: cross-platform via `.chezmoidata/packages.yaml`. Pick the tier
-  first (`core` = every machine, `dev` = CLI toolchain, `gui` = workstation).
-  If `<X>` exists on both Mac and Linux, add to `packages.<tier>.brews` (Mac)
-  + `packages.<tier>.apt` and `.dnf` (distro names may differ — e.g. `fd` →
-  `fd-find`). If Mac GUI app, add to `packages.gui.mac_casks`. Prefer mise
+  first (`core` = every machine, `dev` = CLI toolchain, casks = workstation).
+  If `<X>` exists on both Mac and Linux, add it to `packages.darwin.<tier>`
+  and `packages.linux.<tier>` (apt names may differ — e.g. `fd` →
+  `fd-find`). A Mac GUI app goes in `packages.darwin.casks`. Prefer mise
   (`dot_config/mise/config.toml.tmpl`) for anything with a registry entry.
 - **Gate 3**: target = `.chezmoidata/packages.yaml` under the right subkey.
-- Edit, `chezmoi apply` → `run_onchange_after_50-install-packages.sh.tmpl`
-  re-runs (script content embeds YAML, hash changed) and brew bundle / apt /
-  dnf install the new package idempotently.
+- Edit, `chezmoi apply` → that OS's `run_onchange_after_50-packages-*` script
+  re-runs (the list renders into it) and brew bundle / apt install the new
+  package idempotently.
 - Commit: `feat(packages): add <X>`
