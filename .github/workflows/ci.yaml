@@ -64,7 +64,7 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           # Added before mise populates it, so later steps see the shims.
           # Otherwise the 2nd apply still renders dot_gitconfig.tmpl with
-          # `{{ lookPath "delta" }}` false — delta is installed but unshimmed.
+          # `{{ lookPath "gh" }}` false — gh is installed but unshimmed.
           echo "$HOME/.local/share/mise/shims" >> "$GITHUB_PATH"
 
       - name: chezmoi init + apply (twice — second converges modify_ + lookPath drift)
@@ -93,8 +93,8 @@ jobs:
           echo "--- chezmoi data ---"
           chezmoi data
           # Second apply converges two things: modify_settings.json against
-          # what rtk init wrote in pass 1, and the delta blocks in
-          # dot_gitconfig.tmpl now that mise has installed it.
+          # what rtk init wrote in pass 1, and the gh credential blocks in
+          # dot_gitconfig.tmpl now that mise has installed gh.
           chezmoi apply
 
       - name: Verify post-apply state

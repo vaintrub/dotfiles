@@ -12,11 +12,11 @@
 {{- /*
   Skip [user] block when identity values are still chezmoi placeholders
   ("Your Name" / "you@example.com" set in .chezmoi.toml.tmpl on a
-  non-interactive run without --data). Without this guard, every `git
-  commit` from such a machine would be silently mis-attributed to the
-  placeholder — caught much later in `git log`. With the guard, git
-  falls back to system config or errors clearly ("Please tell me who
-  you are") when a real commit is attempted.
+  non-interactive run without --data), so the placeholder is never baked in.
+  That does not make git refuse to commit. With no [user] and no system
+  config it guesses `<user>@<hostname>`: a Linux box whose hostname has no
+  domain stops at "Please tell me who you are", but a Mac (`*.local`)
+  commits under the guessed address without a word.
 */ -}}
 {{ if and (ne .name "Your Name") (ne .email "you@example.com") -}}
 [user]

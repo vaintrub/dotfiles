@@ -94,7 +94,11 @@ git commit -am '...' && git push
 exit
 ```
 
-On another machine: `chezmoi update` (= git pull + apply).
+On another machine: `chezmoi update --init` (= git pull, re-render `~/.config/chezmoi/chezmoi.toml`, apply). The `--init` is what carries a changed config template — the prereqs hook's registration included — to that box. It re-renders from the `[data]` values cached in that file, so what survives there decides the outcome of a non-interactive run:
+
+- all of them (the normal case): nothing is asked, nothing changes;
+- none, `[data]` gone: it stops at the profile prompt and exits 1, touching nothing;
+- `profile` but not `name`/`email`: it exits 0 and drops `[user]` from `~/.gitconfig`. On a Mac git then commits as `<you>@<hostname>.local` without a word.
 
 ## Secrets
 

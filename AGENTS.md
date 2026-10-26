@@ -366,7 +366,11 @@ chezmoi cd && git commit -am 'tmux: bump oh-my-tmux to <SHA>' && exit
 `hooks/ensure-prereqs.sh` (registered as `hooks.read-source-state.pre` in
 `.chezmoi.toml.tmpl`) runs before every source-state read, but mutates only
 under `apply`, `init` and `update`, and never under `--dry-run`/`-n`; `diff`,
-`status`, `verify` and the rest leave it at once.
+`status`, `verify` and the rest leave it at once. The hook's *registration*
+lives in the rendered `~/.config/chezmoi/chezmoi.toml`, so a change to it
+reaches a machine only through `chezmoi init` (or `chezmoi update --init`); the
+script *body* is exec'd fresh from the working tree on every source-state read,
+and is live the moment it is saved.
 
 - **Linux:** installs `git zsh vim tmux curl ca-certificates` via apt/dnf when
   any is missing; non-interactive runs demand passwordless sudo. Only `git`
