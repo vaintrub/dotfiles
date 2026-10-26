@@ -81,8 +81,10 @@ chezmoi's default `~/.local/share/chezmoi/`; `~/dotfiles` is only a symlink.
 ## 4. Per-area notes
 
 ### zsh
-- Section dividers `# --- xxx ---`. Plugins: one line in `dot_zsh_plugins.txt`
-  (antidote, static cache). No templates: the file is cross-platform through
+- Section dividers `# --- xxx ---`. Plugins: one line in `dot_zsh_plugins.txt`,
+  pinned with `pin:<full SHA>` (`repo-invariants.bats` rejects an unpinned one);
+  `antidote load` rebuilds the static file on the next shell. antidote itself is
+  an external (§12). No templates: the file is cross-platform through
   `command -v` and `uname`.
 - `dot_p10k.zsh` is wizard output, but the wizard rewrites the *target*. For a
   theme change: run `p10k configure`, answer **Quiet** at the instant-prompt
@@ -290,6 +292,7 @@ gpakosz reads `tmux_conf_*` from the environment before the server starts.
 |---|---|---|
 | `~/.config/tmux/` (gpakosz/.tmux) | commit SHA in the URL | `dot_tmux.conf.local` |
 | `~/.vim/autoload/plug.vim` (junegunn/vim-plug) | commit SHA in the URL | the `plug#begin … plug#end` block |
+| `~/.antidote/` (mattmc3/antidote) | commit SHA in the URL | `dot_zsh_plugins.txt`, each bundle `pin:`-ned |
 | `~/Library/Fonts/` MesloLGS NF ×4, Monaspace Neon ×4 (macOS) | MesloLGS by commit SHA, Monaspace by release tag; both checksummed | — (iTerm2 uses MesloLGS, VS Code Monaspace) |
 
 plug.vim and the fonts carry `checksum.sha256`: bump the URL and the sum

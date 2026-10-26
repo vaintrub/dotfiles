@@ -85,6 +85,17 @@ codex_skill_links() {
     grep -q 'Emits OSC 133 semantic marks' dot_p10k.zsh
 }
 
+@test "every zsh plugin bundle is pinned to a full commit SHA" {
+    # An unpinned bundle is cloned from HEAD at shell start on every machine.
+    unpinned=$(grep -vE '^[[:space:]]*(#|$)' dot_zsh_plugins.txt \
+        | grep -vE '(^|[[:space:]])pin:[0-9a-f]{40}([[:space:]]|$)' || true)
+    if [ -n "$unpinned" ]; then
+        echo "unpinned bundles in dot_zsh_plugins.txt:" >&2
+        echo "$unpinned" >&2
+    fi
+    [ -z "$unpinned" ]
+}
+
 @test "every skill file is tracked by git (no .gitignore swallowing new skills)" {
     untracked=$(git ls-files --others --exclude-standard --ignored \
         -- 'dot_claude/skills/*' 'dot_agents/skills/*')

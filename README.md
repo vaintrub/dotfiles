@@ -2,7 +2,7 @@
 
 Personal dotfiles for macOS and Ubuntu, managed with [chezmoi](https://www.chezmoi.io/).
 
-- **zsh** — [antidote](https://github.com/mattmc3/antidote) + [Powerlevel10k](https://github.com/romkatv/powerlevel10k)
+- **zsh** — [antidote](https://github.com/mattmc3/antidote) + [Powerlevel10k](https://github.com/romkatv/powerlevel10k); antidote and every plugin pinned to a commit
 - **vim** — [vim-plug](https://github.com/junegunn/vim-plug), `plug.vim` SHA-pinned
 - **tmux** — [gpakosz/.tmux](https://github.com/gpakosz/.tmux), SHA-pinned; ours is `dot_tmux.conf.local`
 - **iTerm2** prefs, loaded straight from the repo (macOS)

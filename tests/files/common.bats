@@ -43,6 +43,12 @@ setup() {
     grep -q 'fzf --zsh' "$HOME/.zshrc"
 }
 
+@test "interactive zsh loads the pinned plugins through antidote" {
+    run zsh -ic 'print -r -- "${+functions[_zsh_autosuggest_start]} ${+functions[_zsh_highlight]}"'
+    [ "${lines[-1]}" = "1 1" ]
+    [ -s "$HOME/.zsh_plugins.zsh" ]
+}
+
 @test "~/.vimrc exists" {
     [ -f "$HOME/.vimrc" ]
 }

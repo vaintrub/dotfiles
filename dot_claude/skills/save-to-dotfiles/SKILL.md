@@ -83,7 +83,7 @@ Map intent → source file (in the chezmoi source dir; `chezmoi cd` to navigate)
 | Shell alias / function | `dot_zshrc` → `# --- Aliases ---` section (alias) or near existing functions | new shell or `exec zsh` |
 | Env var | `dot_zshrc` → `# --- Locale ---` (LANG-class) or create a new `# --- xxx ---` section | new shell |
 | PATH addition | `dot_zshrc` → `# --- PATH ---` | new shell |
-| zsh plugin | `dot_zsh_plugins.txt` (antidote rebuilds cache on next shell start) | new shell |
+| zsh plugin | `dot_zsh_plugins.txt`, one line ending in `pin:<full 40-char SHA>` (the repo's current HEAD unless asked otherwise; an unpinned line fails `repo-invariants.bats`). `antidote load` rebuilds the cache on the next shell | new shell |
 | Vim setting / mapping | `dot_vimrc` (matching section) | re-open vim or `:source $MYVIMRC` |
 | Vim plugin | `dot_vimrc` inside `call plug#begin … call plug#end`, then `:PlugInstall` | next vim start |
 | Tmux setting / binding / colour | `dot_tmux.conf.local` (NEVER `~/.config/tmux/.tmux.conf` — that's the external) | `prefix r` in running tmux |
