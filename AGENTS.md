@@ -38,15 +38,16 @@ sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply --use-builtin-git=true v
 | `.chezmoidata/packages.yaml` | OS packages per OS and tier, Claude/Codex plugins, MCP servers |
 | `dot_config/mise/config.toml.tmpl` | the cross-platform CLI toolchain (core: fzf, zoxide, jq; dev: the rest) |
 | `.chezmoiscripts/` | install scripts (§6) |
-| `.chezmoiexternal.toml.tmpl` | SHA-pinned externals: oh-my-tmux, `plug.vim`; macOS fonts (§12) |
+| `.chezmoiexternal.toml.tmpl` | SHA-pinned externals: oh-my-tmux, antidote, `plug.vim`; macOS fonts (§12) |
 | `.chezmoi.toml.tmpl`, `.chezmoiignore`, `.chezmoiversion` | chezmoi metadata: the profile prompt, non-target paths, the minimum chezmoi version (2.73.1, for `shellQuote` without doubled backslashes) |
 | `tests/unit/repo-invariants.bats` | source-tree invariants, no apply needed |
 | `tests/files/*.bats` | post-apply smoke tests: `common` at every profile, then `core` or `dev` |
 | `.github/workflows/ci.yaml` | lint job, then one apply leg per machine class (§7) |
 | `AGENTS.md` (this file), `CLAUDE.md` → `AGENTS.md`, `README.md` | docs |
 
-**Never edit these targets; change the pin instead:** `~/.config/tmux/` (bump
-the SHA, then `chezmoi apply`) and `~/.vim/autoload/plug.vim` (bump the SHA
+**Never edit these targets; change the pin instead:** `~/.config/tmux/` and
+`~/.antidote/` (both `exact`, so an apply wipes local edits; bump the SHA, then
+`chezmoi apply`) and `~/.vim/autoload/plug.vim` (bump the SHA
 and its checksum, never `:PlugUpgrade`: it rewrites a managed file, and the next
 non-interactive apply exits 1 on the conflict).
 
