@@ -87,9 +87,9 @@ setup() {
     ! mise ls 2>/dev/null | grep -q '(missing)'
 }
 
-# --- apt dev packages (sanity check beyond common.bats core list) ---------
+# --- OS dev packages (apt or brew) -------------------------------------------
 
-@test "apt: htop" { command -v htop; }
-@test "apt: tree" { command -v tree; }
-@test "apt: wget" { command -v wget; }
-@test "apt: nmap" { command -v nmap; }
+@test "pkg: htop" { command -v htop; }
+@test "pkg: tree" { command -v tree; }
+@test "pkg: wget" { command -v wget; }
+@test "pkg: nmap" { command -v nmap; }

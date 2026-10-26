@@ -1,19 +1,29 @@
-# OS-package source of truth. Consumed by run_onchange_after_50-install-
-# packages.sh.tmpl (renders into env) + lib/install-packages.sh (installs).
-#
-# Tier cascade: core ⊂ dev ⊂ workstation.
-#   core         dotfile baseline + Linux network safety (ufw, tcpdump).
-#   dev          + CLI dev toolchain. Docker NOT here (distro-conflict-prone).
-#   workstation  + GUI casks (Mac); Linux placeholder.
-#
-# Cross-platform dev binaries (kubectl, helm, op, rtk, claude-code, codex, …)
-# live in dot_config/mise/config.toml.tmpl, gated by $isDev.
+# OS packages, installed by the two run_onchange_after_50-packages-* scripts.
+# Every profile gets core; dev and workstation add dev; workstation adds the
+# casks (macOS only). Cross-platform CLI tools (kubectl, gh, claude, codex, …)
+# live in dot_config/mise/config.toml.tmpl instead.
 
 packages:
-  core:
-    brews:
-      - tmux                        # macOS ships zsh/vim/git/curl from base, not tmux
-    apt:
+  darwin:
+    core:
+      - tmux                        # macOS ships zsh/vim/git/curl, not tmux
+      - mise
+    dev:
+      - htop
+      - tree
+      - wget
+      - nmap
+      - telnet
+      - libpq                       # keg-only; script 50 force-links it
+      - wireguard-tools
+    casks:
+      - iterm2
+      - docker-desktop
+      - visual-studio-code
+      - ngrok
+      - 1password                   # desktop app — Touch ID unlock for `op` CLI
+  linux:
+    core:
       - zsh
       - vim
       - tmux
@@ -22,64 +32,21 @@ packages:
       - ca-certificates
       - ufw                         # disabled by default; Mac uses App Firewall
       - tcpdump
-    dnf:
-      - zsh
-      - vim
-      - tmux
-      - git
-      - curl
-      - ca-certificates
-      - ufw
-      - tcpdump
-
-  dev:
-    # Tools without a mise registry entry (C-deps, system integration).
-    brews:
-      - htop
-      - tree
-      - wget
-      - nmap
-      - telnet
-      - libpq                       # keg-only; lib force-links it
-      - wireguard-tools
-    # Docker NOT here: docker.io (Ubuntu repo) + docker-ce (Docker repo)
-    # cannot coexist. Pick the right one per machine, or use workstation
-    # profile on Mac for Docker Desktop.
-    apt:
+    dev:
+      # Docker is deliberately absent: docker.io (Ubuntu) and docker-ce
+      # (Docker's repo) cannot coexist, so each box picks its own.
       - build-essential
-      - xsel                        # tmux yank → X11 clipboard
-      - wl-clipboard                # tmux yank → Wayland clipboard
       - htop
       - tree
       - wget
       - nmap
-      - inetutils-telnet            # Debian/Ubuntu telnet package name
+      - inetutils-telnet
       - wireguard-tools
       - postgresql-client
-    dnf:
-      - xsel
-      - wl-clipboard
-      - htop
-      - tree
-      - wget
-      - nmap
-      - telnet
-      - wireguard-tools
-      - postgresql
 
-  gui:
-    # Installed when profile=workstation AND OS=darwin.
-    mac_casks:
-      - iterm2
-      - docker-desktop
-      - visual-studio-code
-      - ngrok
-      - 1password                   # desktop app — Touch ID unlock for `op` CLI
-    # Linux desktop placeholder.
-    linux_apt: []
-    linux_dnf: []
-
-# Plugins (Claude + Codex) — installed when respective CLI on PATH.
+# Claude plugins: script 70 installs every one when claude is on PATH. This is
+# an install baseline, not enable state (AGENTS.md §9). Codex plugins are
+# enabled declaratively by .chezmoitemplates/codex-config-base.toml.
 plugins:
   claude:
     - gopls-lsp@claude-plugins-official
@@ -100,10 +67,10 @@ plugins:
   codex_marketplaces:
     []
 
-# MCP servers, registered into BOTH Claude Code + Codex by
-# run_onchange_after_70 (each via its own `mcp add` CLI, idempotent).
-# Agent-agnostic: keyless remote (streamable-http) servers only — no secrets
-# in this repo. API-keyed servers stay per-machine (`<agent> mcp add` by hand).
+# MCP servers for both agents: Claude via `claude mcp add` in script 70, Codex
+# declaratively from codex-config-base.toml. Keyless remote (streamable-http)
+# servers only — no secrets in this repo. API-keyed servers stay per-machine
+# (`<agent> mcp add` by hand).
 mcp:
   - name: context7          # up-to-date library/framework docs (Upstash)
     url: https://mcp.context7.com/mcp

@@ -41,11 +41,11 @@ skill_names() {
     done
 }
 
-@test "every root install script that probes PATH puts mise's shims on it" {
+@test "every script that runs claude, codex or rtk puts mise's shims on PATH" {
     # chezmoi exec()s each script as a fresh child, so one script's PATH export
-    # never reaches the next. CI pre-seeds the shims and cannot catch this.
-    for f in .chezmoiscripts/run_*.sh.tmpl; do
-        grep -qE 'command -v|lib/install-packages\.sh' "$f" || continue
+    # never reaches the next, and these three exist only as mise shims.
+    for f in .chezmoiscripts/*.sh.tmpl .chezmoiscripts/*/*.sh.tmpl; do
+        grep -qE 'command -v (claude|codex|rtk)' "$f" || continue
         grep -q '^export PATH=.*\.local/share/mise/shims' "$f" || {
             echo "$f probes PATH without exporting mise's shims" >&2
             return 1
@@ -79,34 +79,6 @@ skill_names() {
     grep -q "'quiet' not 'verbose': direnv prints" dot_p10k.zsh
     grep -qE '^[[:space:]]*typeset -g POWERLEVEL9K_TERM_SHELL_INTEGRATION=true$' dot_p10k.zsh
     grep -q 'Emits OSC 133 semantic marks' dot_p10k.zsh
-}
-
-core_packages() {
-    # $1: apt | dnf — the items under packages.core.<manager> in packages.yaml.
-    awk -v mgr="$1:" '
-        /^packages:/ { p = 1; next }
-        /^[^ #]/ { p = 0 }
-        p && /^  [a-z]/ { core = ($1 == "core:") }
-        p && core && /^    [a-z]/ { m = ($1 == mgr) }
-        p && core && m && /^      - / { print $2 }
-    ' .chezmoidata/packages.yaml
-}
-
-@test "the prereqs hook installs nothing outside packages.core.{apt,dnf}" {
-    # The hook runs before the source state exists, so its list is hardcoded.
-    # It must stay a subset, or a box gets a package no tier asked for.
-    hook_pkgs=$(sed -n 's/^[[:space:]]*for tool in \(.*\); do$/\1/p' hooks/ensure-prereqs.sh)
-    [ -n "$hook_pkgs" ]
-    for mgr in apt dnf; do
-        core=$(core_packages "$mgr")
-        [ -n "$core" ]
-        for p in $hook_pkgs ca-certificates; do
-            grep -qx "$p" <<<"$core" || {
-                echo "hook installs $p, which is not in packages.core.$mgr" >&2
-                return 1
-            }
-        done
-    done
 }
 
 @test "every skill file is tracked by git (no .gitignore swallowing new skills)" {

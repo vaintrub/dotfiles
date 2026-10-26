@@ -1,54 +1,10 @@
 {{- /*
-  Rendered to ~/.config/chezmoi/chezmoi.toml on `chezmoi init`. Cached
-  [data] values short-circuit prompts on subsequent runs.
-  Profile tiers (cascade core ⊂ dev ⊂ workstation) — see README for details.
-  Default "core" is the safe fallback for CI / non-interactive / accidental
-  enter.
-  Re-prompt: `chezmoi init --prompt`.
-*/ -}}
-
-{{- /* Codespaces / devcontainers never answer the identity prompts */ -}}
-{{- $ephemeral := or (ne (env "CODESPACES") "") (ne (env "REMOTE_CONTAINERS") "") -}}
-
-{{- /* identity prompts (cached after first init) */ -}}
-{{- $interactive := stdinIsATTY -}}
-{{- if $ephemeral -}}{{- $interactive = false -}}{{- end -}}
-
-{{- $name := "Your Name" -}}
-{{- if hasKey . "name" -}}
-{{-   $name = .name -}}
-{{- else if $interactive -}}
-{{-   $name = promptString "Full name" $name -}}
-{{- end -}}
-
-{{- $email := "you@example.com" -}}
-{{- if hasKey . "email" -}}
-{{-   $email = .email -}}
-{{- else if $interactive -}}
-{{-   $email = promptString "Email" $email -}}
-{{- end -}}
-
-{{- /*
-  profile prompt — promptChoiceOnce caches after first run; default "core".
+  Rendered to ~/.config/chezmoi/chezmoi.toml by `chezmoi init`; the cached
+  profile short-circuits the prompt afterwards. Tiers cascade core ⊂ dev ⊂
+  workstation — see README. Default "core" is the safe fallback for CI, a
+  non-interactive run or an accidental enter. Re-prompt: `chezmoi init --prompt`.
   Keep the prompt text free of "," and "=" so `--promptChoice` can answer it.
 */ -}}
 {{- $profile := promptChoiceOnce . "profile" "Install profile" (list "core" "dev" "workstation") "core" -}}
-
-{{- /* .osid composite key (darwin / linux-<id>) — used by .chezmoiscripts/* */ -}}
-{{- $osid := .chezmoi.os -}}
-{{- if eq .chezmoi.os "linux" -}}
-{{-   if hasKey .chezmoi.osRelease "id" -}}
-{{-     $osid = printf "linux-%s" .chezmoi.osRelease.id -}}
-{{-   end -}}
-{{- end -}}
-
 [data]
-    name    = {{ $name | quote }}
-    email   = {{ $email | quote }}
     profile = {{ $profile | quote }}
-    osid    = {{ $osid | quote }}
-
-[hooks]
-  [hooks.read-source-state]
-    [hooks.read-source-state.pre]
-      command = "{{ .chezmoi.workingTree }}/hooks/ensure-prereqs.sh"

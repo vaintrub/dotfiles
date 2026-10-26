@@ -9,36 +9,56 @@ on:
   # `pull_request_target` or `pull_request` does).
 
 jobs:
-  unit:
-    name: unit tests (lib/ + repo invariants)
+  lint:
+    name: lint (repo invariants + shellcheck)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
 
-      - name: Install bats
-        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends bats
+      - name: Install bats, shellcheck, chezmoi
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends bats shellcheck
+          sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
 
-      - name: Run bats unit tests
+      - name: Repo invariants
         run: bats tests/unit/
 
+      - name: Shellcheck every script, rendered for each OS and profile
+        run: |
+          shellcheck -s sh dot_claude/executable_statusline-command.sh
+          for profile in core dev workstation; do
+            printf '[data]\n    profile = "%s"\n' "$profile" > "$RUNNER_TEMP/chezmoi.toml"
+            for os in darwin linux; do
+              for f in .chezmoiscripts/*.sh.tmpl .chezmoiscripts/*/*.sh.tmpl; do
+                # An OS-guarded script renders to nothing on the other OS;
+                # -s sh keeps shellcheck from failing that as SC2148.
+                "$HOME/.local/bin/chezmoi" execute-template --source . \
+                    --config "$RUNNER_TEMP/chezmoi.toml" \
+                    --override-data "{\"chezmoi\":{\"os\":\"$os\"}}" < "$f" \
+                  | shellcheck -x -s sh - \
+                  || { echo "::error file=$f::shellcheck failed ($os, $profile)"; exit 1; }
+              done
+            done
+          done
+
   apply:
-    name: apply (profile=${{ matrix.profile }}, Ubuntu)
-    runs-on: ubuntu-latest
-    needs: unit
+    # One leg per machine class in the fleet. Casks (workstation) need sudo
+    # prompts, so the Mac leg runs dev.
+    name: apply (${{ matrix.machine }})
+    runs-on: ${{ matrix.runner }}
+    needs: lint
     strategy:
       fail-fast: false
       matrix:
-        profile: [core, dev]
+        include:
+          - { machine: jetson, runner: ubuntu-22.04-arm, profile: dev }
+          - { machine: vps, runner: ubuntu-24.04, profile: core }
+          - { machine: mac, runner: macos-latest, profile: dev }
     env:
-      DEBIAN_FRONTEND: noninteractive
-      # Lifts mise's 60/hr anonymous GitHub API rate-limit to 1000/hr.
-      # Needed for the dev tier's aqua-backend fetch (~30-50 API calls);
-      # harmless at core tier.
+      # Lifts mise's 60/hr anonymous GitHub API rate limit for the dev tier's
+      # aqua fetches; harmless at core.
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # CODESPACES=true is read by .chezmoi.toml.tmpl as the "ephemeral"
-      # environment signal, which skips the identity prompts. Only set for
-      # the core run, which exercises the non-interactive default path.
-      CODESPACES: ${{ matrix.profile == 'core' && 'true' || '' }}
 
     steps:
       - uses: actions/checkout@v7
@@ -46,55 +66,30 @@ jobs:
       - name: Cache mise installs
         uses: actions/cache@v6
         with:
-          # mise extracts every aqua / language toolchain into per-tool dirs
-          # under ~/.local/share/mise/installs/. Cache keyed by profile + hash
-          # of the mise config so adding/removing a tool busts it cleanly.
           path: ~/.local/share/mise/installs
-          key: mise-${{ runner.os }}-${{ matrix.profile }}-${{ hashFiles('dot_config/mise/config.toml.tmpl') }}
-          restore-keys: mise-${{ runner.os }}-${{ matrix.profile }}-
+          key: mise-${{ runner.os }}-${{ runner.arch }}-${{ matrix.profile }}-${{ hashFiles('dot_config/mise/config.toml.tmpl') }}
+          restore-keys: mise-${{ runner.os }}-${{ runner.arch }}-${{ matrix.profile }}-
 
-      - name: Install bats + jq
+      - name: Install bats + chezmoi
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends bats jq
-
-      - name: Install chezmoi + put mise shims on PATH ahead of time
-        run: |
+          if [ "$RUNNER_OS" = macOS ]; then
+            brew install bats-core
+          else
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends bats
+          fi
           sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+          # The shims are deliberately not pre-seeded: each script has to put
+          # them on PATH itself, as on a real first apply.
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          # Added before mise populates it, so later steps see the shims.
-          # Otherwise the 2nd apply still renders dot_gitconfig.tmpl with
-          # `{{ lookPath "gh" }}` false — gh is installed but unshimmed.
-          echo "$HOME/.local/share/mise/shims" >> "$GITHUB_PATH"
 
-      - name: chezmoi init + apply (twice — second converges modify_ + lookPath drift)
+      - name: chezmoi init + apply (twice — the second converges what rtk init wrote)
         run: |
           # Symlink into chezmoi's default source dir so later `chezmoi *`
           # calls (including inside bats) need no --source flag.
-          mkdir -p "$HOME/.config/chezmoi" "$HOME/.local/share"
+          mkdir -p "$HOME/.local/share"
           ln -s "$GITHUB_WORKSPACE" "$HOME/.local/share/chezmoi"
-
-          if [ "${{ matrix.profile }}" != core ]; then
-            # Seed the profile before init: --promptDefaults returns
-            # promptChoiceOnce's literal default ("core"), never the computed
-            # one, so a cached value is the only way to test another tier.
-            # init then caches the template hash too, without which later
-            # applies warn about a changed config template and bats reads
-            # that as drift.
-            cat > "$HOME/.config/chezmoi/chezmoi.toml" <<EOF
-          [data]
-              name    = "CI Tester"
-              email   = "ci@example.com"
-              profile = "${{ matrix.profile }}"
-          EOF
-          fi
-
-          chezmoi init --apply --promptDefaults
-          echo "--- chezmoi data ---"
-          chezmoi data
-          # Second apply converges two things: modify_settings.json against
-          # what rtk init wrote in pass 1, and the gh credential blocks in
-          # dot_gitconfig.tmpl now that mise has installed gh.
+          chezmoi init --apply --promptChoice "Install profile=${{ matrix.profile }}"
           chezmoi apply
 
       - name: Verify post-apply state

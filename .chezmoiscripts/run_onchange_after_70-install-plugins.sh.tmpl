@@ -6,16 +6,21 @@
 */ -}}
 #!/bin/sh
 set -eu
-
-# claude and codex are mise shims. chezmoi exec()s every script as a fresh
-# child, so script 50's export of this same line never reaches here.
-export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
+# Re-run when the tool list or the profile changes, since either can add
+# claude, codex or rtk. mise config: {{ include "dot_config/mise/config.toml.tmpl" | sha256sum }}
+# profile: {{ .profile }}
 
 {{ if eq .chezmoi.os "darwin" -}}
-# mise activate may not have reached the parent shell on a first apply.
-. "{{ .chezmoi.sourceDir }}/lib/common.sh"
-dotfiles_ensure_brew_path || true
-{{- end }}
+# mise is a Homebrew formula here, and its shims need it on PATH.
+for b in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+    if [ -x "$b" ]; then eval "$("$b" shellenv)"; break; fi
+done
+
+{{ end -}}
+# claude and codex are mise shims, placed ahead of anything Homebrew or npm
+# installed under the same name. chezmoi exec()s every script as a fresh child,
+# so no other script's PATH reaches here.
+export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
 
 if command -v claude >/dev/null 2>&1; then
     # Re-added defensively: the marketplace is absent until claude has been
@@ -58,4 +63,16 @@ if command -v codex >/dev/null 2>&1; then
     codex plugin marketplace upgrade >/dev/null 2>&1 || true
 else
     echo "codex CLI not found, skipping Codex plugin install" >&2
+fi
+
+# rtk's linux-arm64 build needs glibc >= 2.39 (Ubuntu 24.04+), so probe that it
+# runs before letting it patch either agent's config.
+if command -v rtk >/dev/null 2>&1 && rtk --version >/dev/null 2>&1; then
+    if command -v claude >/dev/null 2>&1; then
+        rtk init -g --auto-patch
+    fi
+    # -g pins the write to ~/.codex/, not cwd ($HOME under chezmoi apply).
+    if command -v codex >/dev/null 2>&1; then
+        rtk init -g --codex
+    fi
 fi

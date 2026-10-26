@@ -1,0 +1,37 @@
+{{- if eq .chezmoi.os "darwin" -}}
+#!/bin/sh
+# Homebrew (first run only), brew bundle, then mise's toolchain. Runs after
+# every file is written. A missing Homebrew fails the apply and the next apply
+# retries; bundle and tool failures only warn, so one broken formula cannot
+# block the rest.
+# mise config: {{ include "dot_config/mise/config.toml.tmpl" | sha256sum }}
+set -eu
+
+brew=
+for b in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+    if [ -x "$b" ]; then brew=$b; break; fi
+done
+if [ -z "$brew" ]; then
+    # Needs a terminal: the installer asks for the sudo password.
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    brew=/opt/homebrew/bin/brew
+    [ -x "$brew" ] || brew=/usr/local/bin/brew
+fi
+eval "$("$brew" shellenv)"
+
+brew bundle --file=/dev/stdin <<'BREWFILE' || echo "WARNING: brew bundle had failures. Once fixed: chezmoi state delete-bucket --bucket=scriptState && chezmoi apply" >&2
+{{ range .packages.darwin.core }}brew {{ . | quote }}
+{{ end -}}
+{{ if ne .profile "core" }}{{ range .packages.darwin.dev }}brew {{ . | quote }}
+{{ end }}{{ end -}}
+{{ if eq .profile "workstation" }}{{ range .packages.darwin.casks }}cask {{ . | quote }}
+{{ end }}{{ end -}}
+BREWFILE
+{{- if ne .profile "core" }}
+
+# libpq is keg-only; link it so psql and friends are on PATH.
+brew link --force libpq >/dev/null 2>&1 || true
+{{- end }}
+
+mise install --yes || echo "WARNING: some mise tools did not install — retry with: mise install" >&2
+{{ end -}}

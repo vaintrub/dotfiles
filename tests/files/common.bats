@@ -145,7 +145,7 @@ setup() {
 }
 
 # --- OS-native core packages (every tier) ----------------------------------
-# These come from apt/dnf, so they only apply on Linux.
+# These come from apt, so they only apply on Linux.
 
 require_linux() {
     [ "$(uname -s)" = Linux ] || skip "Linux-only package assert"
@@ -179,14 +179,4 @@ require_linux() {
 @test "pkg: tcpdump installed" {
     require_linux
     command -v tcpdump
-}
-
-# --- negatives -------------------------------------------------------------
-
-@test "no stale fnm directory" {
-    [ ! -e "$HOME/.fnm" ]
-}
-
-@test "no stale pyenv directory" {
-    [ ! -e "$HOME/.pyenv" ]
 }
