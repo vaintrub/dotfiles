@@ -1,7 +1,5 @@
 # model and model_reasoning_effort are deliberately absent: Codex writes both
 # from the TUI, and pinning them here would revert the choice on every apply.
-personality = "pragmatic"
-
 {{ range .plugins.codex -}}
 [plugins."{{ . }}"]
 enabled = true

@@ -73,7 +73,7 @@ Targets worth knowing beyond the obvious `dot_X` ↔ `~/.X`:
 | `~/.claude/settings.json` | `dot_claude/modify_settings.json` + `.chezmoitemplates/claude-settings-base.json` | §9. No `private_`: Claude writes it 0644 |
 | `~/.codex/config.toml` | `dot_codex/modify_private_config.toml` + `.chezmoitemplates/codex-config-base.toml` | §9. `private_`: Codex writes it 0600 |
 | `~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md` | `dot_claude/CLAUDE.md.tmpl`, `dot_codex/AGENTS.md.tmpl` | both `includeTemplate` `ai-common.md` |
-| `~/.codex/skills/<name>/SKILL.md` | `dot_codex/skills/<name>/symlink_SKILL.md` | file-level symlinks into `~/.claude/skills/`; a dir-level one leaked Codex-installed skills into Claude |
+| `~/.agents/skills/<name>` | `dot_agents/skills/symlink_<name>` | Codex's user skills dir; directory symlinks into `~/.claude/skills/`. Not `~/.codex/skills` (deprecated) and not file symlinks, which Codex skips. One link per skill: a whole-dir link leaked Codex-installed skills into Claude |
 
 Always edit the source path, never the live target. The source dir is
 chezmoi's default `~/.local/share/chezmoi/`; `~/dotfiles` is only a symlink.

@@ -105,9 +105,9 @@ setup() {
         || stat -f %OLp "$HOME/.codex/config.toml")" = "600" ]
 }
 
-@test "codex skill symlinks resolve into ~/.claude/skills" {
-    # -f follows the symlink, so a dangling one fails here.
-    [ -f "$HOME/.codex/skills/save-to-dotfiles/SKILL.md" ]
+@test "Codex skill links in ~/.agents/skills resolve into ~/.claude/skills" {
+    # -f follows the link, so a dangling one fails here.
+    [ -f "$HOME/.agents/skills/save-to-dotfiles/SKILL.md" ]
 }
 
 # --- 1Password SSH agent ----------------------------------------------------

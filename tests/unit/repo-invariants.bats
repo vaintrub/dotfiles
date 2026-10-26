@@ -7,31 +7,35 @@ setup() {
     cd "$SOURCE_DIR" || return 1
 }
 
-skill_names() {
-    # $1: dot_claude | dot_codex
+claude_skills() {
     # -not -name '.*': a tool-written dotted dir is not a skill.
-    find "$1/skills" -mindepth 1 -maxdepth 1 -type d -not -name '.*' \
+    find dot_claude/skills -mindepth 1 -maxdepth 1 -type d -not -name '.*' \
         -exec basename {} \; | sort
 }
 
-@test "every Claude skill has a matching Codex symlink dir (and vice versa)" {
-    run diff <(skill_names dot_claude) <(skill_names dot_codex)
+codex_skill_links() {
+    find dot_agents/skills -mindepth 1 -maxdepth 1 -name 'symlink_*' \
+        -exec basename {} \; | sed 's/^symlink_//' | sort
+}
+
+@test "every Claude skill has a Codex link in ~/.agents/skills (and vice versa)" {
+    run diff <(claude_skills) <(codex_skill_links)
     if [ "$status" -ne 0 ]; then
-        echo "skill dirs differ ('<' = Claude only, '>' = Codex only):" >&2
+        echo "skill sets differ ('<' = Claude only, '>' = Codex only):" >&2
         echo "$output" >&2
     fi
     [ "$status" -eq 0 ]
 }
 
-@test "every Codex skill symlink resolves to an existing Claude SKILL.md" {
-    for link in dot_codex/skills/*/symlink_SKILL.md; do
+@test "every Codex skill link points at its Claude skill directory" {
+    # Directory links: Codex skips a symlink that resolves to a file.
+    for link in dot_agents/skills/symlink_*; do
         [ -f "$link" ] || continue
-        name=$(basename "$(dirname "$link")")
+        name=${link##*/symlink_}
         target=$(cat "$link")
-        # Symlink bodies are relative to ~/.codex/skills/<name>/, i.e.
-        # ../../../.claude/skills/<name>/SKILL.md → dot_claude/skills/<name>/.
-        [ "$target" = "../../../.claude/skills/$name/SKILL.md" ] || {
-            echo "unexpected symlink body for $name: $target" >&2
+        # Bodies are relative to ~/.agents/skills/.
+        [ "$target" = "../../.claude/skills/$name" ] || {
+            echo "unexpected link body for $name: $target" >&2
             return 1
         }
         [ -f "dot_claude/skills/$name/SKILL.md" ] || {
@@ -83,7 +87,7 @@ skill_names() {
 
 @test "every skill file is tracked by git (no .gitignore swallowing new skills)" {
     untracked=$(git ls-files --others --exclude-standard --ignored \
-        -- 'dot_claude/skills/*' 'dot_codex/skills/*')
+        -- 'dot_claude/skills/*' 'dot_agents/skills/*')
     if [ -n "$untracked" ]; then
         echo "ignored-but-present skill files:" >&2
         echo "$untracked" >&2

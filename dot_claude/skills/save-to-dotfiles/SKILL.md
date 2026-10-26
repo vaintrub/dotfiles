@@ -99,8 +99,8 @@ Map intent → source file (in the chezmoi source dir; `chezmoi cd` to navigate)
 | Claude custom skill | `dot_claude/skills/<name>/SKILL.md` | next Claude session |
 | Rule for BOTH agents (git, stack, style, workflow) | `.chezmoitemplates/ai-common.md` — included by `dot_claude/CLAUDE.md.tmpl` and `dot_codex/AGENTS.md.tmpl` | next session of either |
 | Codex-only behavioural rule | `dot_codex/AGENTS.md.tmpl` (inline, outside the shared include) | next Codex session |
-| Codex setting (e.g. `personality`; never `model` / `model_reasoning_effort` — Codex owns those from its TUI) | `.chezmoitemplates/codex-config-base.toml` (`dot_codex/modify_private_config.toml` merges) | next Codex session |
-| Codex skill | `dot_claude/skills/<name>/SKILL.md` PLUS `dot_codex/skills/<name>/symlink_SKILL.md` whose body is `../../../.claude/skills/<name>/SKILL.md`. `~/.codex/skills` is a real directory — per-skill file symlinks, not a directory symlink. | next Codex session |
+| Codex setting (never `model` / `model_reasoning_effort` — Codex owns those from its TUI) | `.chezmoitemplates/codex-config-base.toml` (`dot_codex/modify_private_config.toml` merges) | next Codex session |
+| Codex skill | `dot_claude/skills/<name>/SKILL.md` PLUS `dot_agents/skills/symlink_<name>` whose body is `../../.claude/skills/<name>` — a directory symlink in Codex's user skills dir `~/.agents/skills`; Codex skips file symlinks | next Codex session |
 | New file to manage (new `~/.<X>` to track) | `chezmoi add ~/.<X>` (copies live → `dot_<X>` in source) | already applied |
 | New install script | `.chezmoiscripts/run_onchange_after_<name>.sh.tmpl` (or `run_once_after_`), POSIX sh, OS-guarded — but first name the machine that needs it (`AGENTS.md` §12) | next `chezmoi apply` |
 | New external (vendored archive/repo) | `.chezmoiexternal.toml.tmpl` entry | `chezmoi apply -R` (force refresh) |
@@ -152,13 +152,13 @@ BOTH files, and `tests/unit/repo-invariants.bats` fails if they drift:
 
 ```sh
 dot_claude/skills/<name>/SKILL.md                 # the skill itself
-dot_codex/skills/<name>/symlink_SKILL.md          # body, verbatim, one line:
-                                                  # ../../../.claude/skills/<name>/SKILL.md
+dot_agents/skills/symlink_<name>                  # body, verbatim, one line:
+                                                  # ../../.claude/skills/<name>
 ```
 
 Then `git add` both and confirm with `git status` that neither is ignored — a
 tracked symlink pointing at an untracked SKILL.md materializes as a dangling
-`~/.codex/skills/<name>/SKILL.md` on every other machine.
+`~/.agents/skills/<name>` on every other machine.
 
 **Tool-mutated files** (`~/.claude/settings.json`, `~/.codex/config.toml`):
 - Edit the **base** file in `.chezmoitemplates/`:
