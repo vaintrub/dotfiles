@@ -1,6 +1,8 @@
 {{- /*
   Vendored external dependencies.
   - gpakosz/.tmux: cross-platform, SHA-pinned via URL (URL = lockfile).
+  - vim-plug's plug.vim: same, SHA-pinned. The plugins it manages still
+    install from dot_vimrc at vim's first launch.
   - MesloLGS NF + Monaspace Neon fonts: cross-platform, downloaded into the
     OS-native font dir. Skipped on Linux with no display, which saves ~66 MB
     per cold cache (10 MB of TTFs plus the 56 MB Monaspace zip) and avoids
@@ -27,6 +29,13 @@
     exact = true
     stripComponents = 1
     refreshPeriod = "720h"  # 30d safety net; SHA pinning is the real control
+
+# A commit, not a tag: the newest tag (0.14.0, 2024) predates
+# g:plug_disable_credential_helper, which keeps git credential helpers out of
+# plugin clones.
+[".vim/autoload/plug.vim"]
+    type = "file"
+    url = "https://raw.githubusercontent.com/junegunn/vim-plug/7e5aae5e1187842cb0b1d8def986e48d481c4410/plug.vim"
 
 {{ if not $headless -}}
 {{- $fontDir := "" -}}

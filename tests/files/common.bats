@@ -47,6 +47,10 @@ setup() {
     [ -f "$HOME/.vimrc" ]
 }
 
+@test "~/.vim/autoload/plug.vim fetched by the pinned external" {
+    grep -q '^function! plug#begin' "$HOME/.vim/autoload/plug.vim"
+}
+
 @test "~/.tmux.conf.local exists" {
     [ -f "$HOME/.tmux.conf.local" ]
 }

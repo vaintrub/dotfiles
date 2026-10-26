@@ -3,7 +3,7 @@
 Personal cross-platform (macOS + Linux) dotfiles managed with [chezmoi](https://www.chezmoi.io/).
 
 - **zsh** — [antidote](https://github.com/mattmc3/antidote) (static-cache) + [Powerlevel10k](https://github.com/romkatv/powerlevel10k); `~/.p10k.zsh` tracked so the prompt is byte-identical everywhere
-- **vim** — [vim-plug](https://github.com/junegunn/vim-plug) (auto-bootstrapped on first launch)
+- **vim** — [vim-plug](https://github.com/junegunn/vim-plug) (`plug.vim` SHA-pinned as a chezmoi external; plugins install on first launch)
 - **tmux** — [gpakosz/.tmux](https://github.com/gpakosz/.tmux) vendored as a chezmoi external (SHA-pinned)
 - **iTerm2** prefs (macOS, auto-loaded from the repo)
 - **AI tooling** — Claude Code + OpenAI Codex CLI (instructions, settings, rules) with tool-mutation-safe `modify_` merging

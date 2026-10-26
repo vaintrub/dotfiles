@@ -1,11 +1,11 @@
 set nocompatible
 
 " --- vim-plug bootstrap ---
-" :PlugInstall / :PlugUpdate / :PlugClean
-let s:plug_path = expand('~/.vim/autoload/plug.vim')
-if empty(glob(s:plug_path))
-  silent execute '!curl -fLo ' . s:plug_path . ' --create-dirs '
-        \ . 'https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim'
+" :PlugInstall / :PlugUpdate / :PlugClean. Never :PlugUpgrade: plug.vim is a
+" chezmoi external pinned in .chezmoiexternal.toml.tmpl — bump it there.
+" Glob the contents, not the directory: an interrupted PlugInstall leaves
+" ~/.vim/plugged behind, empty.
+if empty(glob('~/.vim/plugged/*'))
   autocmd VimEnter * PlugInstall --sync | source $MYVIMRC
 endif
 

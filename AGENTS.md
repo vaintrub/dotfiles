@@ -47,6 +47,7 @@ sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply vaintrub
 | Path | Source | How to influence it |
 |---|---|---|
 | `~/.config/tmux/` | gpakosz/.tmux archive, pinned by commit SHA in `.chezmoiexternal.toml.tmpl` | bump SHA → `chezmoi apply -R` → commit |
+| `~/.vim/autoload/plug.vim` | junegunn/vim-plug's `plug.vim`, pinned by commit SHA in `.chezmoiexternal.toml.tmpl` | bump SHA → `chezmoi apply` → commit. Never `:PlugUpgrade`: it rewrites the managed file, and the next non-interactive apply exits 1 on the conflict |
 | `~/.cache/chezmoi/` | chezmoi external cache (outside repo) | chezmoi-managed |
 
 ## 3. Source-state naming (chezmoi conventions)
@@ -94,6 +95,7 @@ Live ↔ source mapping for our key paths:
 | `~/.codex/skills/advanced-typescript/SKILL.md` | `dot_codex/skills/advanced-typescript/symlink_SKILL.md` (body: `../../../.claude/skills/advanced-typescript/SKILL.md`) | file-level symlink to Claude's copy |
 | iTerm2 plist | `iterm/com.googlecode.iterm2.plist` (source root, chezmoi-ignored) | iTerm2 reads + writes directly via `PrefsCustomFolder` setting (no chezmoi-managed symlink) |
 | `~/.config/tmux/` | `.chezmoiexternal.toml.tmpl` | archive external |
+| `~/.vim/autoload/plug.vim` | `.chezmoiexternal.toml.tmpl` | file external (SHA-pinned vim-plug) |
 | `~/.config/mise/config.toml` | `dot_config/mise/config.toml.tmpl` | Go template (profile-aware: core tier = fzf+zoxide+jq; dev/workstation = full toolchain) |
 | `~/Library/Fonts/MesloLGS NF *.ttf` + `MonaspaceNeon-*.otf` (Mac) or `~/.local/share/fonts/...` (Linux) | `.chezmoiexternal.toml.tmpl` | externals (4 MesloLGS NF files + 4 Monaspace Neon via archive-file from the static release zip; headless-skip) |
 
@@ -127,7 +129,10 @@ Source-of-truth location is `~/.local/share/chezmoi/` — chezmoi's default (XDG
 
 ### vim — `dot_vimrc`
 
-- **vim-plug bootstrap** at the top auto-installs on first launch.
+- **vim-plug**: `plug.vim` itself is a SHA-pinned chezmoi external (§12). The
+  bootstrap at the top of `dot_vimrc` runs `:PlugInstall` at launch while
+  `~/.vim/plugged` holds nothing — the glob is `plugged/*`, because an
+  interrupted install leaves the directory behind empty.
 - **Plugins** inside the `call plug#begin … call plug#end` block; run
   `:PlugInstall` in vim after adding.
 - Comments in English.
@@ -543,6 +548,7 @@ Rules:
 | External | Source | Pin | Customize via |
 |---|---|---|---|
 | `~/.config/tmux/` | gpakosz/.tmux archive | commit SHA in URL | `dot_tmux.conf.local` (our file) |
+| `~/.vim/autoload/plug.vim` | junegunn/vim-plug, one file | commit SHA in URL | the `plug#begin … plug#end` block in `dot_vimrc` |
 
 `.chezmoiexternal.toml.tmpl`:
 ```toml
