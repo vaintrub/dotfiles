@@ -13,6 +13,5 @@
 #
 # Examples (uncomment + edit):
 #
-# export GITHUB_TOKEN="ghp_..."
 # alias k=kubectl
 # export PATH="/opt/local-tool/bin:$PATH"

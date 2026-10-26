@@ -1,20 +1,28 @@
 {{- /*
-  Vendored external dependencies.
-  - gpakosz/.tmux: cross-platform, SHA-pinned via URL (URL = lockfile).
-  - vim-plug's plug.vim: same, SHA-pinned. The plugins it manages still
-    install from dot_vimrc at vim's first launch.
+  Vendored external dependencies, each pinned by commit SHA or release tag in
+  its URL (URL = lockfile). chezmoi caches by URL, so bumping a pin re-downloads
+  on a plain `chezmoi apply`; no refreshPeriod, nothing to refresh.
+  - gpakosz/.tmux: no checksum, GitHub doesn't promise stable archive bytes.
+  - vim-plug's plug.vim and the fonts: checksummed, a moved tag or a
+    tampered download fails the apply.
   - MesloLGS NF (iTerm2, p10k) + Monaspace Neon (VS Code): macOS only. The
     Linux boxes are reached over SSH, where the glyphs come from the Mac's
     terminal.
 */ -}}
+{{- $mesloSha := "145eb9fbc2f42ee408dacd9b22d8e6e0e553f83d" -}}
+{{- $meslo := dict
+      "MesloLGS NF Regular.ttf"     "d97946186e97f8d7c0139e8983abf40a1d2d086924f2c5dbf1c29bd8f2c6e57d"
+      "MesloLGS NF Bold.ttf"        "b6c0199cf7c7483c8343ea020658925e6de0aeb318b89908152fcb4d19226003"
+      "MesloLGS NF Italic.ttf"      "6f357bcbe2597704e157a915625928bca38364a89c22a4ac36e7a116dcd392ef"
+      "MesloLGS NF Bold Italic.ttf" "56b4131adecec052c4b324efb818dd326d586dbc316fc68f98f1cae2eb8d1220" -}}
 {{- $monaspaceVer := "v1.400" -}}
+{{- $monaspaceZipSha256 := "ab66d71be751495f679727332a3345597943bd4d7beebca03f5cde04bf994de7" -}}
 
 [".config/tmux"]
     type = "archive"
     url = "https://github.com/gpakosz/.tmux/archive/58a3dcc0d718ec0fa1c0d5a2fddd640a1ad7a5b7.tar.gz"
     exact = true
     stripComponents = 1
-    refreshPeriod = "720h"  # 30d safety net; SHA pinning is the real control
 
 # A commit, not a tag: the newest tag (0.14.0, 2024) predates
 # g:plug_disable_credential_helper, which keeps git credential helpers out of
@@ -22,31 +30,29 @@
 [".vim/autoload/plug.vim"]
     type = "file"
     url = "https://raw.githubusercontent.com/junegunn/vim-plug/7e5aae5e1187842cb0b1d8def986e48d481c4410/plug.vim"
+    checksum.sha256 = "4243c1d2a5d9a1012aca536315e69aab8549e60926b3dd80ee1f973954d77f9d"
 
 {{ if eq .chezmoi.os "darwin" -}}
 
 # MesloLGS NF — the font Powerlevel10k expects. Glyphs include Powerline
 # arrows used by tmux Powerline separators (U+E0B0–E0B3) and all p10k icons.
-# Refresh weekly; the upstream repo updates infrequently.
-{{- range $font := list "MesloLGS NF Regular.ttf" "MesloLGS NF Bold.ttf" "MesloLGS NF Italic.ttf" "MesloLGS NF Bold Italic.ttf" }}
+{{- range $font, $sum := $meslo }}
 
 ["Library/Fonts/{{ $font }}"]
     type = "file"
-    url = "https://github.com/romkatv/powerlevel10k-media/raw/master/{{ $font | replace " " "%20" }}"
-    refreshPeriod = "168h"
+    url = "https://github.com/romkatv/powerlevel10k-media/raw/{{ $mesloSha }}/{{ $font | replace " " "%20" }}"
+    checksum.sha256 = "{{ $sum }}"
 {{- end }}
 
-# Monaspace Neon — GitHub's monospace family (sans-serif neo-grotesque),
-# optional alternative to MesloLGS for editors / iTerm2. Distributed only
-# in release zips (no raw OTFs in main); extract the four canonical weights
-# via archive-file. chezmoi caches the zip by URL — all 4 declarations
-# trigger only one download.
+# Monaspace Neon — GitHub's monospace family, used by VS Code. Distributed only
+# in release zips; the four canonical weights come out via archive-file, and
+# chezmoi downloads the zip once for all four.
 {{- range $font := list "MonaspaceNeon-Regular.otf" "MonaspaceNeon-Bold.otf" "MonaspaceNeon-Italic.otf" "MonaspaceNeon-BoldItalic.otf" }}
 
 ["Library/Fonts/{{ $font }}"]
     type = "archive-file"
     url = "https://github.com/githubnext/monaspace/releases/download/{{ $monaspaceVer }}/monaspace-static-{{ $monaspaceVer }}.zip"
+    checksum.sha256 = "{{ $monaspaceZipSha256 }}"
     path = "Static Fonts/Monaspace Neon/{{ $font }}"
-    refreshPeriod = "720h"
 {{- end }}
 {{- end }}

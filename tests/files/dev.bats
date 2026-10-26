@@ -76,9 +76,12 @@ setup() {
 @test "op --version executes" { run op --version; [ "$status" -eq 0 ]; }
 @test "gh --version executes" { run gh --version; [ "$status" -eq 0 ]; }
 @test "delta --version executes" { run delta --version; [ "$status" -eq 0 ]; }
-@test "rtk --version executes (skip on glibc < 2.39)" {
+@test "rtk --version executes (skip on Linux arm64, glibc < 2.39)" {
     run rtk --version
-    [ "$status" -eq 0 ] || skip "rtk fails (likely glibc < 2.39 on this runner)"
+    if [ "$status" -ne 0 ] && [ "$(uname -s)/$(uname -m)" = Linux/aarch64 ]; then
+        skip "rtk's linux-arm64 build needs glibc >= 2.39"
+    fi
+    [ "$status" -eq 0 ]
 }
 
 # --- no partial install ----------------------------------------------------
