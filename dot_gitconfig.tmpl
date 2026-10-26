@@ -74,6 +74,14 @@
     algorithm = histogram
     colorMoved = default
     submodule = log
+{{- if and (eq .chezmoi.os "darwin") (lookPath "plutil") }}
+
+# For `diff=plist` in the dotfiles repo's .gitattributes: a no-op while
+# iTerm2 writes XML, readable diffs if a release ever writes binary. Git
+# appends the path itself; a trailing `-` for stdin makes plutil fail.
+[diff "plist"]
+    textconv = plutil -convert xml1 -o -
+{{- end }}
 
 [fetch]
     prune = true

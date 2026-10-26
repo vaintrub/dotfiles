@@ -1,0 +1,3 @@
+# Textconv driver lives in dot_gitconfig.tmpl (macOS only); without it git
+# falls back to its default diff.
+*.plist diff=plist
