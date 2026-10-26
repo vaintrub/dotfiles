@@ -3,25 +3,11 @@
   - gpakosz/.tmux: cross-platform, SHA-pinned via URL (URL = lockfile).
   - vim-plug's plug.vim: same, SHA-pinned. The plugins it manages still
     install from dot_vimrc at vim's first launch.
-  - MesloLGS NF + Monaspace Neon fonts: cross-platform, downloaded into the
-    OS-native font dir. Skipped on Linux with no display, which saves ~66 MB
-    per cold cache (10 MB of TTFs plus the 56 MB Monaspace zip) and avoids
-    fc-cache where fontconfig may not even be installed.
-
-    The DISPLAY/WAYLAND_DISPLAY probe is a Linux notion of "has a screen".
-    macOS never sets either, so applying it there would skip fonts on every
-    Mac provisioned over SSH — and nothing else installs them. No
-    SSH_CONNECTION conjunct: a console, cron or CI apply has no display either.
-    A Linux desktop applied from a bare tty gets its fonts on the next apply
-    from inside the session.
+  - MesloLGS NF (iTerm2, p10k) + Monaspace Neon (VS Code): macOS only. The
+    Linux boxes are reached over SSH, where the glyphs come from the Mac's
+    terminal.
 */ -}}
 {{- $monaspaceVer := "v1.400" -}}
-{{- $headless := false -}}
-{{- if eq .chezmoi.os "linux" -}}
-{{- if and (eq (env "DISPLAY") "") (eq (env "WAYLAND_DISPLAY") "") -}}
-{{- $headless = true -}}
-{{- end -}}
-{{- end -}}
 
 [".config/tmux"]
     type = "archive"
@@ -37,18 +23,14 @@
     type = "file"
     url = "https://raw.githubusercontent.com/junegunn/vim-plug/7e5aae5e1187842cb0b1d8def986e48d481c4410/plug.vim"
 
-{{ if not $headless -}}
-{{- $fontDir := "" -}}
-{{- if eq .chezmoi.os "darwin" -}}{{ $fontDir = "Library/Fonts" -}}{{- end -}}
-{{- if eq .chezmoi.os "linux" -}}{{ $fontDir = ".local/share/fonts" -}}{{- end -}}
-{{- if $fontDir }}
+{{ if eq .chezmoi.os "darwin" -}}
 
 # MesloLGS NF — the font Powerlevel10k expects. Glyphs include Powerline
 # arrows used by tmux Powerline separators (U+E0B0–E0B3) and all p10k icons.
 # Refresh weekly; the upstream repo updates infrequently.
 {{- range $font := list "MesloLGS NF Regular.ttf" "MesloLGS NF Bold.ttf" "MesloLGS NF Italic.ttf" "MesloLGS NF Bold Italic.ttf" }}
 
-["{{ $fontDir }}/{{ $font }}"]
+["Library/Fonts/{{ $font }}"]
     type = "file"
     url = "https://github.com/romkatv/powerlevel10k-media/raw/master/{{ $font | replace " " "%20" }}"
     refreshPeriod = "168h"
@@ -61,11 +43,10 @@
 # trigger only one download.
 {{- range $font := list "MonaspaceNeon-Regular.otf" "MonaspaceNeon-Bold.otf" "MonaspaceNeon-Italic.otf" "MonaspaceNeon-BoldItalic.otf" }}
 
-["{{ $fontDir }}/{{ $font }}"]
+["Library/Fonts/{{ $font }}"]
     type = "archive-file"
     url = "https://github.com/githubnext/monaspace/releases/download/{{ $monaspaceVer }}/monaspace-static-{{ $monaspaceVer }}.zip"
     path = "Static Fonts/Monaspace Neon/{{ $font }}"
     refreshPeriod = "720h"
-{{- end }}
 {{- end }}
 {{- end }}
