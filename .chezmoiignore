@@ -6,7 +6,6 @@ README.md
 LICENSE
 AGENTS.md
 CLAUDE.md
-REFACTORING.md
 
 # iTerm2 plist lives at source root `iterm/` (outside dot_*) so chezmoi doesn't
 # materialise it into $HOME. iTerm2 reads + writes the plist there directly,
