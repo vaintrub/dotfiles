@@ -214,6 +214,11 @@ that never source a zshrc. Both are needed.
 
 ### Wave 0 — safety net and baseline (no functional change)
 
+**Landed except the fleet inventory.** The doc edit went in with Wave 6, along
+with the gitconfig comment fix (re-measured: with no identity configured, git
+here committed as `<user>@<hostname>.local`, exit 0). The inventory below is
+still open, and it gates the merge (Wave 5).
+
 - Branch (no tag — see §2). (The tree already carries this file, its
   `.chezmoiignore` entry, and the Wave 6 trigger removal; commit those first so
   `git status` is clean.)
@@ -897,6 +902,28 @@ Verify: `bats tests/unit/`; render both install scripts through `sh -n`;
 `git log`; `chezmoi --version` ≥ 2.72.0 on every box **before** pushing step 6.
 
 ### Wave 6 — macOS-local and human-in-the-loop
+
+**Landed, one commit per item, except the `.chezmoiremove.tmpl` entry**, which
+waits on the other machines. Findings beyond the text:
+- The `$hint` string was a live bug as well as dead weight. Its `,` and `=`
+  meant `--promptChoice` could never match it, and init fell silently to
+  `core`; with the literal `Install profile`, `--promptChoice 'Install
+  profile=dev'` answers it (both reproduced). On this Mac the config-template
+  warning came back as predicted and one `chezmoi init` cleared it with the
+  config byte-identical. Every other box needs the same after the merge.
+- `plug.vim` is pinned by commit SHA, not tag: the newest tag, 0.14.0
+  (2024-07), is 15 commits behind master and predates
+  `g:plug_disable_credential_helper`. The no-egress objection does not hold —
+  the tmux archive already needs GitHub in the same source-state read. One side
+  effect: chezmoi now owns the modes of `~/.vim` and `~/.vim/autoload`, which
+  went 0750 → 0755 here.
+- `:PlugUpgrade` turns into a conflict on a managed file: the next
+  non-interactive apply exits 1 (reproduced). The vimrc comment and AGENTS.md
+  say to bump the SHA instead.
+- `diff=plist` behaved exactly as specified: the stdin form fails, the path
+  form works, and `git diff --stat` on the XML plist is the same with and
+  without textconv. AGENTS.md now also says to quit iTerm2 before
+  `chezmoi update`.
 
 - **The iTerm2 trigger — done.** The profile carried an enabled `ScriptTrigger`
   with regex `vscode://[^[:space:]]+` and parameter `open \0`, unquoted and
