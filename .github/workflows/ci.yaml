@@ -8,12 +8,25 @@ on:
   # from forks (push trigger doesn't fire on fork sources; only
   # `pull_request_target` or `pull_request` does).
 
+# Read-only: the jobs run third-party installers (chezmoi, mise, aqua, Homebrew,
+# plugin marketplaces), and the repo's default token can push to master.
+permissions:
+  contents: read
+
+# Explicit bash is `bash -eo pipefail`; the implicit default lacks pipefail, so
+# a template that fails to render would pass the shellcheck pipe below.
+defaults:
+  run:
+    shell: bash
+
 jobs:
   lint:
     name: lint (repo invariants + shellcheck)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Install bats, shellcheck, chezmoi
         run: |
@@ -55,13 +68,11 @@ jobs:
           - { machine: jetson, runner: ubuntu-22.04-arm, profile: dev }
           - { machine: vps, runner: ubuntu-24.04, profile: core }
           - { machine: mac, runner: macos-latest, profile: dev }
-    env:
-      # Lifts mise's 60/hr anonymous GitHub API rate limit for the dev tier's
-      # aqua fetches; harmless at core.
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Cache mise installs
         uses: actions/cache@v6
@@ -84,6 +95,10 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: chezmoi init + apply (twice — the second converges what rtk init wrote)
+        env:
+          # Lifts mise's anonymous GitHub API rate limit for the dev tier's
+          # aqua fetches. Scoped to this step: nothing else needs it.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Symlink into chezmoi's default source dir so later `chezmoi *`
           # calls (including inside bats) need no --source flag.
