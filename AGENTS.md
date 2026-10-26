@@ -242,6 +242,15 @@ entries are re-enabled on every apply. Retiring a Claude plugin takes three
 steps on each machine: drop the line, `claude plugin uninstall <plugin>`, and
 delete its `enabledPlugins` entry from `~/.claude/settings.json`.
 
+Third-party marketplaces (`plugins.claude_marketplaces`) are pinned to a tag —
+Claude Code refuses a commit — because their code runs inside the agent
+(caveman's hooks fire every session). To bump one, read the diff between the
+tags (`plugin.json` hooks, commands' `allowed-tools`, skills), then change the
+tag. Script 70 sees the recorded ref differ, removes the marketplace (which
+uninstalls its plugins), re-adds it at the new tag and reinstalls. Never run
+caveman's `/caveman-init`: it pipes unpinned code from that repo's `main` into
+node.
+
 ## 10. Visual coordination — SSH cues
 
 | Cue | Source | Colour |

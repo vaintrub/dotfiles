@@ -29,19 +29,29 @@ if command -v claude >/dev/null 2>&1; then
         echo "WARNING: claude plugin marketplace add (official) failed:" >&2
         echo "$out" >&2
     fi
+
+    # Third-party marketplaces are pinned to a tag (a commit is refused), and
+    # `marketplace add` leaves an existing clone on whatever ref it had. So one
+    # recorded at another ref is removed first; that uninstalls its plugins,
+    # and the install loop below puts them back at the tag.
+    known=$(claude plugin marketplace list --json 2>/dev/null || echo '[]')
 {{- range .plugins.claude_marketplaces }}
 {{- $parts := splitn ":" 2 . }}
+{{- $ref := index (splitn "#" 2 $parts._1) "_1" }}
+    if [ "$(printf '%s' "$known" | jq -r --arg n {{ $parts._0 | shellQuote }} '.[] | select(.name == $n) | .ref // ""')" != {{ $ref | shellQuote }} ]; then
+        claude plugin marketplace remove {{ $parts._0 | shellQuote }} >/dev/null 2>&1 || true
+    fi
     if ! out=$(claude plugin marketplace add {{ $parts._1 | shellQuote }} 2>&1); then
         echo {{ printf "WARNING: claude plugin marketplace add %s failed:" $parts._0 | shellQuote }} >&2
         echo "$out" >&2
     fi
 {{- end }}
+    # No `plugin update` / `marketplace update`: Anthropic's marketplace updates
+    # itself, and for a pinned one an update can only mean its tag moved.
 {{- range .plugins.claude }}
     claude plugin install {{ . | shellQuote }} --scope user >/dev/null 2>&1 \
         || echo {{ printf "claude plugin install %s failed" . | shellQuote }} >&2
-    claude plugin update {{ . | shellQuote }} >/dev/null 2>&1 || true
 {{- end }}
-    claude plugin marketplace update >/dev/null 2>&1 || true
 
     # Idempotent: `mcp get` succeeds when the server is already registered.
 {{- range .mcp }}
