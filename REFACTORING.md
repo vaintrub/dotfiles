@@ -777,6 +777,23 @@ and the three `.chezmoiremove` cases plus `--force`.
 
 The wave that can break a fresh bootstrap. Strict intra-wave ordering.
 
+**Landed, one commit per step: 1, 2, 3, 5, 6.** Step 4 is skipped, as
+recommended. Additions beyond the text:
+- `tests/unit/ensure-prereqs.bats` runs the real hook under `/bin/sh` with
+  PATH confined to fakes. It makes the step-2 regression ("`chezmoi diff` must
+  not invoke apt/brew") and the step-3 fatal/warning split permanent CI checks
+  rather than one-off manual runs. A repo invariant keeps the hook's list
+  inside `packages.core.{apt,dnf}`.
+- A probe hook showed that `CHEZMOI_ARGS` is the whole argv, global flags
+  included. The dry-run check therefore also catches a global `-n` before the
+  subcommand, and short clusters like `-nv`.
+- The diffFilter got the same `command -v` guard as the pager, falling back to
+  `cat`, since `git add -p` fails outright on a missing filter.
+
+**Before merging #45:** every machine must already run chezmoi ≥ 2.72.0, or
+`chezmoi update` pulls step 6 and then refuses every source-state command.
+Recovery on a box that got caught: `chezmoi upgrade`, then `chezmoi apply`.
+
 1. **First and alone:** fix the `output "git" "--version"` shell-out in
    `dot_gitconfig.tmpl`. Do **not** use `{{- if lookPath "git" }}`: on macOS
    `/usr/bin/git` is Apple's `libxcselect` stub on the sealed system volume, so
