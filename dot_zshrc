@@ -104,7 +104,7 @@ code() {
     && export PATH="$PATH:/Applications/Visual Studio Code.app/Contents/Resources/app/bin"
 
 # --- Aliases ---
-alias zshconfig="vim ~/.zshrc"
+alias zshconfig="chezmoi edit ~/.zshrc"   # the source; a live edit is reverted by the next apply
 
 # `chezmoi status` minus `MM .codex/config.toml`, which Codex makes permanent
 # (AGENTS.md §9). Filters the output only; chezmoi's exit status survives.
