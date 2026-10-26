@@ -47,10 +47,16 @@ if command -v claude >/dev/null 2>&1; then
     fi
 {{- end }}
     # No `plugin update` / `marketplace update`: Anthropic's marketplace updates
-    # itself, and for a pinned one an update can only mean its tag moved.
+    # itself (FORCE_AUTOUPDATE_PLUGINS in the settings base), and for a pinned
+    # one an update can only mean its tag moved.
+    # Install only what is absent: `plugin install` on an installed plugin turns
+    # it back on, and one disabled with `claude plugin disable` must stay off.
+    installed=$(claude plugin list --json 2>/dev/null || echo '[]')
 {{- range .plugins.claude }}
-    claude plugin install {{ . | shellQuote }} --scope user >/dev/null 2>&1 \
-        || echo {{ printf "claude plugin install %s failed" . | shellQuote }} >&2
+    if ! printf '%s' "$installed" | jq -e --arg id {{ . | shellQuote }} 'any(.[]; .id == $id)' >/dev/null; then
+        claude plugin install {{ . | shellQuote }} --scope user >/dev/null 2>&1 \
+            || echo {{ printf "claude plugin install %s failed" . | shellQuote }} >&2
+    fi
 {{- end }}
 
     # Idempotent: `mcp get` succeeds when the server is already registered.
@@ -61,8 +67,17 @@ if command -v claude >/dev/null 2>&1; then
             || echo {{ printf "claude mcp add %s failed" .name | shellQuote }} >&2
     fi
 {{- end }}
+{{- if eq .profile "core" }}
 else
     echo "claude CLI not found, skipping Claude plugin install" >&2
+{{- else }}
+else
+    # This tier installs claude through mise. Failing (rather than skipping)
+    # leaves the script unrecorded, so once `mise install` succeeds the next
+    # apply sets up plugins and MCP instead of never.
+    echo "ERROR: claude not found — mise install should have provided it; the next apply retries." >&2
+    exit 1
+{{- end }}
 fi
 
 if command -v codex >/dev/null 2>&1; then
