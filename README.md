@@ -77,7 +77,7 @@ chezmoi init
 Nothing in the repo is secret.
 
 - **GitHub API auth for installs:** mise reads `gh auth token`.
-- **SSH:** 1Password's agent for a local login. Over SSH, `~/.zshrc` uses the forwarded agent and pins it behind `~/.ssh/agent.sock`, so tmux panes outlive the login that started them.
+- **SSH:** 1Password's SSH agent for a local login. Inside an SSH session a forwarded agent (`ssh -A`) wins over the box's own 1Password, and `~/.zshrc` pins it behind `~/.ssh/agent.sock` so tmux panes outlive the login that started them.
 - **CLI tokens:** [1Password Shell Plugins](https://developer.1password.com/docs/cli/shell-plugins/).
 
 There are no global git hooks: `core.hooksPath` would disable every repository's own hooks.
