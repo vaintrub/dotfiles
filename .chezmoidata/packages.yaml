@@ -53,8 +53,6 @@ plugins:
     - figma@claude-plugins-official
     - frontend-design@claude-plugins-official
     - caveman@caveman
-    - sepia@sepia                   # de-AI writing pass for prose and docs
-    - wiki@llm-wiki
     - mattpocock-skills@claude-plugins-official
     - supabase@claude-plugins-official
   # Third-party code that runs inside the agent, so each is pinned to a tag
@@ -63,8 +61,6 @@ plugins:
   # allowed-tools, skills — then change the tag; script 70 re-pins.
   claude_marketplaces:
     - caveman:JuliusBrussee/caveman#v4.0.1
-    - sepia:Nanako0129/sepia#v0.12.4
-    - llm-wiki:nvk/llm-wiki#v1.0.0
   codex:
     - github@openai-curated
     - google-drive@openai-curated
