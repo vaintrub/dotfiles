@@ -93,9 +93,9 @@ chezmoi's default `~/.local/share/chezmoi/`; `~/dotfiles` is only a symlink.
   touching them. The SSH tints are coordinated with tmux (§10).
 
 ### vim
-- `plug.vim` is an external (§12). The bootstrap at the top of `dot_vimrc`
-  runs `:PlugInstall` while `~/.vim/plugged/*` is empty — the glob is on the
-  contents, because an interrupted install leaves the directory behind.
+- `plug.vim` is an external (§12). At launch `dot_vimrc` installs every `Plug`
+  whose directory is missing, so a line added on one machine installs itself
+  on the others.
 
 ### tmux
 - Prefix `C-a`. Never edit `~/.config/tmux/` (re-extracted from the archive);

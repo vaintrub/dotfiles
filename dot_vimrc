@@ -3,11 +3,11 @@ set nocompatible
 " --- vim-plug bootstrap ---
 " :PlugInstall / :PlugUpdate / :PlugClean. Never :PlugUpgrade: plug.vim is a
 " chezmoi external pinned in .chezmoiexternal.toml.tmpl — bump it there.
-" Glob the contents, not the directory: an interrupted PlugInstall leaves
-" ~/.vim/plugged behind, empty.
-if empty(glob('~/.vim/plugged/*'))
-  autocmd VimEnter * PlugInstall --sync | source $MYVIMRC
-endif
+" At launch, install whatever the Plug list names but ~/.vim/plugged lacks: the
+" first launch, an interrupted install, a Plug line added on another machine.
+autocmd VimEnter * if len(filter(values(g:plugs), '!isdirectory(v:val.dir)'))
+  \| PlugInstall --sync | source $MYVIMRC
+\| endif
 
 call plug#begin('~/.vim/plugged')
 
