@@ -26,24 +26,24 @@ if command -v claude >/dev/null 2>&1; then
     fi
 {{- range .plugins.claude_marketplaces }}
 {{- $parts := splitn ":" 2 . }}
-    if ! out=$(claude plugin marketplace add {{ $parts._1 | quote }} 2>&1); then
-        echo "WARNING: claude plugin marketplace add {{ $parts._0 }} failed:" >&2
+    if ! out=$(claude plugin marketplace add {{ $parts._1 | shellQuote }} 2>&1); then
+        echo {{ printf "WARNING: claude plugin marketplace add %s failed:" $parts._0 | shellQuote }} >&2
         echo "$out" >&2
     fi
 {{- end }}
 {{- range .plugins.claude }}
-    claude plugin install {{ . | quote }} --scope user >/dev/null 2>&1 \
-        || echo "claude plugin install {{ . }} failed" >&2
-    claude plugin update {{ . }} >/dev/null 2>&1 || true
+    claude plugin install {{ . | shellQuote }} --scope user >/dev/null 2>&1 \
+        || echo {{ printf "claude plugin install %s failed" . | shellQuote }} >&2
+    claude plugin update {{ . | shellQuote }} >/dev/null 2>&1 || true
 {{- end }}
     claude plugin marketplace update >/dev/null 2>&1 || true
 
     # Idempotent: `mcp get` succeeds when the server is already registered.
 {{- range .mcp }}
-    if ! claude mcp get {{ .name | quote }} >/dev/null 2>&1; then
-        claude mcp add -s user --transport http {{ .name | quote }} {{ .url | quote }} >/dev/null 2>&1 \
-            && echo "claude mcp add {{ .name }}" \
-            || echo "claude mcp add {{ .name }} failed" >&2
+    if ! claude mcp get {{ .name | shellQuote }} >/dev/null 2>&1; then
+        claude mcp add -s user --transport http {{ .name | shellQuote }} {{ .url | shellQuote }} >/dev/null 2>&1 \
+            && echo {{ printf "claude mcp add %s" .name | shellQuote }} \
+            || echo {{ printf "claude mcp add %s failed" .name | shellQuote }} >&2
     fi
 {{- end }}
 else
@@ -52,8 +52,8 @@ fi
 
 if command -v codex >/dev/null 2>&1; then
 {{- range .plugins.codex_marketplaces }}
-    codex plugin marketplace add {{ . | quote }} >/dev/null 2>&1 \
-        || echo "codex plugin marketplace add {{ . }} failed" >&2
+    codex plugin marketplace add {{ . | shellQuote }} >/dev/null 2>&1 \
+        || echo {{ printf "codex plugin marketplace add %s failed" . | shellQuote }} >&2
 {{- end }}
     codex plugin marketplace upgrade >/dev/null 2>&1 || true
 else

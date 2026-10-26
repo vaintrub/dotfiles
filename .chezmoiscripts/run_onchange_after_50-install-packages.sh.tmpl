@@ -15,22 +15,22 @@ export TZ=Etc/UTC
 # without sourcing profile. Ensure mise shims are reachable too.
 export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
 
-export DOTFILES_PROFILE={{ .profile | quote }}
-export DOTFILES_OS={{ .chezmoi.os | quote }}
-export DOTFILES_OSID={{ .osid | quote }}
-export DOTFILES_OSRELEASE_IDLIKE={{ if hasKey .chezmoi.osRelease "idLike" }}{{ .chezmoi.osRelease.idLike | quote }}{{ else }}""{{ end }}
+export DOTFILES_PROFILE={{ .profile | shellQuote }}
+export DOTFILES_OS={{ .chezmoi.os | shellQuote }}
+export DOTFILES_OSID={{ .osid | shellQuote }}
+export DOTFILES_OSRELEASE_IDLIKE={{ if hasKey .chezmoi.osRelease "idLike" }}{{ .chezmoi.osRelease.idLike | shellQuote }}{{ else }}''{{ end }}
 
-export DOTFILES_CORE_BREWS={{ (.packages.core.brews | default (list)) | sortAlpha | uniq | join " " | quote }}
-export DOTFILES_DEV_BREWS={{ (.packages.dev.brews | default (list)) | sortAlpha | uniq | join " " | quote }}
+export DOTFILES_CORE_BREWS={{ (.packages.core.brews | default (list)) | sortAlpha | uniq | join " " | shellQuote }}
+export DOTFILES_DEV_BREWS={{ (.packages.dev.brews | default (list)) | sortAlpha | uniq | join " " | shellQuote }}
 
-export DOTFILES_CORE_APT={{ (.packages.core.apt | default (list)) | sortAlpha | uniq | join " " | quote }}
-export DOTFILES_DEV_APT={{ (.packages.dev.apt | default (list)) | sortAlpha | uniq | join " " | quote }}
-export DOTFILES_CORE_DNF={{ (.packages.core.dnf | default (list)) | sortAlpha | uniq | join " " | quote }}
-export DOTFILES_DEV_DNF={{ (.packages.dev.dnf | default (list)) | sortAlpha | uniq | join " " | quote }}
+export DOTFILES_CORE_APT={{ (.packages.core.apt | default (list)) | sortAlpha | uniq | join " " | shellQuote }}
+export DOTFILES_DEV_APT={{ (.packages.dev.apt | default (list)) | sortAlpha | uniq | join " " | shellQuote }}
+export DOTFILES_CORE_DNF={{ (.packages.core.dnf | default (list)) | sortAlpha | uniq | join " " | shellQuote }}
+export DOTFILES_DEV_DNF={{ (.packages.dev.dnf | default (list)) | sortAlpha | uniq | join " " | shellQuote }}
 
-export DOTFILES_GUI_MAC_CASKS={{ (.packages.gui.mac_casks | default (list)) | sortAlpha | uniq | join " " | quote }}
-export DOTFILES_GUI_LINUX_APT={{ (.packages.gui.linux_apt | default (list)) | sortAlpha | uniq | join " " | quote }}
-export DOTFILES_GUI_LINUX_DNF={{ (.packages.gui.linux_dnf | default (list)) | sortAlpha | uniq | join " " | quote }}
+export DOTFILES_GUI_MAC_CASKS={{ (.packages.gui.mac_casks | default (list)) | sortAlpha | uniq | join " " | shellQuote }}
+export DOTFILES_GUI_LINUX_APT={{ (.packages.gui.linux_apt | default (list)) | sortAlpha | uniq | join " " | shellQuote }}
+export DOTFILES_GUI_LINUX_DNF={{ (.packages.gui.linux_dnf | default (list)) | sortAlpha | uniq | join " " | shellQuote }}
 
 # Re-fire when the mise tool list changes. packages.yaml is already rendered
 # into the DOTFILES_* vars above (edits there change this script); the mise
