@@ -63,7 +63,6 @@
 
 [fetch]
     prune = true
-    pruneTags = true
 
 [rerere]
     enabled = true
@@ -87,4 +86,7 @@
     syntax-theme = Dracula
 
 [interactive]
-    diffFilter = command -v delta >/dev/null 2>&1 && delta --color-only || cat
+    # Braced: git < 2.37 (the Jetson) runs `add -p` in Perl, which splices this
+    # into "$diff | <filter>", and an unbraced && / || would leave cat reading
+    # the terminal. Quoted, because an unquoted ";" starts a gitconfig comment.
+    diffFilter = "{ command -v delta >/dev/null 2>&1 && delta --color-only || cat; }"
