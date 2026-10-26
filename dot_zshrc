@@ -143,8 +143,9 @@ case "$(uname -s)" in
 esac
 _fwd_sock="$HOME/.ssh/agent.sock"
 # Repin only from a login that can have brought an agent: inside SSH, or on a
-# box without 1Password, where SSH_AUTH_SOCK can only be a forwarded one.
-if [[ ( -n $SSH_CONNECTION || ! -S $_op_sock ) \
+# Linux box without 1Password. Never from a local macOS shell, whose
+# SSH_AUTH_SOCK is launchd's keyless agent while 1Password is still starting.
+if [[ ( -n $SSH_CONNECTION || ( ! -S $_op_sock && $OSTYPE != darwin* ) ) \
       && $SSH_AUTH_SOCK != $_fwd_sock && -S $SSH_AUTH_SOCK ]]; then
     [[ -d $HOME/.ssh ]] || mkdir -m 700 -p "$HOME/.ssh"
     ln -sfn "$SSH_AUTH_SOCK" "$_fwd_sock"

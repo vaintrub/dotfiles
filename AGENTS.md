@@ -39,7 +39,7 @@ sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply --use-builtin-git=true v
 | `dot_config/mise/config.toml.tmpl` | the cross-platform CLI toolchain (core: fzf, zoxide, jq; dev: the rest) |
 | `.chezmoiscripts/` | install scripts (§6) |
 | `.chezmoiexternal.toml.tmpl` | SHA-pinned externals: oh-my-tmux, `plug.vim`; macOS fonts (§12) |
-| `.chezmoi.toml.tmpl`, `.chezmoiignore`, `.chezmoiversion` | chezmoi metadata: the profile prompt, non-target paths, the minimum chezmoi version (2.72.0, for `shellQuote`) |
+| `.chezmoi.toml.tmpl`, `.chezmoiignore`, `.chezmoiversion` | chezmoi metadata: the profile prompt, non-target paths, the minimum chezmoi version (2.73.1, for `shellQuote` without doubled backslashes) |
 | `tests/unit/repo-invariants.bats` | source-tree invariants, no apply needed |
 | `tests/files/*.bats` | post-apply smoke tests: `common` at every profile, then `core` or `dev` |
 | `.github/workflows/ci.yaml` | lint job, then one apply leg per machine class (§7) |
@@ -149,6 +149,9 @@ then 70), then `darwin/` and `linux/`. They run after every file is written.
   the apply stops, chezmoi records nothing, and the next apply retries. Bulk
   steps (`brew bundle`, `mise install`) only warn with a recovery hint, so one
   broken formula or a tool without a build for the box cannot block the rest.
+  Script 70 likewise only warns without claude, and its rendered text records
+  whether claude's shim exists, so it re-runs on the first apply after mise
+  provides it.
 - **Re-runs.** `run_onchange_` scripts re-run when their rendered text changes.
   Both 50s embed the mise config's hash, 70 embeds it and the profile, and the
   package lists render inline, so editing a list re-runs the right script. To
@@ -243,7 +246,9 @@ drift.
 
 `enabledPlugins` is a union: script 70 installs every missing `plugins.claude`
 entry, the base enables it, and a value already in the live file wins — a plugin
-disabled with `claude plugin disable -s user` stays off. So the list is an
+disabled with `claude plugin disable -s user` stays off (except across a tag
+bump of its third-party marketplace, whose re-pin reinstalls it enabled). The
+base's `permissions.deny` is merged the same way, as a union. So the list is an
 install baseline, not enable state. Codex is the opposite: `plugins.codex`
 entries are re-enabled on every apply. Retiring a Claude plugin takes three
 steps on each machine: drop the line, `claude plugin uninstall <plugin>`, and

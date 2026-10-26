@@ -25,4 +25,8 @@
 {{- end -}}
 {{- $merged := mergeOverwrite (deepCopy $base) $existing -}}
 {{- $merged = mergeOverwrite $merged (omit $base "enabledPlugins") -}}
+{{- /* The re-apply replaced permissions.deny wholesale; union it instead, so a
+     rule added on one machine (/permissions) survives the base's rules. */ -}}
+{{- $deny := concat (dig "permissions" "deny" (list) $existing) (dig "permissions" "deny" (list) $base) | uniq -}}
+{{- if $deny }}{{ $_ := set $merged.permissions "deny" $deny }}{{ end -}}
 {{ $merged | toPrettyJson }}
