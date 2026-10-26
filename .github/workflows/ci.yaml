@@ -36,8 +36,8 @@ jobs:
       # harmless at core tier.
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # CODESPACES=true is read by .chezmoi.toml.tmpl as the "ephemeral"
-      # environment signal — surfaced in the prompt hint. Only set for the
-      # core run, which exercises the non-interactive default path.
+      # environment signal, which skips the identity prompts. Only set for
+      # the core run, which exercises the non-interactive default path.
       CODESPACES: ${{ matrix.profile == 'core' && 'true' || '' }}
 
     steps:

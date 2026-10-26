@@ -37,7 +37,7 @@ If `mise ls` shows `(missing)` rows, the anonymous GitHub API limit was hit mid-
 
 ## Install profiles
 
-Prompted on init (the detected env is shown as a hint; you pick). Cached in `~/.config/chezmoi/chezmoi.toml [data].profile` — change later by editing that key then `chezmoi apply`, or re-prompt with `chezmoi init --prompt`.
+Prompted on init (no auto-detection; you pick). Cached in `~/.config/chezmoi/chezmoi.toml [data].profile` — change later by editing that key then `chezmoi apply`, or re-prompt with `chezmoi init --prompt`.
 
 | Profile | What you get | Use case |
 |---|---|---|
