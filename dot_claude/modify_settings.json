@@ -6,14 +6,14 @@
 
   Two-step deep merge:
   - mergeOverwrite (deepCopy $base) $existing — existing wins, so tool-written
-    keys survive (rtk's PreToolUse hook, plugins enabled ad hoc). deepCopy
+    keys survive (iTerm2's hooks, plugins enabled ad hoc). deepCopy
     because mergeOverwrite mutates its first argument.
   - re-apply $base minus `enabledPlugins` — without it the base could only ADD
     keys, never change one. enabledPlugins stays a union.
   Maps merge recursively; lists would overwrite wholesale.
 
-  CONSTRAINT: the base must not define `hooks` — rtk owns them via
-  `rtk init -g --auto-patch`. The `fail` below enforces it.
+  CONSTRAINT: the base must not define `hooks` — tools own them (iTerm2's
+  Claude Code integration writes its own). The `fail` below enforces it.
 */ -}}
 {{- $existing := dict -}}
 {{- if .chezmoi.stdin -}}
@@ -21,7 +21,7 @@
 {{- end -}}
 {{- $base := fromJson (includeTemplate "claude-settings-base.json" .) -}}
 {{- if hasKey $base "hooks" -}}
-{{-   fail "claude-settings-base.json must not define 'hooks' (rtk owns it)" -}}
+{{-   fail "claude-settings-base.json must not define 'hooks' (tools own them)" -}}
 {{- end -}}
 {{- $merged := mergeOverwrite (deepCopy $base) $existing -}}
 {{- $merged = mergeOverwrite $merged (omit $base "enabledPlugins") -}}

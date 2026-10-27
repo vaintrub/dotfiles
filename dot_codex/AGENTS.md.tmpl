@@ -11,8 +11,3 @@ output.
 Codex has no `rules/`-style auto-discovery, so for this agent the index above
 **is** the operative instruction set. Read the individual files under
 `{{ .chezmoi.homeDir }}/.claude/rules/` on demand when a task needs the full text.
-
-Also read `{{ .chezmoi.homeDir }}/.codex/RTK.md` (rtk's command rules). Codex does not
-expand `@` imports; `rtk init` writes the line below and restores it if removed.
-
-@{{ .chezmoi.homeDir }}/.codex/RTK.md

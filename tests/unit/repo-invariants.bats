@@ -45,11 +45,11 @@ codex_skill_links() {
     done
 }
 
-@test "every script that runs claude, codex or rtk puts mise's shims on PATH" {
+@test "every script that runs claude or codex puts mise's shims on PATH" {
     # chezmoi exec()s each script as a fresh child, so one script's PATH export
     # never reaches the next, and these three exist only as mise shims.
     for f in .chezmoiscripts/*.sh.tmpl .chezmoiscripts/*/*.sh.tmpl; do
-        grep -qE 'command -v (claude|codex|rtk)' "$f" || continue
+        grep -qE 'command -v (claude|codex)' "$f" || continue
         grep -q '^export PATH=.*\.local/share/mise/shims' "$f" || {
             echo "$f probes PATH without exporting mise's shims" >&2
             return 1

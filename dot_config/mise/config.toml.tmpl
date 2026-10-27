@@ -77,8 +77,6 @@ rust   = "stable"
 # --- Auth + secrets -----------------------------------------------------
 op                                          = "latest"   # registry alias for 1password (vfox)
 
-# rtk: Linux arm64 needs glibc ≥2.39 (Ubuntu 24.04+); init skips gracefully on older.
-"github:rtk-ai/rtk"                         = "latest"
 
 # OS-native packages (htop, nmap, wireguard-tools, postgresql-client) live in
 # .chezmoidata/packages.yaml — they have C deps mise would have to rebuild.

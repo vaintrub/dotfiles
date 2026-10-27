@@ -25,14 +25,14 @@ sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply --use-builtin-git=true v
 | Profile | Gets | Machine |
 |---|---|---|
 | `core` | Linux: zsh, vim, tmux, git, curl, ufw, tcpdump; macOS: tmux, mise. Both: mise with fzf, zoxide, jq | VPS |
-| `dev` | core + the full mise toolchain (languages, kubectl/helm/gh/delta/…, claude, codex, op, rtk) + a few OS packages | Jetson |
+| `dev` | core + the full mise toolchain (languages, kubectl/helm/gh/delta/…, claude, codex, op) + a few OS packages | Jetson |
 | `workstation` | dev + macOS casks (iTerm2, Docker Desktop, VS Code, ngrok, 1Password) | MacBook |
 
 Change it later with `chezmoi init --prompt`. Then:
 
 ```sh
 exec zsh
-chezmoi apply    # once more: converges what rtk init wrote on the first pass
+chezmoi apply    # once more: converges what the plugin CLI wrote on the first pass
 mise ls          # no "(missing)" rows
 ```
 

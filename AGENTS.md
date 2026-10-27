@@ -124,8 +124,7 @@ chezmoi's default `~/.local/share/chezmoi/`; `~/dotfiles` is only a symlink.
 - **Never tracked** (machine-local, some secret): `~/.claude.json` (OAuth
   tokens), `~/.claude/settings.local.json` (which Claude reads only for sessions
   started in `$HOME` itself), `~/.claude/plugins/*.json`,
-  `~/.codex/auth.json`, `installation_id`, Codex's sessions/cache/log/sqlite,
-  `RTK.md` (written by `rtk init`, `.chezmoiignore`d).
+  `~/.codex/auth.json`, `installation_id`, Codex's sessions/cache/log/sqlite.
 
 ## 5. Saving portable settings
 
@@ -144,7 +143,7 @@ then 70), then `darwin/` and `linux/`. They run after every file is written.
 |---|---|
 | `run_onchange_after_50-packages-darwin` | Homebrew (first run), `brew bundle` from packages.yaml, `mise install` |
 | `run_onchange_after_50-packages-linux` | `apt-get install` for the packages dpkg reports missing, mise via mise.run, `mise install` |
-| `run_onchange_after_70-install-plugins` | Claude plugins, marketplaces and MCP servers through the CLI; Codex marketplaces; `rtk init` |
+| `run_onchange_after_70-install-plugins` | Claude plugins and MCP servers through the CLI; Codex marketplaces |
 | `darwin/run_once_after_configure-iterm2`, `darwin/run_once_after_enable-touchid-sudo` | iTerm2 prefs folder; Touch ID for sudo |
 | `linux/run_once_after_chsh` | zsh as login shell |
 
@@ -163,8 +162,8 @@ then 70), then `darwin/` and `linux/`. They run after every file is written.
   state lives in `entryState`, `run_once_` in `scriptState`. Never delete a
   whole bucket: `entryState` also holds every file's record, and without it an
   apply overwrites local edits without asking.
-- **PATH.** chezmoi execs each script fresh. Any script that calls claude,
-  codex or rtk must export `~/.local/share/mise/shims` itself
+- **PATH.** chezmoi execs each script fresh. Any script that calls claude or
+  codex must export `~/.local/share/mise/shims` itself
   (`repo-invariants.bats` checks).
 - **Adding things:** an OS package → `packages.{darwin,linux}.{core,dev}` or
   `packages.darwin.casks`; a CLI tool → the mise config (inside the dev block
@@ -198,7 +197,7 @@ CI runs the same on `ubuntu-22.04-arm` (dev), `ubuntu-24.04` (core) and
   applies in the same process with the *old* config, which breaks whenever the
   old config points at something the pull removed.
 - The first apply on a fresh box needs a terminal (sudo prompts) and a second
-  apply to converge what `rtk init` writes into `settings.json`.
+  apply to converge what the Claude plugin CLI writes into `settings.json`.
 
 ## 8. Shell conventions
 
@@ -242,33 +241,27 @@ good (Codex's key order and quoting never equal `toToml`'s). It is not drift.
 `czs` (in `dot_zshrc`) is `chezmoi status` without that line.
 
 **Claude Code.** `dot_claude/modify_settings.json` merges in two steps so the
-base stays authoritative for its keys while tool-written keys (rtk's hook,
-iTerm2's integration) survive; see the header comment. The CLI and iTerm2
+base stays authoritative for its keys while tool-written keys (iTerm2's
+hooks, plugins enabled by hand) survive; see the header comment. The CLI and iTerm2
 reorder the file, so compare an `MM` on it with `jq -S` before calling it
 drift.
 
 `enabledPlugins` is a union: script 70 installs every missing `plugins.claude`
 entry, the base enables it, and a value already in the live file wins — a plugin
-disabled with `claude plugin disable -s user` stays off (except across a tag
-bump of its third-party marketplace, whose re-pin reinstalls it enabled). The
-base's `permissions.deny` is merged the same way, as a union. So the list is an
+disabled with `claude plugin disable -s user` stays off. The base's `permissions.deny` is merged the same way, as a union. So the list is an
 install baseline, not enable state. Codex is the opposite: `plugins.codex`
 entries are re-enabled on every apply. Retiring a Claude plugin takes three
 steps on each machine: drop the line, `claude plugin uninstall <plugin>`, and
-delete its `enabledPlugins` entry from `~/.claude/settings.json`. For a
-third-party marketplace, `claude plugin marketplace remove <name>` does all of
-it in one step (plugins, `enabledPlugins`, the marketplace record).
+delete its `enabledPlugins` entry from `~/.claude/settings.json`. A plugin from
+its own marketplace goes in one step: `claude plugin marketplace remove <name>`
+removes the plugins, their `enabledPlugins` entries and the marketplace.
 
-Third-party marketplaces are entries `<name>:<owner>/<repo>#<tag>` in
-`plugins.claude_marketplaces`; the tag is required (the template fails
-without it). They are pinned to a tag —
-Claude Code refuses a commit — because their code runs inside the agent
-(caveman's hooks fire every session). To bump one, read the diff between the
-tags (`plugin.json` hooks, commands' `allowed-tools`, skills), then change the
-tag. Script 70 sees the recorded ref differ, removes the marketplace (which
-uninstalls its plugins), re-adds it at the new tag and reinstalls. Never run
-caveman's `/caveman-init`: it pipes unpinned code from that repo's `main` into
-node.
+Only Anthropic's marketplace is tracked; no third-party Claude plugins. Their
+code runs inside the agent, hooks included, whatever the permission mode. One
+added later should be pinned to a reviewed tag
+(`claude plugin marketplace add <owner>/<repo>#<tag>`; Claude Code refuses a
+commit), and script 70 would then need to re-pin it on a tag bump, since
+`marketplace add` leaves an existing clone on its old ref.
 
 ## 10. Visual coordination — SSH cues
 

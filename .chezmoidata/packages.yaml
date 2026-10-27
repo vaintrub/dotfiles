@@ -52,15 +52,8 @@ plugins:
     - gopls-lsp@claude-plugins-official
     - figma@claude-plugins-official
     - frontend-design@claude-plugins-official
-    - caveman@caveman
     - mattpocock-skills@claude-plugins-official
     - supabase@claude-plugins-official
-  # Third-party code that runs inside the agent, so each is pinned to a tag
-  # whose contents were read before pinning (caveman's hooks run every
-  # session). To bump: read the diff — plugin.json hooks, commands'
-  # allowed-tools, skills — then change the tag; script 70 re-pins.
-  claude_marketplaces:
-    - caveman:JuliusBrussee/caveman#v4.0.1
   codex:
     - github@openai-curated
     - google-drive@openai-curated

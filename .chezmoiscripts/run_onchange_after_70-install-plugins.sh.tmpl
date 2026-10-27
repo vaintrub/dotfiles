@@ -7,7 +7,7 @@
 #!/bin/sh
 set -eu
 # Re-run when the tool list or the profile changes, since either can add
-# claude, codex or rtk. mise config: {{ include "dot_config/mise/config.toml.tmpl" | sha256sum }}
+# claude or codex. mise config: {{ include "dot_config/mise/config.toml.tmpl" | sha256sum }}
 # profile: {{ .profile }}
 # And once claude's shim appears, e.g. after a failed `mise install` is fixed by
 # hand: {{ if stat (joinPath .chezmoi.homeDir ".local/share/mise/shims/claude") }}present{{ else }}absent{{ end }}
@@ -32,25 +32,8 @@ if command -v claude >/dev/null 2>&1; then
         echo "$out" >&2
     fi
 
-    # Third-party marketplaces are pinned to a tag (a commit is refused), and
-    # `marketplace add` leaves an existing clone on whatever ref it had. So one
-    # recorded at another ref is removed first; that uninstalls its plugins,
-    # and the install loop below puts them back at the tag.
-    known=$(claude plugin marketplace list --json 2>/dev/null || echo '[]')
-{{- range .plugins.claude_marketplaces }}
-{{- $parts := splitn ":" 2 . }}
-{{- $ref := index (splitn "#" 2 $parts._1) "_1" }}
-    if [ "$(printf '%s' "$known" | jq -r --arg n {{ $parts._0 | shellQuote }} '.[] | select(.name == $n) | .ref // ""')" != {{ $ref | shellQuote }} ]; then
-        claude plugin marketplace remove {{ $parts._0 | shellQuote }} >/dev/null 2>&1 || true
-    fi
-    if ! out=$(claude plugin marketplace add {{ $parts._1 | shellQuote }} 2>&1); then
-        echo {{ printf "WARNING: claude plugin marketplace add %s failed:" $parts._0 | shellQuote }} >&2
-        echo "$out" >&2
-    fi
-{{- end }}
     # No `plugin update` / `marketplace update`: Anthropic's marketplace updates
-    # itself (FORCE_AUTOUPDATE_PLUGINS in the settings base), and for a pinned
-    # one an update can only mean its tag moved.
+    # itself (FORCE_AUTOUPDATE_PLUGINS in the settings base).
     # Install only what is absent at user scope: `plugin install` on an installed
     # plugin turns it back on, and one disabled with `claude plugin disable` must
     # stay off. A project-scope install elsewhere doesn't count.
@@ -84,16 +67,4 @@ if command -v codex >/dev/null 2>&1; then
     codex plugin marketplace upgrade >/dev/null 2>&1 || true
 else
     echo "codex CLI not found, skipping Codex plugin install" >&2
-fi
-
-# rtk's linux-arm64 build needs glibc >= 2.39 (Ubuntu 24.04+), so probe that it
-# runs before letting it patch either agent's config.
-if command -v rtk >/dev/null 2>&1 && rtk --version >/dev/null 2>&1; then
-    if command -v claude >/dev/null 2>&1; then
-        rtk init -g --auto-patch
-    fi
-    # -g pins the write to ~/.codex/, not cwd ($HOME under chezmoi apply).
-    if command -v codex >/dev/null 2>&1; then
-        rtk init -g --codex
-    fi
 fi

@@ -94,7 +94,7 @@ jobs:
           # them on PATH itself, as on a real first apply.
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-      - name: chezmoi init + apply (twice — the second converges what rtk init wrote)
+      - name: chezmoi init + apply (twice — the second converges what the plugin CLI wrote)
         env:
           # Lifts mise's anonymous GitHub API rate limit for the dev tier's
           # aqua fetches. Scoped to this step: nothing else needs it.

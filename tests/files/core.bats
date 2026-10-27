@@ -18,10 +18,6 @@ setup() {
     [ "$status" -eq 1 ]
 }
 
-@test "no rtk binary at core profile (mise dev-only block)" {
-    ! command -v rtk
-}
-
 @test "no claude CLI at core profile (mise dev-only block)" {
     ! command -v claude
 }

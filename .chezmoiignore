@@ -17,13 +17,3 @@ iterm
 # `bats tests/files/common.bats tests/files/<profile>.bats`.
 # Never materialised into $HOME.
 tests
-
-# Per-machine files written by external tools (rtk init writes RTK.md fresh
-# each install — bundled rtk version's content, not ours to track)
-.claude/RTK.md
-.codex/RTK.md
-
-# rtk init writes RTK.md into cwd when run from project dir. We don't want it
-# tracked at source root — the per-machine RTK.md lives at ~/.claude/RTK.md
-# and ~/.codex/RTK.md (both in .chezmoiignore above).
-RTK.md
