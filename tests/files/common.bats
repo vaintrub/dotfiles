@@ -43,8 +43,18 @@ setup() {
     grep -q 'fzf --zsh' "$HOME/.zshrc"
 }
 
+@test "interactive zsh loads the pinned plugins through antidote" {
+    run zsh -ic 'print -r -- "${+functions[_zsh_autosuggest_start]} ${+functions[_zsh_highlight]}"'
+    [ "${lines[-1]}" = "1 1" ]
+    [ -s "$HOME/.zsh_plugins.zsh" ]
+}
+
 @test "~/.vimrc exists" {
     [ -f "$HOME/.vimrc" ]
+}
+
+@test "~/.vim/autoload/plug.vim fetched by the pinned external" {
+    grep -q '^function! plug#begin' "$HOME/.vim/autoload/plug.vim"
 }
 
 @test "~/.tmux.conf.local exists" {
@@ -101,9 +111,9 @@ setup() {
         || stat -f %OLp "$HOME/.codex/config.toml")" = "600" ]
 }
 
-@test "codex skill symlinks resolve into ~/.claude/skills" {
-    # -f follows the symlink, so a dangling one fails here.
-    [ -f "$HOME/.codex/skills/save-to-dotfiles/SKILL.md" ]
+@test "Codex skill links in ~/.agents/skills resolve into ~/.claude/skills" {
+    # -f follows the link, so a dangling one fails here.
+    [ -f "$HOME/.agents/skills/save-to-dotfiles/SKILL.md" ]
 }
 
 # --- 1Password SSH agent ----------------------------------------------------
@@ -114,15 +124,18 @@ setup() {
         || stat -f %OLp "$HOME/.config/1Password/ssh/agent.toml")" = "600" ]
 }
 
-# --- mise itself + core tools (fzf + zoxide installed at every tier) ------
+# --- mise itself + core tools (fzf + zoxide + jq installed at every tier) -
 
 @test "~/.config/mise/config.toml exists" {
     [ -f "$HOME/.config/mise/config.toml" ]
 }
 
-@test "~/.config/mise/config.toml has core tools (fzf + zoxide)" {
+@test "~/.config/mise/config.toml has core tools (fzf + zoxide + jq)" {
     grep -q 'aqua:junegunn/fzf' "$HOME/.config/mise/config.toml"
     grep -q 'aqua:ajeetdsouza/zoxide' "$HOME/.config/mise/config.toml"
+    # Asserted on the rendered config, not `command -v jq`: CI apt-installs jq
+    # itself, so a PATH probe passes whether or not mise ships it.
+    grep -q 'aqua:jqlang/jq' "$HOME/.config/mise/config.toml"
 }
 
 @test "mise binary on PATH" {
@@ -138,7 +151,7 @@ setup() {
 }
 
 # --- OS-native core packages (every tier) ----------------------------------
-# These come from apt/dnf, so they only apply on Linux.
+# These come from apt, so they only apply on Linux.
 
 require_linux() {
     [ "$(uname -s)" = Linux ] || skip "Linux-only package assert"
@@ -172,14 +185,4 @@ require_linux() {
 @test "pkg: tcpdump installed" {
     require_linux
     command -v tcpdump
-}
-
-# --- negatives -------------------------------------------------------------
-
-@test "no stale fnm directory" {
-    [ ! -e "$HOME/.fnm" ]
-}
-
-@test "no stale pyenv directory" {
-    [ ! -e "$HOME/.pyenv" ]
 }

@@ -13,12 +13,9 @@ setup() {
 }
 
 @test "~/.config/mise/config.toml does NOT have dev tools at core profile" {
-    ! grep -q 'aqua:kubernetes/kubernetes/kubectl' "$HOME/.config/mise/config.toml"
-    ! grep -q '^node ' "$HOME/.config/mise/config.toml"
-}
-
-@test "no rtk binary at core profile (mise dev-only block)" {
-    ! command -v rtk
+    # `run`, not a bare `!`: bats ignores a negated command unless it is last.
+    run grep -qE 'aqua:kubernetes/kubernetes/kubectl|^node ' "$HOME/.config/mise/config.toml"
+    [ "$status" -eq 1 ]
 }
 
 @test "no claude CLI at core profile (mise dev-only block)" {

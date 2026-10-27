@@ -1,6 +1,11 @@
 {
   "permissions": {
-    "defaultMode": "auto"
+    "defaultMode": "auto",
+    "deny": [
+      "Read(~/.ssh/id_*)",
+      "Read(**/.env)",
+      "Read(**/.env.local)"
+    ]
   },
   "statusLine": {
     "type": "command",
@@ -14,9 +19,11 @@
   },
   "env": {
     "DISABLE_INSTALLATION_CHECKS": "1",
-    "DISABLE_AUTOUPDATER": "1"
+    "DISABLE_AUTOUPDATER": "1",
+    "FORCE_AUTOUPDATE_PLUGINS": "1"
   },
-  "alwaysThinkingEnabled": true,
   "skipAutoPermissionPrompt": true,
-  "voiceEnabled": true
+  "voice": {
+    "enabled": true
+  }
 }

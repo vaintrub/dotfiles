@@ -1,0 +1,50 @@
+{{- if eq .chezmoi.os "linux" -}}
+{{- $pkgs := .packages.linux.core -}}
+{{- if ne .profile "core" }}{{ $pkgs = concat $pkgs .packages.linux.dev }}{{ end -}}
+#!/bin/sh
+# apt packages, then mise's toolchain. Runs after every file is written. A
+# missing OS package fails the apply and the next apply retries; a failed tool
+# install only warns, so one tool without a build here cannot block the rest.
+# mise config: {{ include "dot_config/mise/config.toml.tmpl" | sha256sum }}
+set -eu
+
+# mise.run installs here, and non-login shells don't have it on PATH.
+export PATH="$HOME/.local/bin:$PATH"
+
+# Only what is missing: with nothing to install there is no sudo prompt, and a
+# broken third-party apt list cannot fail an apply that needs nothing from it.
+pkgs={{ $pkgs | join " " | shellQuote }}
+missing=
+for p in $pkgs; do
+    # shellcheck disable=SC2016
+    dpkg-query -W -f='${db:Status-Abbrev}' "$p" 2>/dev/null | grep -q '^ii' \
+        || missing="$missing $p"
+done
+
+if [ -n "$missing" ]; then
+    sudo=
+    [ "$(id -u)" -eq 0 ] || sudo=sudo
+    # sudo resets the environment, so DEBIAN_FRONTEND goes through env(1).
+    $sudo env DEBIAN_FRONTEND=noninteractive apt-get update -qq \
+        || echo "WARNING: apt-get update failed — installing from the existing index." >&2
+    # shellcheck disable=SC2086
+    $sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $missing
+fi
+
+if ! command -v mise >/dev/null 2>&1; then
+    # Staged, not piped: `curl | sh` reports sh's status and hides a failed fetch.
+    installer=$(mktemp)
+    curl -fsSL https://mise.run -o "$installer"
+    sh "$installer"
+    rm -f "$installer"
+else
+    # mise.run installs once; nothing else upgrades it on Linux (Homebrew does on
+    # macOS). self-update verifies the release signature before replacing it.
+    mise self-update --yes >/dev/null 2>&1 || echo "WARNING: mise self-update failed — run it by hand." >&2
+fi
+
+mise install --yes || {
+    echo "WARNING: some mise tools did not install. Rate limit: gh auth login && mise install." >&2
+    echo "  No build for this box: add it to disable_tools in ~/.config/mise/config.local.toml." >&2
+}
+{{ end -}}

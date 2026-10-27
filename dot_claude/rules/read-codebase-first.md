@@ -5,11 +5,11 @@ description: Universal — read specs / docs / configs / tests before first fix 
 
 **Rule:** Before touching code in response to a bug report or iteration request, read the relevant parts of the codebase first. Spec files, docs, configs, tests — whichever ground the change.
 
-**Why:** Multiple times in the Hero Phase 2 session (calliope, 2026-05-12), I started writing fixes from verbal descriptions or partial code reading, only to discover the actual cause was something the spec or AGENTS.md already prescribed differently. Each premature attempt cost a screenshot-review-revert cycle. The user explicitly said:
+**Why:** Multiple times in one landing-page session, I started writing fixes from verbal descriptions or partial code reading, only to discover the actual cause was something the spec or AGENTS.md already prescribed differently. Each premature attempt cost a screenshot-review-revert cycle. The user explicitly said:
 
 > "Read the documentation first! Think harder! Check against the specs! And so on."
 
-After spending ~2 hours on a misdiagnosed "horizontal scrollbar at 4K" issue, the actual diagnosis came from reading the codebase top-to-bottom: LandingLayout, Nav, Footer, global.css, tokens.css, Hero.astro. The root cause turned out to be viewport-override conflicts, not any code issue — finding that required full context.
+After spending ~2 hours on a misdiagnosed "horizontal scrollbar at 4K" issue, the actual diagnosis came from reading the codebase top-to-bottom: the page layout, navigation, footer, global styles, design tokens and the section component itself. The root cause turned out to be viewport-override conflicts, not any code issue — finding that required full context.
 
 **How to apply:**
 

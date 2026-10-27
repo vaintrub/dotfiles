@@ -5,6 +5,11 @@
 # transient_prompt, instant_prompt=verbose.
 # Type `p10k configure` to generate another config.
 #
+# Hand-edited after the wizard: POWERLEVEL9K_INSTANT_PROMPT=quiet (the wizard
+# chose verbose) and POWERLEVEL9K_TERM_SHELL_INTEGRATION=true, each with its
+# rationale. A wizard re-run drops both; tests/unit/repo-invariants.bats fails
+# until they are restored.
+#
 # Config for Powerlevel10k with lean prompt style. Type `p10k configure` to generate
 # your own config based on it.
 #
@@ -1708,7 +1713,8 @@
   # Terminal shell integration. Emits OSC 133 semantic marks (prompt-start,
   # input-start, command/output-start, output-end + exit code) so terminals
   # (iTerm2, VS Code, WezTerm, kitty) can navigate between prompts, show
-  # per-command exit status, etc. p10k emits the full set with tmux passthrough.
+  # per-command exit status, etc. Inside tmux the marks go to tmux itself
+  # (next-prompt, pane-shell-prompt), not to the outer terminal.
   typeset -g POWERLEVEL9K_TERM_SHELL_INTEGRATION=true
 
   # Hot reload allows you to change POWERLEVEL9K options after Powerlevel10k has been initialized.

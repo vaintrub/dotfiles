@@ -60,12 +60,12 @@ Phase 5 — COMMIT + MERGE
 - User says "wait that's not quite what I meant for #1 either"
 - Iterate from scratch on what should have been a 5-line spec
 
-The Hero Phase 2 iteration cycle on calliope (2026-05-12) demonstrated this: a single "make background nicer + cursor animation + handle new video + fix video bottom corner" produced ~3 hours of revert-rebuild cycles before settling, when 30 minutes of "here's what I'd change, go?" would have done it.
+One landing-page iteration cycle demonstrated this: a single "make background nicer + cursor animation + handle new video + fix video bottom corner" produced ~3 hours of revert-rebuild cycles before settling, when 30 minutes of "here's what I'd change, go?" would have done it.
 
 **How to apply:**
 
 1. When user says "let's iterate on the Hero" — DO NOT start editing. Write the proposal in chat or update the spec file first.
-2. Per-block spec files live under `notes/specs/0N-<block-name>.md` (calliope convention) or wherever the project's spec convention dictates.
+2. Per-block spec files live wherever the project's spec convention dictates (e.g. `notes/specs/0N-<block-name>.md`).
 3. Each iteration on a SHIPPED block also follows this — spec the iteration before applying.
 4. The workflow is reduced (skip mobile phase) when the user explicitly says "desktop only" — but still SPEC → IMPL → REVIEW → COMMIT.
 5. Related rules: [[no-code-without-go]], [[verify-before-fix]], [[visual-audit-mcp-gotchas]].

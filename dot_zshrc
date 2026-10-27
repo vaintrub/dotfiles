@@ -6,25 +6,19 @@ if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]
 fi
 
 # --- Antidote Plugin Manager (static-cache mode) ---
+# antidote is a chezmoi external pinned to a release (.chezmoiexternal.toml.tmpl),
+# and every bundle in ~/.zsh_plugins.txt is pinned to a commit. `antidote load`
+# rebuilds ~/.zsh_plugins.zsh when the list changes, through a temp file: a
+# failed clone keeps the last good file, or writes none, so the next shell
+# retries instead of sourcing an empty one.
 DISABLE_MAGIC_FUNCTIONS=true
-
-if [[ ! -d ${ZDOTDIR:-$HOME}/.antidote ]]; then
-    git clone --depth=1 https://github.com/mattmc3/antidote.git ${ZDOTDIR:-$HOME}/.antidote
-fi
-
-zsh_plugins=${ZDOTDIR:-$HOME}/.zsh_plugins
-if [[ ! ${zsh_plugins}.zsh -nt ${zsh_plugins}.txt ]]; then
-    (
-        source ${ZDOTDIR:-$HOME}/.antidote/antidote.zsh
-        antidote bundle <${zsh_plugins}.txt >${zsh_plugins}.zsh
-    )
-fi
-source ${zsh_plugins}.zsh
+source ${ZDOTDIR:-$HOME}/.antidote/antidote.zsh
+antidote load ${ZDOTDIR:-$HOME}/.zsh_plugins.txt
 
 # --- `code` from any terminal ---
 # Bare `code` opens a *.code-workspace from cwd if there is one, else cwd;
 # explicit args pass through. Over SSH, outside VSCode's own terminal, it emits
-# a `vscode://vscode-remote/…` URL that an iTerm2 Trigger opens on the Mac.
+# a `vscode://vscode-remote/…` URL that ⌘-click opens on the Mac.
 #
 # Forwarding to a Remote-SSH IPC socket instead would be unreliable: VSCode
 # Server's `vscode-ipc-*.sock` files outlive their windows (microsoft/vscode#153311),
@@ -32,6 +26,28 @@ source ${zsh_plugins}.zsh
 #
 # Override the host with VSCODE_REMOTE_HOST when `hostname -s` differs from the
 # ~/.ssh/config alias.
+
+# Percent-encode a path for that URL. Encoding only spaces is not enough: an
+# unencoded `#` or `?` truncates the path silently — `…/notes#1` parses as path
+# `…/notes`, fragment `1`. `no_multibyte` makes the scan byte-wise, so a UTF-8
+# path encodes per byte rather than per codepoint; `emulate -L` keeps that
+# option local, since options set inside a zsh function are otherwise global.
+_code_url_encode() {
+    emulate -L zsh
+    setopt no_multibyte
+    local s=$1 out= c hex i
+    for (( i = 1; i <= $#s; i++ )); do
+        c=$s[i]
+        if [[ $c == [A-Za-z0-9._~/-] ]]; then
+            out+=$c
+        else
+            printf -v hex '%02X' "'$c"
+            out+="%$hex"
+        fi
+    done
+    print -rn -- $out
+}
+
 code() {
     if (( $# == 0 )); then
         local -a ws=( *.code-workspace(N) )
@@ -63,14 +79,17 @@ code() {
         fi
     done
 
-    # Hand off to the local Mac's VSCode via vscode-remote URL. The iTerm2
-    # Trigger fires `open <url>` and VSCode reuses an existing Remote-SSH
-    # window (or opens a new one) — predictable, no socket guesswork.
+    # Hand off to the local Mac's VSCode via a vscode-remote URL: ⌘-click it and
+    # VSCode reuses an existing Remote-SSH window, or opens a new one. iTerm2
+    # needs no setup for that — it applies no scheme allowlist and hands the URL
+    # to LaunchServices, never to a shell. An auto-run Trigger used to save the
+    # click; it was deleted because it exec'd `/bin/sh -c` on any matching text
+    # a remote host printed.
     # `target`, not `path`: zsh ties `path` to `PATH`, so `local path=…`
     # would blank $PATH for the rest of the body.
     local target=${1:A}
     printf 'vscode://vscode-remote/ssh-remote+%s%s\n' \
-        "${VSCODE_REMOTE_HOST:-${HOST%%.*}}" "${target// /%20}"
+        "${VSCODE_REMOTE_HOST:-${HOST%%.*}}" "$(_code_url_encode $target)"
 }
 
 # --- VSCode `code` CLI on PATH (macOS) ---
@@ -79,7 +98,18 @@ code() {
     && export PATH="$PATH:/Applications/Visual Studio Code.app/Contents/Resources/app/bin"
 
 # --- Aliases ---
-alias zshconfig="vim ~/.zshrc"
+alias zshconfig="chezmoi edit ~/.zshrc"   # the source; a live edit is reverted by the next apply
+
+# `chezmoi status` minus `MM .codex/config.toml`, which Codex makes permanent
+# (AGENTS.md §9). Filters the output only; chezmoi's exit status survives.
+czs() {
+    local out
+    out=$(chezmoi status "$@") || return
+    local -a lines=( "${(@f)out}" )
+    lines=( ${lines:#MM .codex/config.toml} )
+    (( $#lines )) && print -rl -- $lines
+    return 0
+}
 
 # --- Locale ---
 export LANG=en_US.UTF-8
@@ -91,33 +121,40 @@ export EDITOR="${EDITOR:-vim}"
 export VISUAL="$EDITOR"
 
 # --- SSH agent ---
-# Route all SSH auth (ssh, git, ssh-add) through 1Password's agent so keys
-# live in 1Password, not on disk. Machines without that agent fall back to
-# stabilising a forwarded one (see below).
+# Two agents can serve this shell: 1Password's, which is this box's own, and one
+# forwarded with `ssh -A`, which belongs to the machine you came from. Inside SSH
+# the forwarded one wins. Otherwise logging into a box that runs 1Password (the
+# Mac mini) raises its approval dialog on a screen nobody is watching.
+# 1Password stays the fallback when nothing live was forwarded.
+#
+# A forwarded agent arrives on a per-login socket that dies with that login,
+# while a tmux pane started earlier keeps the dead path and every ssh/git call
+# from it fails with "Permission denied (publickey)". So the live socket is
+# pinned behind one fixed name, and that name is what gets exported.
 case "$(uname -s)" in
     Darwin) _op_sock="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock" ;;
     Linux)  _op_sock="$HOME/.1password/agent.sock" ;;
 esac
-if [[ -S $_op_sock ]]; then
-    export SSH_AUTH_SOCK="$_op_sock"
-else
-    # No 1Password agent (typically a headless box reached over SSH). There the
-    # agent is forwarded to a per-login socket, /tmp/ssh-XXXX/agent.<pid>, that
-    # dies with the login that created it — while a tmux pane started under an
-    # earlier login keeps the now-dead path in its environment and every ssh/git
-    # call from it fails with "Permission denied (publickey)". Pin whatever
-    # socket is live behind a fixed name and export that instead, so panes
-    # outlive the login they were started in.
-    _fwd_sock="$HOME/.ssh/agent.sock"
-    if [[ $SSH_AUTH_SOCK != $_fwd_sock && -S $SSH_AUTH_SOCK ]]; then
-        [[ -d $HOME/.ssh ]] || mkdir -m 700 -p "$HOME/.ssh"
-        ln -sfn "$SSH_AUTH_SOCK" "$_fwd_sock"
-    fi
-    # -S follows the symlink: a dangling one is skipped rather than exported.
-    [[ -S $_fwd_sock ]] && export SSH_AUTH_SOCK="$_fwd_sock"
-    unset _fwd_sock
+_fwd_sock="$HOME/.ssh/agent.sock"
+# Repin only from a login that can have brought an agent: inside SSH, or on a
+# Linux box without 1Password. Never from a local macOS shell, whose
+# SSH_AUTH_SOCK is launchd's keyless agent while 1Password is still starting.
+if [[ ( -n $SSH_CONNECTION || ( ! -S $_op_sock && $OSTYPE != darwin* ) ) \
+      && $SSH_AUTH_SOCK != $_fwd_sock && -S $SSH_AUTH_SOCK ]]; then
+    [[ -d $HOME/.ssh ]] || mkdir -m 700 -p "$HOME/.ssh"
+    ln -sfn "$SSH_AUTH_SOCK" "$_fwd_sock"
 fi
-unset _op_sock
+# -S follows the symlink, so a pin left dangling by a closed login counts as
+# absent. Without SSH_CONNECTION (a console, cron, a VS Code server) the pin is
+# still used where 1Password is missing.
+if [[ -n $SSH_CONNECTION && -S $_fwd_sock ]]; then
+    export SSH_AUTH_SOCK="$_fwd_sock"
+elif [[ -S $_op_sock ]]; then
+    export SSH_AUTH_SOCK="$_op_sock"
+elif [[ -S $_fwd_sock ]]; then
+    export SSH_AUTH_SOCK="$_fwd_sock"
+fi
+unset _op_sock _fwd_sock
 
 # --- PATH ---
 # Set BEFORE mise activate so curl-pipe-installed mise (at ~/.local/bin/mise

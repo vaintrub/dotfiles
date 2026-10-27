@@ -1,8 +1,9 @@
 # Per-machine zsh overrides — sourced from ~/.zshrc near the end.
 #
-# Seeded ONCE by chezmoi at first apply via the `create_` source-state
-# attribute. After that chezmoi never touches this file again — your
-# edits here are durable.
+# Written by chezmoi whenever it is missing (the `create_` source-state
+# attribute) and never overwritten — your edits here are durable. Undo an
+# override by commenting it out: an empty file counts as removed, and a
+# non-interactive apply then stops on it.
 #
 # Use for things that aren't portable:
 #   - per-machine secrets / tokens (prefer 1Password or an `op run` wrapper)
@@ -13,6 +14,5 @@
 #
 # Examples (uncomment + edit):
 #
-# export GITHUB_TOKEN="ghp_..."
 # alias k=kubectl
 # export PATH="/opt/local-tool/bin:$PATH"

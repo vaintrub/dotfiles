@@ -4,20 +4,11 @@
   Annotation tells chezmoi to render this as a template; .chezmoi.stdin
   contains current target file contents. Template output IS new file content.
 
-  Strategy:
-  - parse existing TOML
-  - drop runtime sections that Codex auto-writes
-  - mergeOverwrite our curated base on top (base wins for managed keys)
-  - serialize back to TOML
+  The curated base is merged over the live file: base wins for the keys it
+  declares, and everything Codex writes at runtime (trust rows, marketplaces,
+  TUI state) passes through. None of it can reach git through apply, which
+  writes only the target — see AGENTS.md §9 for the one command that does.
 */ -}}
 {{- $existing := fromToml .chezmoi.stdin -}}
 {{- $base := fromToml (includeTemplate "codex-config-base.toml" .) -}}
-{{- $existing = unset $existing "projects" -}}
-{{- $existing = unset $existing "notice" -}}
-{{- $existing = unset $existing "tui" -}}
-{{- $existing = unset $existing "tool_suggest" -}}
-{{- $existing = unset $existing "marketplaces" -}}
-{{- /* [[skills.config]] carries absolute paths; the rest of [skills] is preference. */ -}}
-{{- if hasKey $existing "skills" }}{{ $_ := unset (get $existing "skills") "config" }}{{ end -}}
-{{- $merged := mergeOverwrite $existing $base -}}
-{{- toToml $merged -}}
+{{- toToml (mergeOverwrite $existing $base) -}}

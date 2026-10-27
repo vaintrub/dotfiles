@@ -14,7 +14,7 @@ bind C-a send-prefix
 # --- not set by gpakosz ------------------------------------------------------
 set -g mouse on
 setw -g mode-keys vi          # activates gpakosz's v/y/H/L/C-v bindings
-set -s set-clipboard on       # OSC 52, so vim's "+y reaches the host pasteboard
+set -s set-clipboard on       # OSC 52 from apps (Claude Code's /copy, remote tools) reaches the Mac clipboard; any pane can set it
 set-environment -g COLORTERM truecolor   # not propagated into tmux otherwise
 set -g history-limit 50000    # gpakosz default is 5000
 

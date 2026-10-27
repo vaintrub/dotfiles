@@ -6,12 +6,23 @@
 */ -}}
 #!/bin/sh
 set -eu
+# Re-run when the tool list or the profile changes, since either can add
+# claude or codex. mise config: {{ include "dot_config/mise/config.toml.tmpl" | sha256sum }}
+# profile: {{ .profile }}
+# And once claude's shim appears, e.g. after a failed `mise install` is fixed by
+# hand: {{ if stat (joinPath .chezmoi.homeDir ".local/share/mise/shims/claude") }}present{{ else }}absent{{ end }}
 
 {{ if eq .chezmoi.os "darwin" -}}
-# mise activate may not have reached the parent shell on a first apply.
-. "{{ .chezmoi.sourceDir }}/lib/common.sh"
-dotfiles_ensure_brew_path || true
-{{- end }}
+# mise is a Homebrew formula here, and its shims need it on PATH.
+for b in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+    if [ -x "$b" ]; then eval "$("$b" shellenv)"; break; fi
+done
+
+{{ end -}}
+# claude and codex are mise shims, placed ahead of anything Homebrew or npm
+# installed under the same name. chezmoi exec()s every script as a fresh child,
+# so no other script's PATH reaches here.
+export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
 
 if command -v claude >/dev/null 2>&1; then
     # Re-added defensively: the marketplace is absent until claude has been
@@ -20,36 +31,38 @@ if command -v claude >/dev/null 2>&1; then
         echo "WARNING: claude plugin marketplace add (official) failed:" >&2
         echo "$out" >&2
     fi
-{{- range .plugins.claude_marketplaces }}
-{{- $parts := splitn ":" 2 . }}
-    if ! out=$(claude plugin marketplace add {{ $parts._1 | quote }} 2>&1); then
-        echo "WARNING: claude plugin marketplace add {{ $parts._0 }} failed:" >&2
-        echo "$out" >&2
+
+    # No `plugin update` / `marketplace update`: Anthropic's marketplace updates
+    # itself (FORCE_AUTOUPDATE_PLUGINS in the settings base).
+    # Install only what is absent at user scope: `plugin install` on an installed
+    # plugin turns it back on, and one disabled with `claude plugin disable` must
+    # stay off. A project-scope install elsewhere doesn't count.
+    installed=$(claude plugin list --json 2>/dev/null || echo '[]')
+{{- range .plugins.claude }}
+    if ! printf '%s' "$installed" | jq -e --arg id {{ . | shellQuote }} 'any(.[]; .id == $id and .scope == "user")' >/dev/null; then
+        claude plugin install {{ . | shellQuote }} --scope user >/dev/null 2>&1 \
+            || echo {{ printf "claude plugin install %s failed" . | shellQuote }} >&2
     fi
 {{- end }}
-{{- range .plugins.claude }}
-    claude plugin install {{ . | quote }} --scope user >/dev/null 2>&1 \
-        || echo "claude plugin install {{ . }} failed" >&2
-    claude plugin update {{ . }} >/dev/null 2>&1 || true
-{{- end }}
-    claude plugin marketplace update >/dev/null 2>&1 || true
 
     # Idempotent: `mcp get` succeeds when the server is already registered.
 {{- range .mcp }}
-    if ! claude mcp get {{ .name | quote }} >/dev/null 2>&1; then
-        claude mcp add -s user --transport http {{ .name | quote }} {{ .url | quote }} >/dev/null 2>&1 \
-            && echo "claude mcp add {{ .name }}" \
-            || echo "claude mcp add {{ .name }} failed" >&2
+    if ! claude mcp get {{ .name | shellQuote }} >/dev/null 2>&1; then
+        claude mcp add -s user --transport http {{ .name | shellQuote }} {{ .url | shellQuote }} >/dev/null 2>&1 \
+            && echo {{ printf "claude mcp add %s" .name | shellQuote }} \
+            || echo {{ printf "claude mcp add %s failed" .name | shellQuote }} >&2
     fi
 {{- end }}
 else
-    echo "claude CLI not found, skipping Claude plugin install" >&2
+    # Only a warning: exiting would also stop every later script (iTerm2, Touch
+    # ID, chsh). The shim line in the header re-runs this once claude exists.
+    echo "claude CLI not found, skipping Claude plugins (this script re-runs once mise provides it)" >&2
 fi
 
 if command -v codex >/dev/null 2>&1; then
 {{- range .plugins.codex_marketplaces }}
-    codex plugin marketplace add {{ . | quote }} >/dev/null 2>&1 \
-        || echo "codex plugin marketplace add {{ . }} failed" >&2
+    codex plugin marketplace add {{ . | shellQuote }} >/dev/null 2>&1 \
+        || echo {{ printf "codex plugin marketplace add %s failed" . | shellQuote }} >&2
 {{- end }}
     codex plugin marketplace upgrade >/dev/null 2>&1 || true
 else

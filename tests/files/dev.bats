@@ -76,20 +76,15 @@ setup() {
 @test "op --version executes" { run op --version; [ "$status" -eq 0 ]; }
 @test "gh --version executes" { run gh --version; [ "$status" -eq 0 ]; }
 @test "delta --version executes" { run delta --version; [ "$status" -eq 0 ]; }
-@test "rtk --version executes (skip on glibc < 2.39)" {
-    run rtk --version
-    [ "$status" -eq 0 ] || skip "rtk fails (likely glibc < 2.39 on this runner)"
-}
-
 # --- no partial install ----------------------------------------------------
 
 @test "no (missing) mise tools post-install" {
     ! mise ls 2>/dev/null | grep -q '(missing)'
 }
 
-# --- apt dev packages (sanity check beyond common.bats core list) ---------
+# --- OS dev packages (apt or brew) -------------------------------------------
 
-@test "apt: htop" { command -v htop; }
-@test "apt: tree" { command -v tree; }
-@test "apt: wget" { command -v wget; }
-@test "apt: nmap" { command -v nmap; }
+@test "pkg: htop" { command -v htop; }
+@test "pkg: tree" { command -v tree; }
+@test "pkg: wget" { command -v wget; }
+@test "pkg: nmap" { command -v nmap; }
