@@ -167,8 +167,9 @@ then 70), then `darwin/` and `linux/`. They run after every file is written.
   (`repo-invariants.bats` checks).
 - **Adding things:** an OS package → `packages.{darwin,linux}.{core,dev}` or
   `packages.darwin.casks`; a CLI tool → the mise config (inside the dev block
-  unless every tier needs it); a Claude plugin, marketplace or MCP server →
-  `plugins:` / `mcp:` in packages.yaml; a Codex plugin → `plugins.codex`.
+  unless every tier needs it); a Claude plugin (Anthropic's marketplace only,
+  §9) → `plugins.claude`; an MCP server → `mcp:`; a Codex plugin or marketplace
+  → `plugins.codex` / `plugins.codex_marketplaces`.
 - A new script: POSIX `sh`, idempotent, OS-guarded with
   `{{ if eq .chezmoi.os "darwin" }}`, and prefer `run_onchange_after_`.
 
