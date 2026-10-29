@@ -16,9 +16,9 @@ Never write to `~/.claude/<X>` or `~/.codex/<X>` directly — these paths are ch
 
 ## Stack
 
-- **Go**: idiomatic Go, errors wrapped with context, prepared statements only, gofmt + goimports
+- **Go**: the `advanced-go` skill of the `vaintrub` plugin
 - **Python**: 3.10+, type hints required, `ruff` for lint+format (not black/isort separately), `uv` for envs
-- **TypeScript/React/Astro**: strict mode, ESLint flat config, Prettier separately (not eslint-plugin-prettier)
+- **TypeScript/React/Astro**: the `advanced-typescript` skill of the `vaintrub` plugin
 - **PostgreSQL**: parameterized queries, migrations versioned, never drop columns (deprecate first)
 - **Kubernetes**: `kubectl` read-only by default; explicit confirmation before `delete`/`apply` on shared clusters
 
@@ -36,6 +36,7 @@ Never write to `~/.claude/<X>` or `~/.codex/<X>` directly — these paths are ch
 - Don't add backwards-compat shims if the user hasn't asked for them
 - Update existing files; only create new files when explicitly required
 - For UI/frontend changes, mention if you cannot actually run/test the UI
+- Writing, research, review and planning follow the `vaintrub` plugin's skills: `clear-text`, `verified-research`, `independent-review`, `planning`, `writing-product-docs`
 
 ## Security
 
@@ -64,14 +65,4 @@ Rule files live under `dot_claude/rules/` in the chezmoi source dir (use `chezmo
 
 ### Frontend / visual-design projects (UI the user looks at)
 
-- **`frontend-spec-first-workflow`** — Strict per-block pipeline: SPEC → user approve → IMPL DESKTOP → review → IMPL MOBILE → review → POLISH → COMMIT. No phase advances without explicit `go`.
-- **`visual-audit-mcp-gotchas`** — Three-layer viewport conflicts (window + DevTools + MCP emulate), `resize_page` vs `emulate`, screenshot timeout recipe (pause videos + cancel animations + JPEG), `Cmd+Shift+R` after preview rebuild.
-
-### Backend / data / library projects
-
-Placeholder for future rule files. Likely candidates:
-
-- Tests-first where reasonable
-- Migration safety (don't drop columns; deprecate first)
-- Schema/API changes through explicit review
-- Logs as evidence (since no visual feedback)
+- The `frontend-workflow` skill of the `vaintrub` plugin: a spec-first pipeline per block, and the traps of auditing pages through the chrome-devtools MCP.

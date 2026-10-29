@@ -1,0 +1,17 @@
+{{- /*
+  Target paths (relative to $HOME) to delete on apply. Re-evaluated every run,
+  so this is a short-lived migration step — drop the entry once every machine
+  has applied. One path per line.
+*/ -}}
+{{- /*
+  The two language skills and the two frontend rules moved into the owner's
+  vaintrub plugin. chezmoi does not delete a target just because its source
+  disappeared, and the old copies would load next to the plugin's.
+  Drop these entries once every machine has applied.
+*/ -}}
+.claude/skills/advanced-go
+.claude/skills/advanced-typescript
+.agents/skills/advanced-go
+.agents/skills/advanced-typescript
+.claude/rules/frontend-spec-first-workflow.md
+.claude/rules/visual-audit-mcp-gotchas.md
