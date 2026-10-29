@@ -36,6 +36,7 @@ Never write to `~/.claude/<X>` or `~/.codex/<X>` directly — these paths are ch
 - Don't add backwards-compat shims if the user hasn't asked for them
 - Update existing files; only create new files when explicitly required
 - For UI/frontend changes, mention if you cannot actually run/test the UI
+- Visual frontend work follows the `vaintrub` plugin's `frontend-workflow` skill: a spec-first pipeline per block, and the traps of auditing pages through the chrome-devtools MCP
 - Writing, research, review and planning follow the `vaintrub` plugin's skills: `clear-text`, `verified-research`, `independent-review`, `planning`, `writing-product-docs`
 
 ## Security
@@ -62,7 +63,3 @@ Rule files live under `dot_claude/rules/` in the chezmoi source dir (use `chezmo
 - **`read-codebase-first`** — Read specs / docs / configs / tests before first fix attempt. Don't hack from assumptions.
 - **`no-code-without-go`** — Any non-trivial edit (new feature, iteration, visual bug fix) → propose first, wait for explicit user `go`, then code. Exceptions: typos / lint fixes / commands the user already directed.
 - **`verify-before-fix`** — Don't trust verbal descriptions of bugs. Ask for screenshots / logs / measurements before fixing.
-
-### Frontend / visual-design projects (UI the user looks at)
-
-- The `frontend-workflow` skill of the `vaintrub` plugin: a spec-first pipeline per block, and the traps of auditing pages through the chrome-devtools MCP.

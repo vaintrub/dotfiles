@@ -36,4 +36,4 @@ The schedule cost is real. Spec-first stops being abstract overhead when you cou
 2. Even when the fix looks obviously correct (e.g., "video bottom corner missing — it's the asymmetric mask"), spec the fix in 3-5 lines before editing.
 3. The only auto-execute trigger is the user's literal `go` / `approve` / `OK` — for the **specific** thing just discussed, not adjacent refinements.
 4. If the user is in "auto mode" but they've explicitly said "spec-first" earlier — spec-first wins. Auto mode doesn't override an explicit standing instruction from the user.
-5. Related rules: [[read-codebase-first]] (which precedes proposal), [[frontend-spec-first-workflow]] (the strict per-block protocol).
+5. Related rules: [[read-codebase-first]] (which precedes proposal), the `frontend-workflow` skill of the `vaintrub` plugin (the strict per-block protocol).

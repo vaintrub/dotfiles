@@ -143,7 +143,7 @@ then 70), then `darwin/` and `linux/`. They run after every file is written.
 |---|---|
 | `run_onchange_after_50-packages-darwin` | Homebrew (first run), `brew bundle` from packages.yaml, `mise install` |
 | `run_onchange_after_50-packages-linux` | `apt-get install` for the packages dpkg reports missing, mise via mise.run, `mise install` |
-| `run_onchange_after_70-install-plugins` | Claude plugins and MCP servers through the CLI; Codex marketplaces |
+| `run_onchange_after_70-install-plugins` | Claude plugins and MCP servers through the CLI; Codex marketplaces and their plugins |
 | `darwin/run_once_after_configure-iterm2`, `darwin/run_once_after_enable-touchid-sudo` | iTerm2 prefs folder; Touch ID for sudo |
 | `linux/run_once_after_chsh` | zsh as login shell |
 
@@ -253,7 +253,8 @@ disabled with `claude plugin disable -s user` stays off. The base's `permissions
 install baseline, not enable state. Codex is the opposite: `plugins.codex`
 entries are re-enabled on every apply. A `plugins.codex` entry from a marketplace in
 `plugins.codex_marketplaces` also needs `codex plugin add` once, which script 70
-runs; `codex plugin marketplace upgrade` refreshes it after that. Retiring a Claude plugin takes three
+runs. After that, Codex refreshes Git marketplaces and their installed plugins itself, at the
+start of each session. Retiring a Claude plugin takes three
 steps on each machine: drop the line, `claude plugin uninstall <plugin>`, and
 delete its `enabledPlugins` entry from `~/.claude/settings.json`. A plugin from
 its own marketplace goes in one step: `claude plugin marketplace remove <name>`
