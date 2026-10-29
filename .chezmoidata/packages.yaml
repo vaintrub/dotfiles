@@ -54,6 +54,7 @@ plugins:
     - frontend-design@claude-plugins-official
     - mattpocock-skills@claude-plugins-official
     - supabase@claude-plugins-official
+    - vaintrub@vaintrub
   codex:
     - github@openai-curated
     - google-drive@openai-curated

@@ -11,6 +11,15 @@
     "type": "command",
     "command": "sh $HOME/.claude/statusline-command.sh"
   },
+  "extraKnownMarketplaces": {
+    "vaintrub": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/vaintrub/skills.git"
+      },
+      "autoUpdate": true
+    }
+  },
   "enabledPlugins": {
 {{- range $i, $p := .plugins.claude }}
 {{- if $i }},{{ end }}

@@ -167,8 +167,8 @@ then 70), then `darwin/` and `linux/`. They run after every file is written.
   (`repo-invariants.bats` checks).
 - **Adding things:** an OS package → `packages.{darwin,linux}.{core,dev}` or
   `packages.darwin.casks`; a CLI tool → the mise config (inside the dev block
-  unless every tier needs it); a Claude plugin (Anthropic's marketplace only,
-  §9) → `plugins.claude`; an MCP server → `mcp:`; a Codex plugin or marketplace
+  unless every tier needs it); a Claude plugin (Anthropic's marketplace or
+  the owner's, §9) → `plugins.claude`; an MCP server → `mcp:`; a Codex plugin or marketplace
   → `plugins.codex` / `plugins.codex_marketplaces`.
 - A new script: POSIX `sh`, idempotent, OS-guarded with
   `{{ if eq .chezmoi.os "darwin" }}`, and prefer `run_onchange_after_`.
@@ -257,12 +257,20 @@ delete its `enabledPlugins` entry from `~/.claude/settings.json`. A plugin from
 its own marketplace goes in one step: `claude plugin marketplace remove <name>`
 removes the plugins, their `enabledPlugins` entries and the marketplace.
 
-Only Anthropic's marketplace is tracked; no third-party Claude plugins. Their
-code runs inside the agent, hooks included, whatever the permission mode. One
-added later should be pinned to a reviewed tag
+Only Anthropic's marketplace and the owner's own are tracked; no third-party
+Claude plugins. Their code runs inside the agent, hooks included, whatever the
+permission mode. One added later should be pinned to a reviewed tag
 (`claude plugin marketplace add <owner>/<repo>#<tag>`; Claude Code refuses a
 commit), and script 70 would then need to re-pin it on a tag bump, since
 `marketplace add` leaves an existing clone on its old ref.
+
+The owner's marketplace, `vaintrub` (the private repo `vaintrub/skills`), is
+declared in the settings base under `extraKnownMarketplaces`, with
+`autoUpdate`, and tracks `master` unpinned. It is trusted like this repo,
+because the same account controls both. It ships Markdown only; pin it to a tag
+as above once it ships a hook or a script. The clone runs over HTTPS with the
+machine's git credential helper (`gh auth setup-git`); a machine without one
+cannot install or update it.
 
 ## 10. Visual coordination — SSH cues
 

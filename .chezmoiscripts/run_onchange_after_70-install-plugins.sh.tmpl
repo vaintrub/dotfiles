@@ -31,9 +31,22 @@ if command -v claude >/dev/null 2>&1; then
         echo "WARNING: claude plugin marketplace add (official) failed:" >&2
         echo "$out" >&2
     fi
+    # The marketplaces that the settings base declares. Claude registers them
+    # from settings only in an interactive session, so `plugin install` below
+    # would not find them on a fresh machine. `marketplace add` rewrites the
+    # entry without `autoUpdate`, so it runs only for an unregistered one; the
+    # next `chezmoi apply` puts `autoUpdate` back.
+    known=$(claude plugin marketplace list --json 2>/dev/null || echo '[]')
+{{- range $name, $m := (fromJson (includeTemplate "claude-settings-base.json" .)).extraKnownMarketplaces }}
+    if ! printf '%s' "$known" | jq -e --arg n {{ $name | shellQuote }} 'any(.[]; .name == $n)' >/dev/null \
+        && ! out=$(claude plugin marketplace add {{ $m.source.url | shellQuote }} 2>&1); then
+        echo {{ printf "WARNING: claude plugin marketplace add %s failed:" $name | shellQuote }} >&2
+        echo "$out" >&2
+    fi
+{{- end }}
 
-    # No `plugin update` / `marketplace update`: Anthropic's marketplace updates
-    # itself (FORCE_AUTOUPDATE_PLUGINS in the settings base).
+    # No `plugin update` / `marketplace update`: the marketplaces update
+    # themselves (`autoUpdate`, and FORCE_AUTOUPDATE_PLUGINS in the settings base).
     # Install only what is absent at user scope: `plugin install` on an installed
     # plugin turns it back on, and one disabled with `claude plugin disable` must
     # stay off. A project-scope install elsewhere doesn't count.
