@@ -78,6 +78,16 @@ if command -v codex >/dev/null 2>&1; then
         || echo {{ printf "codex plugin marketplace add %s failed" . | shellQuote }} >&2
 {{- end }}
     codex plugin marketplace upgrade >/dev/null 2>&1 || true
+    # A plugin from an added marketplace needs `plugin add` once; the upgrade
+    # above refreshes it after that. The built-in marketplace's plugins never
+    # show as available: the config merge alone enables them.
+    available=$(codex plugin list --json --available 2>/dev/null || echo '{}')
+{{- range .plugins.codex }}
+    if printf '%s' "$available" | jq -e --arg id {{ . | shellQuote }} 'any(.available[]?; .pluginId == $id)' >/dev/null; then
+        codex plugin add {{ . | shellQuote }} >/dev/null 2>&1 \
+            || echo {{ printf "codex plugin add %s failed" . | shellQuote }} >&2
+    fi
+{{- end }}
 else
     echo "codex CLI not found, skipping Codex plugin install" >&2
 fi

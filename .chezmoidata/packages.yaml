@@ -58,8 +58,9 @@ plugins:
   codex:
     - github@openai-curated
     - google-drive@openai-curated
+    - vaintrub@vaintrub
   codex_marketplaces:
-    []
+    - https://github.com/vaintrub/skills.git
 
 # MCP servers for both agents: Claude via `claude mcp add` in script 70, Codex
 # declaratively from codex-config-base.toml. Keyless remote (streamable-http)

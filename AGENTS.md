@@ -251,7 +251,9 @@ drift.
 entry, the base enables it, and a value already in the live file wins — a plugin
 disabled with `claude plugin disable -s user` stays off. The base's `permissions.deny` is merged the same way, as a union. So the list is an
 install baseline, not enable state. Codex is the opposite: `plugins.codex`
-entries are re-enabled on every apply. Retiring a Claude plugin takes three
+entries are re-enabled on every apply. A `plugins.codex` entry from a marketplace in
+`plugins.codex_marketplaces` also needs `codex plugin add` once, which script 70
+runs; `codex plugin marketplace upgrade` refreshes it after that. Retiring a Claude plugin takes three
 steps on each machine: drop the line, `claude plugin uninstall <plugin>`, and
 delete its `enabledPlugins` entry from `~/.claude/settings.json`. A plugin from
 its own marketplace goes in one step: `claude plugin marketplace remove <name>`
