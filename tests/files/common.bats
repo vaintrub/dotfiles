@@ -97,8 +97,9 @@ setup() {
     jq -e . "$HOME/.claude/settings.json" >/dev/null
 }
 
-@test "~/.claude/rules/no-code-without-go.md present" {
-    [ -f "$HOME/.claude/rules/no-code-without-go.md" ]
+@test "both agents' instructions carry the shared rules" {
+    grep -q 'Propose, then wait for "go"' "$HOME/.claude/CLAUDE.md"
+    grep -q 'Propose, then wait for "go"' "$HOME/.codex/AGENTS.md"
 }
 
 @test "~/.codex/AGENTS.md exists" {

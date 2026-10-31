@@ -6,7 +6,7 @@ Personal dotfiles for macOS and Ubuntu, managed with [chezmoi](https://www.chezm
 - **vim** — [vim-plug](https://github.com/junegunn/vim-plug), `plug.vim` SHA-pinned
 - **tmux** — [gpakosz/.tmux](https://github.com/gpakosz/.tmux), SHA-pinned; ours is `dot_tmux.conf.local`
 - **iTerm2** prefs, loaded straight from the repo (macOS)
-- **Claude Code + Codex CLI** — instructions, rules, skills, settings merged without clobbering what the tools write
+- **Claude Code + Codex CLI** — shared instructions, the plugins to install, settings merged without clobbering what the tools write
 - **mise** — the CLI toolchain (Go/Python/Node/Rust + ~30 tools)
 
 Maintainer and agent guide: **[AGENTS.md](AGENTS.md)**.

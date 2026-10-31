@@ -33,7 +33,7 @@ sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply --use-builtin-git=true v
 | `symlink_dot_tmux.conf`, `dot_tmux.conf.local` | tmux: symlink to the oh-my-tmux external (gpakosz's shell-as-config trick needs `$TMUX_CONF` to be his file) + our customizations |
 | `dot_gitconfig.tmpl`, `dot_gitignore_global` | git |
 | `iterm/com.googlecode.iterm2.plist` | the live iTerm2 plist, XML so it diffs; chezmoi-ignored, read and written by iTerm2 itself (§4) |
-| `dot_claude/`, `dot_codex/` | Claude Code and Codex: instructions, rules, skills, settings via `modify_` merges (§9) |
+| `dot_claude/`, `dot_codex/` | Claude Code and Codex: instructions, the `save-to-dotfiles` skill, settings via `modify_` merges (§9) |
 | `.chezmoitemplates/` | partials read through `includeTemplate`: the two merge bases and `ai-common.md`, the body both agents' instruction files share |
 | `.chezmoidata/packages.yaml` | OS packages per OS and tier, Claude/Codex plugins, MCP servers |
 | `dot_config/mise/config.toml.tmpl` | the cross-platform CLI toolchain (core: fzf, zoxide, jq; dev: the rest) |
@@ -118,9 +118,15 @@ chezmoi's default `~/.local/share/chezmoi/`; `~/dotfiles` is only a symlink.
   `dot_gitconfig.tmpl`); a no-op while the file is XML.
 
 ### Claude Code and Codex
-- `dot_claude/rules/*.md` auto-load each session (`paths:` frontmatter narrows
-  one to matching files). Skills live in `dot_claude/skills/*/SKILL.md`, shared
-  with Codex through the symlinks in §3.
+- Both agents get the same rules from `.chezmoitemplates/ai-common.md`, which
+  `dot_claude/CLAUDE.md.tmpl` and `dot_codex/AGENTS.md.tmpl` include. A rule that
+  only Claude needs, such as one for matching files only, can go in
+  `dot_claude/rules/<name>.md` with `paths:` frontmatter; none exists today.
+- Skills for writing, research, review, planning and languages live in the
+  owner's `vaintrub` plugin (§9), not here. The one skill kept here,
+  `save-to-dotfiles`, is about this repo; it lives in
+  `dot_claude/skills/save-to-dotfiles/` and reaches Codex through the symlink
+  in §3.
 - **Never tracked** (machine-local, some secret): `~/.claude.json` (OAuth
   tokens), `~/.claude/settings.local.json` (which Claude reads only for sessions
   started in `$HOME` itself), `~/.claude/plugins/*.json`,

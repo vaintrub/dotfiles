@@ -91,12 +91,12 @@ Map intent → source file (in the chezmoi source dir; `chezmoi cd` to navigate)
 | p10k tweak (one-line override) | `dot_p10k.zsh` in-place | new shell |
 | p10k major theme change | run `p10k configure` (answer **Quiet** at the instant-prompt question) — it rewrites the live `~/.p10k.zsh`, not the source — then `chezmoi re-add ~/.p10k.zsh`, put back `POWERLEVEL9K_TERM_SHELL_INTEGRATION=true` and both rationale comments (`repo-invariants.bats` fails until they are back), commit | new shell |
 | Brew formula or cask (Mac) / apt package (Linux) | `.chezmoidata/packages.yaml` under `packages.{darwin,linux}.{core,dev}` (tier cascade core ⊂ dev ⊂ workstation) or `packages.darwin.casks` (workstation only) | `chezmoi apply` re-runs that OS's packages script |
-| Claude global rule | `dot_claude/rules/<name>.md` with frontmatter | next Claude session |
+| Claude-only rule, such as one that loads only for matching files | `dot_claude/rules/<name>.md` with frontmatter (create the directory; most rules belong to both agents, in `ai-common.md`) | next Claude session |
 | Claude setting / statusline | `.chezmoitemplates/claude-settings-base.json` (curated base; `dot_claude/modify_settings.json` merges tool-added keys) | next Claude session |
 | Claude or Codex plugin | `.chezmoidata/packages.yaml` → `plugins.claude` / `plugins.codex`, plus `plugins.codex_marketplaces` for a new Codex marketplace. Claude plugins come only from Anthropic's marketplace or the owner's own (`vaintrub`, declared in `claude-settings-base.json`): a third-party one runs code inside the agent — propose it to the user first (`AGENTS.md` §9). An install baseline, not enable state: a Claude plugin disabled on a machine stays disabled, while Codex re-enables listed plugins on every apply. Removing a line uninstalls nothing — retiring a Claude plugin is the three-step procedure in `AGENTS.md` §9 | `chezmoi apply` (script 70 re-runs for a Claude change; a Codex change lands through the config merge, and script 70 runs `codex plugin add` for a plugin from `plugins.codex_marketplaces`), then next session |
 | MCP server (keyless remote only) | `.chezmoidata/packages.yaml` → `mcp:` (`name` + `url`); reaches both agents — Claude via `claude mcp add` in script 70, Codex via `.chezmoitemplates/codex-config-base.toml`. A server that needs an API key fails Gate 1: `<agent> mcp add` by hand on each machine | `chezmoi apply`, then next session |
 | Claude custom agent | `dot_claude/agents/<name>.md` (directory doesn't exist yet — create it) | next Claude session |
-| Claude custom skill | `dot_claude/skills/<name>/SKILL.md` | next Claude session |
+| Skill about this setup, for both agents | `dot_claude/skills/<name>/SKILL.md` plus its Codex link (the Codex skill row below) | next session of either |
 | Skill for writing, review, planning or a language, meant for every machine and both agents | the owner's plugin repo `vaintrub/skills` (`skills/<name>/`, by its `CONTRIBUTING.md`), not dotfiles; commit and push there | next session, after the marketplace auto-update |
 | Rule for BOTH agents (git, stack, style, workflow) | `.chezmoitemplates/ai-common.md` — included by `dot_claude/CLAUDE.md.tmpl` and `dot_codex/AGENTS.md.tmpl` | next session of either |
 | Codex-only behavioural rule | `dot_codex/AGENTS.md.tmpl` (inline, outside the shared include) | next Codex session |
@@ -119,7 +119,9 @@ Two equivalent flows:
 
 ### Per-area specifics
 
-**Claude rules** — frontmatter is required. Universal rule (every session):
+**Claude-only rules** — rare: a rule for both agents goes in
+`.chezmoitemplates/ai-common.md`. A `dot_claude/rules/<name>.md` file needs
+frontmatter. Universal rule (every session):
 
 ```yaml
 ---
@@ -142,11 +144,11 @@ paths:
 
 Ask user: universal or path-conditional? If conditional, which file globs?
 
-**Codex AGENTS.md additions** — Codex has no `dot_claude/rules/`-style
-auto-discovery. A rule that should reach BOTH agents goes in
-`.chezmoitemplates/ai-common.md`, which both instruction files include.
-Codex-only wording goes inline into `dot_codex/AGENTS.md.tmpl`, outside the
-include. Never edit the rendered `~/.claude/CLAUDE.md` / `~/.codex/AGENTS.md`.
+**Codex AGENTS.md additions** — Codex reads no `rules/` directory. A rule that
+should reach BOTH agents goes in `.chezmoitemplates/ai-common.md`, which both
+instruction files include. Codex-only wording goes inline into
+`dot_codex/AGENTS.md.tmpl`, outside the include. Never edit the rendered
+`~/.claude/CLAUDE.md` / `~/.codex/AGENTS.md`.
 
 **New skills come in pairs.** A skill is only usable by both agents if it has
 BOTH files, and `tests/unit/repo-invariants.bats` fails if they drift:
@@ -249,12 +251,10 @@ Ask before committing — user may want to test the reload first.
 **If user says "запомни, что Claude должен всегда писать комменты по-русски":**
 - **Gate 1**: portable ✓
 - **Gate 2**: cross-platform ✓
-- **Gate 3**: target = `dot_claude/rules/<name>.md` (new file)
-  - Ask: universal or path-conditional? Likely universal
-  - Name: `comments-in-russian`
-- Create with universal frontmatter + Rule / Why / How sections
-- `chezmoi apply` → reload: next Claude session
-- Commit: `feat: add claude rule for Russian comments`
+- **Gate 3**: a rule for both agents → `.chezmoitemplates/ai-common.md`,
+  section `## Code style`, one bullet
+- `chezmoi apply` → reload: next session of either agent
+- Commit: `feat: write code comments in Russian`
 
 **If user says "сохрани, что я хочу всегда `brew install <X>` после клона":**
 - **Gate 1**: portable in intent (per-package, no path/host) ✓

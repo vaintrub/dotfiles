@@ -1,65 +1,88 @@
 ## Saving portable settings
 
-When the user asks to save anything globally — a rule, setting, alias, binding, skill, plugin enable, hook — **run the `save-to-dotfiles` skill**. It walks three gates (portability / platform / routing) and edits the right target in the chezmoi source dir.
+When the user asks to save something globally (a rule, a setting, an alias, a binding, a skill, a
+plugin or a hook), **run the `save-to-dotfiles` skill**. It checks that the change is portable,
+picks the platform, and edits the right file in the chezmoi source directory.
 
-Never write to `~/.claude/<X>` or `~/.codex/<X>` directly — these paths are chezmoi-managed: edits there get overwritten on the next `chezmoi apply` (or surface as drift the user has to clean up). Use `chezmoi cd` to enter the source dir, then edit `dot_claude/<X>` / `dot_codex/<X>`. The full source↔target mapping and per-area guidance live in `AGENTS.md` at the source-dir root, auto-loaded when cwd is anywhere in the repo.
+Never edit `~/.claude/<X>` or `~/.codex/<X>` directly. chezmoi manages these paths, so the next
+`chezmoi apply` overwrites the edit or reports it as drift. Run `chezmoi cd` and edit
+`dot_claude/<X>` or `dot_codex/<X>` there. `AGENTS.md` at the root of the source directory maps
+each source to its target; it loads when the working directory is inside that repository.
 
 ---
 
+## Before you change code
+
+Each rule here exists because a guess cost several rounds of screenshots and reverts.
+
+- **Read first.** Before a fix or a change, read the file it touches, the files around it, its
+  spec, the repository's `AGENTS.md` or `CLAUDE.md`, and the configs of that area. Before an
+  iteration on new work, read its spec again in full. Search with several keywords before you
+  decide that something does not exist. For a typo or a lint fix, the file itself is enough.
+- **Ask for evidence of a bug.** A bug described in words is ambiguous. Ask for a screenshot, a
+  log, the error message or a measurement before you propose a fix. Measure a layout before you
+  change it.
+- **Propose, then wait for "go".** For a new feature, an iteration, a visual fix or a refactor,
+  your next answer is a proposal: what you would change and why, with a code outline, a CSS
+  snippet or a wireframe. Propose even when the fix looks obvious. Change the code only after
+  the user's literal "go", "approve" or "OK", and only for the thing just discussed. An auto mode
+  does not override this rule.
+- **Edit without asking** when the change is a typo, a formatter or lint fix, a change that the
+  user just directed, or an edit of documentation: `docs/`, `notes/`, `AGENTS.md`, ADRs, READMEs.
+  Do not ask for confirmation of other routine, reversible steps either.
+
 ## Git commits
 
-- NEVER add "Co-Authored-By: Claude", "Co-Authored-By: Codex", or any other AI mentions to commits
-- Commits look like regular human commits (clear, present tense, max 72-char summary)
-- Branch names: kebab-case, prefixed with `feature/`, `fix/`, `docs/`, `chore/`
-- Always create NEW commits rather than amending unless explicitly requested
-- Never run destructive git operations (push --force, reset --hard, branch -D) without explicit confirmation
+- Never add "Co-Authored-By: Claude", "Co-Authored-By: Codex" or any other mention of an AI to a
+  commit.
+- Write commits like a person: clear, in the present tense, with a summary of at most 72
+  characters.
+- Name branches in kebab-case, with a prefix: `feature/`, `fix/`, `docs/` or `chore/`.
+- Create a new commit; amend only when the user asks.
+- Never run a destructive git command (`push --force`, `reset --hard`, `branch -D`) without the
+  user's explicit confirmation.
 
 ## Stack
 
-- **Go**: the `advanced-go` skill of the `vaintrub` plugin
-- **Python**: 3.10+, type hints required, `ruff` for lint+format (not black/isort separately), `uv` for envs
-- **TypeScript/React/Astro**: the `advanced-typescript` skill of the `vaintrub` plugin
-- **PostgreSQL**: parameterized queries, migrations versioned, never drop columns (deprecate first)
-- **Kubernetes**: `kubectl` read-only by default; explicit confirmation before `delete`/`apply` on shared clusters
+- **Go**: the `advanced-go` skill of the `vaintrub` plugin.
+- **Python**: 3.10 or later, with type hints. `ruff` lints and formats, not black and isort.
+  `uv` manages environments.
+- **TypeScript, React, Astro**: the `advanced-typescript` skill of the `vaintrub` plugin.
+- **PostgreSQL**: parameterized queries and versioned migrations. Never drop a column; deprecate
+  it first.
+- **Kubernetes**: `kubectl` is read-only by default. Ask before `delete` or `apply` on a shared
+  cluster.
 
-## Code style defaults
+## Code style
 
-- Indent: 2 spaces (TS/JS/YAML/JSON), 4 spaces (Python/Go uses tabs natively)
-- Line length: 100 chars max
-- Quotes: double quotes (TS/JS strings), no semicolons in TS unless config says otherwise
-- No comments unless WHY is non-obvious
+- Indent with 2 spaces in TypeScript, JavaScript, YAML and JSON, and with 4 in Python. Go uses
+  tabs.
+- Keep lines to 100 characters.
+- In TypeScript and JavaScript, use double quotes and no semicolons, unless the project's config
+  says otherwise.
+- Write a comment only when the reason is not obvious from the code.
 
 ## Workflow
 
-- Plan before code for non-trivial changes; show plan first
-- Don't add features, abstractions, or error handling beyond what's needed
-- Don't add backwards-compat shims if the user hasn't asked for them
-- Update existing files; only create new files when explicitly required
-- For UI/frontend changes, mention if you cannot actually run/test the UI
-- Visual frontend work follows the `vaintrub` plugin's `frontend-workflow` skill: a spec-first pipeline per block, and the traps of auditing pages through the chrome-devtools MCP
-- Writing, research, review and planning follow the `vaintrub` plugin's skills: `clear-text`, `verified-research`, `independent-review`, `planning`, `writing-product-docs`
+- Do not add features, abstractions or error handling beyond what the task needs.
+- Do not add backwards-compatibility shims that the user did not ask for.
+- Update existing files. Create a new file only when the task needs it.
+- After a change to a UI, say so if you could not run or test it.
+- Visual frontend work follows the `frontend-workflow` skill of the `vaintrub` plugin.
+- Writing, research, review and planning follow the `vaintrub` plugin's skills: `clear-text`,
+  `verified-research`, `independent-review`, `planning` and `writing-product-docs`.
 
 ## Security
 
-- No secrets in code; use env vars / direnv / 1Password
-- Never commit `.env*`, credentials, tokens
-- Validate input only at system boundaries (user input, external APIs) — trust internal code
-- Warn before destructive operations on shared systems
+- Keep secrets out of code. Use environment variables, direnv or 1Password.
+- Never commit `.env*` files, credentials or tokens.
+- Validate input only at the boundaries of a system: user input and external APIs. Trust
+  internal code.
+- Warn before a destructive operation on a shared system.
 
-## Anti-patterns (don't do)
+## Do not
 
-- Don't write multi-paragraph docstrings or comment blocks
-- Don't reference current task/fix/caller in code comments ("added for X flow")
-- Don't validate scenarios that can't happen
-- Don't summarize what was just changed in chat — the diff speaks for itself
-- Don't ask for confirmation on routine reversible edits
-
-## Working principles by project type
-
-Rule files live under `dot_claude/rules/` in the chezmoi source dir (use `chezmoi cd` to navigate; materialized as `~/.claude/rules/*.md` on apply). They are agent-agnostic — the index below is the shared TL;DR; each agent's own section states how it loads them.
-
-### Universal (any project)
-
-- **`read-codebase-first`** — Read specs / docs / configs / tests before first fix attempt. Don't hack from assumptions.
-- **`no-code-without-go`** — Any non-trivial edit (new feature, iteration, visual bug fix) → propose first, wait for explicit user `go`, then code. Exceptions: typos / lint fixes / commands the user already directed.
-- **`verify-before-fix`** — Don't trust verbal descriptions of bugs. Ask for screenshots / logs / measurements before fixing.
+- Write docstrings of several paragraphs, or long blocks of comments.
+- Mention the current task, fix or caller in a code comment, such as "added for X flow".
+- Validate a case that cannot happen.
+- Summarize in the chat what you just changed: the diff shows it.

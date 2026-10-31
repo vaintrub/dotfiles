@@ -49,3 +49,7 @@ Session.vim
 # Only files whose LAST extension is .local: .env.local, .envrc.local, …
 # NOT mise.local.toml or settings.local.json.
 *.local
+
+# Claude Code appends this line itself when it creates a project's
+# .claude/settings.local.json; keeping it here stops the drift.
+**/.claude/settings.local.json
