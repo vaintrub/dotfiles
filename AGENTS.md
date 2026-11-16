@@ -173,9 +173,9 @@ then 70), then `darwin/` and `linux/`. They run after every file is written.
   (`repo-invariants.bats` checks).
 - **Adding things:** an OS package → `packages.{darwin,linux}.{core,dev}` or
   `packages.darwin.casks`; a CLI tool → the mise config (inside the dev block
-  unless every tier needs it); a Claude plugin (Anthropic's marketplace or
-  the owner's, §9) → `plugins.claude`; an MCP server → `mcp:`; a Codex plugin or marketplace
-  → `plugins.codex` / `plugins.codex_marketplaces`.
+  unless every tier needs it); a Claude plugin (Anthropic's marketplace or the
+  owner's, §9) → `plugins.claude`; an MCP server → `mcp:`; a Codex plugin or
+  marketplace → `plugins.codex` / `plugins.codex_marketplaces`.
 - A new script: POSIX `sh`, idempotent, OS-guarded with
   `{{ if eq .chezmoi.os "darwin" }}`, and prefer `run_onchange_after_`.
 
@@ -255,15 +255,18 @@ drift.
 
 `enabledPlugins` is a union: script 70 installs every missing `plugins.claude`
 entry, the base enables it, and a value already in the live file wins — a plugin
-disabled with `claude plugin disable -s user` stays off. The base's `permissions.deny` is merged the same way, as a union. So the list is an
-install baseline, not enable state. Codex is the opposite: `plugins.codex`
-entries are re-enabled on every apply. A `plugins.codex` entry from a marketplace in
+disabled with `claude plugin disable -s user` stays off. The base's
+`permissions.deny` is merged the same way, as a union. So the list is an install
+baseline, not enable state. Codex is the opposite: `plugins.codex` entries are
+re-enabled on every apply. A `plugins.codex` entry from a marketplace in
 `plugins.codex_marketplaces` also needs `codex plugin add` once, which script 70
-runs. After that, Codex refreshes Git marketplaces and their installed plugins itself, at the
-start of each session. Retiring a Claude plugin takes three
-steps on each machine: drop the line, `claude plugin uninstall <plugin>`, and
-delete its `enabledPlugins` entry from `~/.claude/settings.json`. A plugin from
-its own marketplace goes in one step: `claude plugin marketplace remove <name>`
+runs. After that, Codex refreshes Git marketplaces and their installed plugins
+itself, at the start of each session. The curated `*@openai-curated` entries
+work only under a ChatGPT login: without one, Codex names that marketplace
+`openai-api-curated`. Retiring a Claude plugin takes three steps on each
+machine: drop the line, `claude plugin uninstall <plugin>`, and delete its
+`enabledPlugins` entry from `~/.claude/settings.json`. A plugin from its own
+marketplace goes in one step: `claude plugin marketplace remove <name>`
 removes the plugins, their `enabledPlugins` entries and the marketplace.
 
 Only Anthropic's marketplace and the owner's own are tracked; no third-party

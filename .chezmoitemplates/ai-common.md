@@ -16,17 +16,19 @@ each source to its target; it loads when the working directory is inside that re
 Each rule here exists because a guess cost several rounds of screenshots and reverts.
 
 - **Read first.** Before a fix or a change, read the file it touches, the files around it, its
-  spec, the repository's `AGENTS.md` or `CLAUDE.md`, and the configs of that area. Before an
-  iteration on new work, read its spec again in full. Search with several keywords before you
-  decide that something does not exist. For a typo or a lint fix, the file itself is enough.
+  spec and tests, the repository's `AGENTS.md` or `CLAUDE.md`, and the configs of that area.
+  Before an iteration on new work, read its spec again in full. Search with several keywords
+  before you decide that something does not exist. When in doubt, read more, not less. For a
+  typo or a lint fix, the file itself is enough.
 - **Ask for evidence of a bug.** A bug described in words is ambiguous. Ask for a screenshot, a
   log, the error message or a measurement before you propose a fix. Measure a layout before you
   change it.
 - **Propose, then wait for "go".** For a new feature, an iteration, a visual fix or a refactor,
   your next answer is a proposal: what you would change and why, with a code outline, a CSS
-  snippet or a wireframe. Propose even when the fix looks obvious. Change the code only after
-  the user's literal "go", "approve" or "OK", and only for the thing just discussed. An auto mode
-  does not override this rule.
+  snippet or a wireframe. Propose even when the fix looks obvious, in a few lines. When the user
+  asks for several changes, propose each one, and let the user choose which to do. Change the
+  code only after the user's literal "go", "approve" or "OK", and only for the thing just
+  discussed. An auto mode does not override this rule.
 - **Edit without asking** when the change is a typo, a formatter or lint fix, a change that the
   user just directed, or an edit of documentation: `docs/`, `notes/`, `AGENTS.md`, ADRs, READMEs.
   Do not ask for confirmation of other routine, reversible steps either.

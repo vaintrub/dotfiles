@@ -56,6 +56,8 @@ plugins:
     - supabase@claude-plugins-official
     - vaintrub@vaintrub
   codex:
+    # openai-curated is the curated marketplace under a ChatGPT login; without
+    # one, Codex names it openai-api-curated and these two enable nothing.
     - github@openai-curated
     - google-drive@openai-curated
     - vaintrub@vaintrub

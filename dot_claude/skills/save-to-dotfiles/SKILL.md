@@ -251,8 +251,9 @@ Ask before committing — user may want to test the reload first.
 **If user says "запомни, что Claude должен всегда писать комменты по-русски":**
 - **Gate 1**: portable ✓
 - **Gate 2**: cross-platform ✓
-- **Gate 3**: a rule for both agents → `.chezmoitemplates/ai-common.md`,
-  section `## Code style`, one bullet
+- **Gate 3**: ask whether Codex needs the rule too; usually yes. For both
+  agents → `.chezmoitemplates/ai-common.md`, section `## Code style`, one
+  bullet. For Claude only → `dot_claude/rules/<name>.md`
 - `chezmoi apply` → reload: next session of either agent
 - Commit: `feat: write code comments in Russian`
 
